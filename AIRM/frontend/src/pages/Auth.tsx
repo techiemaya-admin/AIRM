@@ -34,16 +34,16 @@ const Auth = () => {
     setLoading(true);
     try {
       const response = await api.auth.verifyMagicLink(token) as any;
-      
+
       // Save token and user data
       localStorage.setItem('auth_token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
-      
+
       toast({
         title: "Success",
         description: "Login successful! Welcome back.",
       });
-      
+
       navigate("/");
     } catch (error: any) {
       toast({
@@ -64,12 +64,12 @@ const Auth = () => {
 
     try {
       const response = await api.auth.sendMagicLink(email.trim().toLowerCase()) as any;
-      
+
       console.log('🔍 Magic link response:', response);
       setLastResponse(response);
-      
+
       setMagicLinkSent(true);
-      
+
       // Always capture the magic link if provided (for testing/development)
       // Check multiple possible response fields
       const linkUrl = response.frontendUrl || response.magicLink || response.magic_link;
@@ -80,7 +80,7 @@ const Auth = () => {
         found: linkUrl,
         fullResponse: response
       });
-      
+
       if (linkUrl) {
         console.log('✅ Magic link URL captured:', linkUrl);
         setMagicLinkUrl(linkUrl);
@@ -96,7 +96,7 @@ const Auth = () => {
           console.error('❌ No magic link URL or token found in response');
         }
       }
-      
+
       if (response.emailSent) {
         toast({
           title: "Magic Link Sent! ✉️",
@@ -109,15 +109,15 @@ const Auth = () => {
           description: response.note || "Email service unavailable. Use the test link below.",
         });
       }
-      
+
     } catch (error: any) {
       let errorMessage = error.message || "Failed to send magic link";
-      
+
       // Provide helpful message for connection errors
       if (errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_CONNECTION_REFUSED') || errorMessage.includes('Cannot connect to server')) {
         errorMessage = "Backend server is not running. Please start the backend server first. See README.md for instructions.";
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -170,10 +170,10 @@ const Auth = () => {
           <div className="flex justify-center mb-1">
             <img src={logo} alt="TechieMaya Logo" className="h-52 w-auto" />
           </div>
-          <CardTitle className="text-2xl">Welcome to VCP Automation</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Pulse</CardTitle>
           <CardDescription>
-            {magicLinkSent 
-              ? "We've sent you a magic link!" 
+            {magicLinkSent
+              ? "We've sent you a magic link!"
               : "Enter your email to receive a secure login link"}
           </CardDescription>
         </CardHeader>
@@ -203,53 +203,29 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Always show test link section when available */}
-              {magicLinkUrl ? (
+              {/* Only show test link in dev/fallback mode — never when email was sent */}
+              {!lastResponse?.emailSent && magicLinkUrl && (
                 <div className="text-center">
-                  {!lastResponse?.emailSent && (
-                    <>
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                        <p className="text-sm text-yellow-800">
-                          🚧 <strong>Development Mode:</strong> Email service not configured.
-                        </p>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Use the test link below to access your account:
-                      </p>
-                    </>
-                  )}
-                  {lastResponse?.emailSent && (
-                    <div className="border-t pt-4 mt-4">
-                      <p className="text-xs text-muted-foreground mb-2">
-                        💡 <strong>Test Link Available:</strong> Use the button below if email doesn't arrive
-                      </p>
-                    </div>
-                  )}
-                  <Button 
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-yellow-800">
+                      🚧 <strong>Development Mode:</strong> Email service not configured.
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Use the link below to access your account:
+                  </p>
+                  <Button
                     onClick={handleMagicLinkClick}
                     className="w-full mb-4"
-                    variant={lastResponse?.emailSent ? "outline" : "default"}
-                    size={lastResponse?.emailSent ? "sm" : "default"}
                   >
-                    🔗 {lastResponse?.emailSent ? "Use Test Link" : "Use Magic Link"}
+                    🔗 Use Magic Link
                   </Button>
                   <div className="text-xs text-muted-foreground bg-muted p-2 rounded break-all">
                     <strong>Test Link:</strong> {magicLinkUrl}
                   </div>
                 </div>
-              ) : (
-                <div className="text-center">
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <p className="text-sm text-yellow-800 mb-2">
-                      ⚠️ Magic link generated but URL not available.
-                    </p>
-                    <p className="text-xs text-yellow-700">
-                      Check browser console (F12) for details. Look for "🔍 Magic link response:" message.
-                    </p>
-                  </div>
-                </div>
               )}
-              
+
               <div className="text-center">
                 <button
                   type="button"

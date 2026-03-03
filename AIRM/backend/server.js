@@ -118,8 +118,13 @@ app.use(
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
+    exposedHeaders: ['Content-Type'],
+    maxAge: 86400, // 24 hours
   })
 );
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -297,25 +302,40 @@ const loadRoutes = async () => {
 (async () => {
   await loadRoutes();
 
-  // Prefer the Vite build output if present (Railway builds `../frontend/dist`),
-  // otherwise fall back to `backend/public` (legacy).
+  // FRONTEND_URL: Where the React app is hosted (separate Cloud Run service)
+  const frontendUrl = process.env.FRONTEND_URL || null;
+
+  // Only serve embedded static frontend if no dedicated frontend URL is configured.
+  // In production, FRONTEND_URL should always be set → we redirect instead of serving
+  // an old/stale embedded build (which would have no VITE_API_BASE_URL baked in).
   const frontendDistCandidates = [
     path.resolve(__dirname, '../frontend/dist'),
     path.resolve(__dirname, 'public'),
   ];
-  const frontendDist = frontendDistCandidates.find(p => fs.existsSync(p));
+  const frontendDist = !frontendUrl
+    ? frontendDistCandidates.find(p => fs.existsSync(p))
+    : null;
 
-  console.log('🔍 Frontend dist:', frontendDist);
-  console.log('🔍 Exists:', frontendDist ? true : false);
+  console.log('🔍 FRONTEND_URL:', frontendUrl);
+  console.log('🔍 Frontend dist (embedded):', frontendDist || 'none (using redirect)');
 
-  // Serve frontend static files (but only for non-API routes)
-  if (frontendDist) {
-    app.use(express.static(frontendDist));
-    // Catch-all handler: serve index.html for non-API routes
-    app.get('*', (req, res, next) => {
-      // Don't serve HTML for API routes
+  if (frontendUrl) {
+    // Production: redirect all non-API routes to the real frontend service.
+    // This handles old magic-link emails that still point to the backend URL.
+    app.get('*', (req, res) => {
       if (req.path.startsWith('/api/')) {
         console.log(`❌ 404 Catch-all reached for: ${req.method} ${req.path}`);
+        return res.status(404).json({ error: 'API route not found' });
+      }
+      const redirectTo = `${frontendUrl}${req.path}${req.search || (Object.keys(req.query).length ? '?' + new URLSearchParams(req.query).toString() : '')}`;
+      console.log(`↪️  Redirecting to frontend: ${redirectTo}`);
+      res.redirect(302, redirectTo);
+    });
+  } else if (frontendDist) {
+    // Local dev fallback: serve embedded static build
+    app.use(express.static(frontendDist));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/')) {
         return res.status(404).json({ error: 'API route not found' });
       }
       res.sendFile(path.join(frontendDist, 'index.html'));
