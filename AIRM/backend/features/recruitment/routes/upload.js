@@ -7,7 +7,8 @@ import * as recruitmentModel from '../models/recruitment.model.js';
 const router = express.Router();
 
 // Configure multer for uploads
-const uploadDir = path.join(process.cwd(), 'backend', 'uploads', 'verification');
+const baseDir = process.env.K_SERVICE ? '/tmp' : path.join(process.cwd(), 'backend');
+const uploadDir = path.join(baseDir, 'uploads', 'verification');
 fs.mkdirSync(uploadDir, { recursive: true });
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),

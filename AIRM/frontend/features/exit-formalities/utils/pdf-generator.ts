@@ -435,12 +435,12 @@ function renderAssetSignatures(
  */
 export function generateExperienceLetterPDF(pdfData: ExperienceLetterPDFData, filename?: string): void {
   const doc = new jsPDF('portrait');
-  
+
   const templateFormat = pdfData.templateFormat;
-  
+
   console.log('[PDF Generator] ========================================');
   console.log('[PDF Generator] Template format received:', templateFormat ? 'YES' : 'NO');
-  
+
   // If NO template data at all, use standard format
   if (!templateFormat) {
     console.log('[PDF Generator] ❌ NO TEMPLATE - Using standard format');
@@ -448,19 +448,19 @@ export function generateExperienceLetterPDF(pdfData: ExperienceLetterPDFData, fi
     doc.save(filename || `experience_letter_${new Date().toISOString().split('T')[0]}.pdf`);
     return;
   }
-  
+
   // TEMPLATE-LOCKED MODE: Template exists, detect and use correct layout
   const letterFormat = templateFormat.letterFormat || {};
   const layout = (letterFormat as any).layout || 'paragraph';
   const templateContent = (templateFormat as any).content as string | undefined;
   const hasToWhomsoever = (letterFormat as any).hasToWhomsoever || (typeof templateContent === 'string' && /to\s+whom/i.test(templateContent));
   const hasParagraphStyle = (letterFormat as any).hasParagraphStyle || !(letterFormat as any).hasNumberedList;
-  
+
   console.log('[PDF Generator] Layout type:', layout);
   console.log('[PDF Generator] hasToWhomsoever:', hasToWhomsoever);
   console.log('[PDF Generator] hasParagraphStyle:', hasParagraphStyle);
   console.log('[PDF Generator] hasNumberedList:', letterFormat.hasNumberedList);
-  
+
   // REPLICA MODE: Use template image as background
   const templateImage = (templateFormat as any).templateImage;
   if (templateImage) {
@@ -469,7 +469,7 @@ export function generateExperienceLetterPDF(pdfData: ExperienceLetterPDFData, fi
     doc.save(filename || `experience_letter_${new Date().toISOString().split('T')[0]}.pdf`);
     return;
   }
-  
+
   // LAYOUT-LOCKED MODE: Generate based on detected layout
   if (hasToWhomsoever || layout === 'open_letter') {
     console.log('[PDF Generator] ✅ Using OPEN LETTER style (TO WHOMSOEVER IT MAY CONCERN)');
@@ -489,7 +489,7 @@ export function generateExperienceLetterPDF(pdfData: ExperienceLetterPDFData, fi
     console.log('[PDF Generator] ✅ DEFAULT: Using PARAGRAPH style');
     generateParagraphStyleExperienceLetter(doc, pdfData, templateFormat);
   }
-  
+
   doc.save(filename || `experience_letter_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
@@ -504,9 +504,9 @@ function generateReplicaModeExperienceLetter(
 ): void {
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
-  
+
   console.log('[PDF REPLICA] Starting REPLICA MODE generation');
-  
+
   // Add the template image as background
   const templateImage = (templateFormat as any).templateImage;
   try {
@@ -518,13 +518,13 @@ function generateReplicaModeExperienceLetter(
     generateParagraphStyleExperienceLetter(doc, pdfData, templateFormat);
     return;
   }
-  
+
   // Create a white overlay for variable field areas and add new text
   // This is a simplified approach - for production, you'd use exact bounding boxes
   const textBlocks = Array.isArray((templateFormat as any).textBlocks) ? (templateFormat as any).textBlocks : [];
   const employeeName = pdfData.employeeDetails.name;
   const employeeId = pdfData.employeeDetails.employeeId;
-  
+
   // Find and replace variable fields based on detected positions
   for (const block of textBlocks) {
     if (block.isVariable && block.bbox) {
@@ -532,23 +532,24 @@ function generateReplicaModeExperienceLetter(
       let imgWidth = 800;
       let imgHeight = 1100;
       if (templateFormat.layout && typeof templateFormat.layout === 'object') {
-        if ('imageWidth' in templateFormat.layout && typeof (templateFormat.layout as any).imageWidth === 'number') {
-          imgWidth = (templateFormat.layout as any).imageWidth;
+        const layoutObj = templateFormat.layout as any;
+        if ('imageWidth' in layoutObj && typeof layoutObj.imageWidth === 'number') {
+          imgWidth = layoutObj.imageWidth;
         }
-        if ('imageHeight' in templateFormat.layout && typeof (templateFormat.layout as any).imageHeight === 'number') {
-          imgHeight = (templateFormat.layout as any).imageHeight;
+        if ('imageHeight' in layoutObj && typeof layoutObj.imageHeight === 'number') {
+          imgHeight = layoutObj.imageHeight;
         }
       }
-      
+
       const pdfX = (block.bbox.x0 / imgWidth) * pageWidth;
       const pdfY = (block.bbox.y0 / imgHeight) * pageHeight;
       const blockWidth = ((block.bbox.x1 - block.bbox.x0) / imgWidth) * pageWidth;
       const blockHeight = ((block.bbox.y1 - block.bbox.y0) / imgHeight) * pageHeight;
-      
+
       // Draw white rectangle to cover original text
       doc.setFillColor(255, 255, 255);
       doc.rect(pdfX - 2, pdfY - 2, blockWidth + 4, blockHeight + 4, 'F');
-      
+
       // Determine replacement text
       let replacementText = block.text;
       if (/\b(mr|ms|mrs)\.?\s+[a-z]+/i.test(block.text)) {
@@ -556,7 +557,7 @@ function generateReplicaModeExperienceLetter(
       } else if (/\d{4,}/.test(block.text) && block.text.length < 10) {
         replacementText = employeeId || block.text;
       }
-      
+
       // Add replacement text
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
@@ -564,7 +565,7 @@ function generateReplicaModeExperienceLetter(
       doc.text(replacementText, pdfX, pdfY + blockHeight * 0.7);
     }
   }
-  
+
   console.log('[PDF REPLICA] Completed REPLICA MODE generation');
 }
 
@@ -581,13 +582,13 @@ function generateOpenLetterStyleExperienceLetter(
   const pageWidth = doc.internal.pageSize.width;
   const leftMargin = 20;
   const rightMargin = pageWidth - 20;
-  
+
   // Get company info
   const companyInfo = templateFormat.companyInfo || {};
   const signatureBlock = templateFormat.signatureBlock || {};
   const companyName = companyInfo.name || pdfData.companyDetails.name || 'Company';
   const companyAddress = companyInfo.address || pdfData.companyDetails.address || '';
-  
+
   // Format dates
   const formatDate = (dateStr: string | Date | undefined): string => {
     if (!dateStr) return 'N/A';
@@ -595,14 +596,14 @@ function generateOpenLetterStyleExperienceLetter(
     if (isNaN(date.getTime())) return 'N/A';
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
-  
+
   let yPos = 25;
-  
+
   // ========== COMPANY HEADER (Logo area - left aligned) ==========
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text(companyName, leftMargin, yPos);
-  
+
   // Company address (top-right)
   if (companyAddress) {
     doc.setFontSize(9);
@@ -614,74 +615,74 @@ function generateOpenLetterStyleExperienceLetter(
       addrY += 4;
     }
   }
-  
+
   // ========== DATE (Right aligned) ==========
   yPos += 25;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   const currentDate = formatDate(pdfData.signature?.date || new Date());
   doc.text(currentDate, rightMargin, yPos, { align: 'right' });
-  
+
   // ========== TO WHOMSOEVER IT MAY CONCERN (Centered, underlined) ==========
   yPos += 20;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   const heading = 'TO WHOMSOEVER IT MAY CONCERN';
   doc.text(heading, pageWidth / 2, yPos, { align: 'center' });
-  
+
   // Underline
   const headingWidth = doc.getTextWidth(heading);
   doc.setLineWidth(0.5);
   doc.line((pageWidth - headingWidth) / 2, yPos + 1.5, (pageWidth + headingWidth) / 2, yPos + 1.5);
-  
+
   // ========== BODY PARAGRAPHS (NOT bullet points) ==========
   yPos += 15;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  
+
   const employeeName = pdfData.employeeDetails.name;
   const designation = pdfData.employeeDetails.designation || pdfData.employmentDetails.role || 'N/A';
   const department = pdfData.employmentDetails.department || 'N/A';
   const joiningDate = formatDate(pdfData.employmentDetails.dateOfJoining);
   const leavingDate = formatDate(pdfData.employmentDetails.lastWorkingDay);
-  
+
   // First paragraph - Introduction
   const para1 = `This is to certify that ${employeeName} was employed with ${companyName} as ${designation} in the ${department} department from ${joiningDate} to ${leavingDate}.`;
-  
+
   const para1Lines = doc.splitTextToSize(para1, pageWidth - 45);
   doc.text(para1Lines, leftMargin, yPos);
   yPos += para1Lines.length * 5 + 8;
-  
+
   // Second paragraph - Performance
   const para2 = `During this period, we found ${employeeName} to be sincere, hardworking, and dedicated. Their conduct and performance were satisfactory throughout the tenure with the organization.`;
-  
+
   const para2Lines = doc.splitTextToSize(para2, pageWidth - 45);
   doc.text(para2Lines, leftMargin, yPos);
   yPos += para2Lines.length * 5 + 8;
-  
+
   // Third paragraph - Wishes
   const para3 = `We wish ${employeeName} all the best for future endeavors.`;
-  
+
   const para3Lines = doc.splitTextToSize(para3, pageWidth - 45);
   doc.text(para3Lines, leftMargin, yPos);
   yPos += para3Lines.length * 5 + 20;
-  
+
   // ========== SIGNATURE BLOCK (Left aligned) ==========
   doc.setFont('helvetica', 'bold');
   doc.text('For ' + companyName, leftMargin, yPos);
-  
+
   yPos += 20;
-  
+
   // Signatory name
   const sigName = signatureBlock.signatoryName || pdfData.signature?.name || 'HR Manager';
   doc.text(sigName, leftMargin, yPos);
-  
+
   // Signatory title
   yPos += 5;
   doc.setFont('helvetica', 'normal');
   const sigTitle = signatureBlock.signatoryTitle || pdfData.signature?.designation || 'Human Resources';
   doc.text(sigTitle, leftMargin, yPos);
-  
+
   console.log('[PDF OpenLetter] Generated Open Letter style experience letter');
 }
 
@@ -698,26 +699,26 @@ function generateParagraphStyleExperienceLetter(
   const pageWidth = doc.internal.pageSize.width;
   const leftMargin = 20;
   const rightMargin = pageWidth - 20;
-  
+
   const companyInfo = templateFormat.companyInfo || {};
   const signatureBlock = templateFormat.signatureBlock || {};
   const companyName = companyInfo.name || pdfData.companyDetails.name || 'Company';
   const companyAddress = companyInfo.address || pdfData.companyDetails.address || '';
-  
+
   const formatDate = (dateStr: string | Date | undefined): string => {
     if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return 'N/A';
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
-  
+
   let yPos = 25;
-  
+
   // Company header
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.text(companyName, leftMargin, yPos);
-  
+
   if (companyAddress) {
     yPos += 6;
     doc.setFontSize(9);
@@ -728,23 +729,23 @@ function generateParagraphStyleExperienceLetter(
       yPos += 4;
     }
   }
-  
+
   // Date
   yPos += 10;
   doc.setFontSize(10);
   doc.text(formatDate(pdfData.signature?.date || new Date()), leftMargin, yPos);
-  
+
   // Subject line
   yPos += 15;
   doc.setFont('helvetica', 'bold');
   doc.text('Subject: Experience Certificate', leftMargin, yPos);
-  
+
   // Employee address
   yPos += 12;
   doc.setFont('helvetica', 'normal');
   const salutation = pdfData.employmentDetails.gender === 'female' ? 'Ms.' : 'Mr.';
   doc.text(`Dear ${salutation} ${pdfData.employeeDetails.name},`, leftMargin, yPos);
-  
+
   // Body paragraphs
   yPos += 12;
   const employeeName = pdfData.employeeDetails.name;
@@ -752,40 +753,40 @@ function generateParagraphStyleExperienceLetter(
   const department = pdfData.employmentDetails.department || 'N/A';
   const joiningDate = formatDate(pdfData.employmentDetails.dateOfJoining);
   const leavingDate = formatDate(pdfData.employmentDetails.lastWorkingDay);
-  
+
   const para1 = `This letter confirms that ${salutation} ${employeeName} was employed with ${companyName} from ${joiningDate} to ${leavingDate}, holding the position of ${designation} in the ${department} department.`;
-  
+
   const para1Lines = doc.splitTextToSize(para1, pageWidth - 45);
   doc.text(para1Lines, leftMargin, yPos);
   yPos += para1Lines.length * 5 + 8;
-  
+
   const para2 = `During their tenure, ${salutation} ${employeeName} demonstrated professionalism, dedication, and excellent performance. Their contributions to the team and organization were valuable and appreciated.`;
-  
+
   const para2Lines = doc.splitTextToSize(para2, pageWidth - 45);
   doc.text(para2Lines, leftMargin, yPos);
   yPos += para2Lines.length * 5 + 8;
-  
+
   const para3 = `We thank ${salutation} ${employeeName} for their service and wish them success in all future endeavors.`;
-  
+
   const para3Lines = doc.splitTextToSize(para3, pageWidth - 45);
   doc.text(para3Lines, leftMargin, yPos);
   yPos += para3Lines.length * 5 + 20;
-  
+
   // Signature
   doc.setFont('helvetica', 'bold');
   doc.text('Yours sincerely,', leftMargin, yPos);
   yPos += 15;
   doc.text('For ' + companyName, leftMargin, yPos);
   yPos += 15;
-  
+
   const sigName = signatureBlock.signatoryName || pdfData.signature?.name || 'HR Manager';
   doc.text(sigName, leftMargin, yPos);
-  
+
   yPos += 5;
   doc.setFont('helvetica', 'normal');
   const sigTitle = signatureBlock.signatoryTitle || pdfData.signature?.designation || 'Human Resources';
   doc.text(sigTitle, leftMargin, yPos);
-  
+
   console.log('[PDF Paragraph] Generated Paragraph style experience letter');
 }
 
@@ -794,8 +795,8 @@ function generateParagraphStyleExperienceLetter(
  * Format: Company header, reference number, employee info, resignation paragraph, TABLE, confidentiality, signature
  */
 function generateInfosysStyleExperienceLetter(
-  doc: jsPDF, 
-  pdfData: ExperienceLetterPDFData, 
+  doc: jsPDF,
+  pdfData: ExperienceLetterPDFData,
   templateFormat: NonNullable<ExperienceLetterPDFData['templateFormat']>
 ): void {
   const pageWidth = doc.internal.pageSize.width;
@@ -803,18 +804,18 @@ function generateInfosysStyleExperienceLetter(
   const firstName = pdfData.employeeDetails.name.split(' ')[0];
   const leftMargin = 20;
   const rightMargin = pageWidth - 20;
-  
+
   // Get company info from template
   const companyInfo = templateFormat.companyInfo || {};
   const signatureBlock = templateFormat.signatureBlock || {};
-  
+
   // Clean company name (remove duplicate/OCR artifacts)
   let companyName = companyInfo.name || pdfData.companyDetails.name || 'Company';
   if (companyName.toLowerCase().includes('nfosys')) {
     companyName = 'Infosys Limited';
   }
   const companyAddress = companyInfo.address || pdfData.companyDetails.address || '';
-  
+
   // Format date
   const formatDate = (dateStr: string | Date | undefined): string => {
     if (!dateStr) return 'N/A';
@@ -822,22 +823,22 @@ function generateInfosysStyleExperienceLetter(
     if (isNaN(date.getTime())) return 'N/A';
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
-  
+
   let yPos = 20;
-  
+
   // ========== COMPANY HEADER (Infosys logo area) ==========
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 51, 153); // Infosys blue
   doc.text('Infosys', leftMargin, yPos);
-  
+
   // Company full name
   yPos += 5;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   doc.text('Infosys Limited', leftMargin, yPos);
-  
+
   // Registered office address
   yPos += 4;
   doc.setFontSize(8);
@@ -848,18 +849,18 @@ function generateInfosysStyleExperienceLetter(
   doc.text('Tel: 91 80 2852 0261 Fax: 91 80 2852 0362', leftMargin, yPos);
   yPos += 4;
   doc.text('www.infosys.com', leftMargin, yPos);
-  
+
   // ========== REFERENCE NUMBER AND DATE (Right aligned) ==========
   yPos += 10;
   const refNumber = `HRD/RELVLTR/${new Date().getFullYear().toString().slice(-2)}/${pdfData.employeeDetails.employeeId || 'XXXXX'}`;
   const currentDate = formatDate(pdfData.signature?.date || new Date());
-  
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(`${refNumber}`, rightMargin, yPos, { align: 'right' });
   yPos += 5;
   doc.text(currentDate, rightMargin, yPos, { align: 'right' });
-  
+
   // ========== EMPLOYEE ADDRESS BLOCK ==========
   yPos += 12;
   doc.setFontSize(10);
@@ -867,12 +868,12 @@ function generateInfosysStyleExperienceLetter(
   doc.text(`${salutation} ${pdfData.employeeDetails.name}`, leftMargin, yPos);
   yPos += 5;
   doc.text(`Employee No. ${pdfData.employeeDetails.employeeId || 'N/A'}`, leftMargin, yPos);
-  
+
   // ========== SALUTATION ==========
   yPos += 12;
   doc.setFont('helvetica', 'normal');
   doc.text(`Dear ${firstName},`, leftMargin, yPos);
-  
+
   // ========== OPENING PARAGRAPH (Resignation acceptance) ==========
   yPos += 10;
   doc.setFontSize(10);
@@ -880,21 +881,21 @@ function generateInfosysStyleExperienceLetter(
   const leavingDate = formatDate(pdfData.employmentDetails.lastWorkingDay);
   // Some data models may not have resignationDate, so fallback to lastWorkingDay
   const resignationDate = formatDate((pdfData.employmentDetails as any).resignationDate || pdfData.employmentDetails.lastWorkingDay);
-  
+
   const openingPara = `With reference to your decision to resign from Infosys Limited ("Company" hereafter) and your resignation letter dated ${resignationDate}, we are in acceptance of the same and you are relieved of your duties and responsibilities from the closing hours of ${leavingDate}.`;
-  
+
   const openingLines = doc.splitTextToSize(openingPara, pageWidth - 45);
   doc.text(openingLines, leftMargin, yPos);
   yPos += openingLines.length * 5 + 5;
-  
+
   // ========== SERVICE RECORD HEADING ==========
   yPos += 5;
   doc.setFont('helvetica', 'bold');
   doc.text('Your service record is as follows:', leftMargin, yPos);
-  
+
   // ========== SERVICE RECORD TABLE ==========
   yPos += 8;
-  
+
   // Table data
   const tableData = [
     ['Name', `${pdfData.employeeDetails.name}`],
@@ -903,7 +904,7 @@ function generateInfosysStyleExperienceLetter(
     ['Date of Joining', joiningDate],
     ['Date of Leaving', leavingDate],
   ];
-  
+
   // Use jspdf-autotable for the table
   autoTable(doc, {
     startY: yPos,
@@ -923,29 +924,29 @@ function generateInfosysStyleExperienceLetter(
     tableLineColor: [0, 0, 0],
     tableLineWidth: 0.2,
   });
-  
+
   // Get the final Y position after table
   yPos = (doc as any).lastAutoTable.finalY + 10;
-  
+
   // ========== CONFIDENTIALITY PARAGRAPH ==========
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  
+
   const confidentialityPara = 'We draw your attention to your continuing obligation of confidentiality with respect to any proprietary and confidential information of the Company that you may have had access to during the course of your employment.';
-  
+
   const confidentialityLines = doc.splitTextToSize(confidentialityPara, pageWidth - 45);
   doc.text(confidentialityLines, leftMargin, yPos);
   yPos += confidentialityLines.length * 5 + 8;
-  
+
   // ========== CLOSING ==========
   doc.setFont('helvetica', 'normal');
   doc.text('Wishing you the best!', leftMargin, yPos);
-  
+
   // ========== SIGNATURE BLOCK ==========
   yPos += 20;
   doc.setFont('helvetica', 'bold');
   doc.text('For Infosys Limited', leftMargin, yPos);
-  
+
   // Signature image or line
   yPos += 15;
   if (templateFormat.signatureImage) {
@@ -955,19 +956,19 @@ function generateInfosysStyleExperienceLetter(
       console.error('Error adding signature image:', e);
     }
   }
-  
+
   // Signatory name
   yPos += 5;
   doc.setFont('helvetica', 'bold');
   const sigName = signatureBlock.signatoryName?.replace('For Infosys Limited\n', '') || pdfData.signature?.name || 'HR Manager';
   doc.text(sigName, leftMargin, yPos);
-  
+
   // Signatory title
   yPos += 5;
   doc.setFont('helvetica', 'normal');
   const sigTitle = signatureBlock.signatoryTitle || pdfData.signature?.designation || 'HR Department';
   doc.text(sigTitle, leftMargin, yPos);
-  
+
   console.log('[PDF Infosys] Generated Infosys-style experience letter with TABLE format');
 }
 
@@ -976,8 +977,8 @@ function generateInfosysStyleExperienceLetter(
  * Works with ANY company template (TCS, Infosys, Wipro, Accenture, etc.)
  */
 function generateDynamicTemplateExperienceLetter(
-  doc: jsPDF, 
-  pdfData: ExperienceLetterPDFData, 
+  doc: jsPDF,
+  pdfData: ExperienceLetterPDFData,
   templateFormat: NonNullable<ExperienceLetterPDFData['templateFormat']>
 ): void {
   const pageWidth = doc.internal.pageSize.width;
@@ -987,31 +988,31 @@ function generateDynamicTemplateExperienceLetter(
   const leftMargin = 25;
   const rightMargin = pageWidth - 25;
   const centerX = pageWidth / 2;
-  
+
   // Get company info from template or fallback to pdfData
   const companyInfo = templateFormat.companyInfo || {};
   const signatureBlock = templateFormat.signatureBlock || {};
   const letterFormat = templateFormat.letterFormat || {};
-  
+
   console.log('[PDF Dynamic] companyInfo:', JSON.stringify(companyInfo));
   console.log('[PDF Dynamic] signatureBlock:', JSON.stringify(signatureBlock));
   console.log('[PDF Dynamic] letterFormat:', JSON.stringify(letterFormat));
   console.log('[PDF Dynamic] Has logo image:', !!templateFormat.logoImage);
   console.log('[PDF Dynamic] Has signature image:', !!templateFormat.signatureImage);
-  
+
   // Company name to display
   const companyName = companyInfo.name || pdfData.companyDetails.name || 'Company';
   const companyFullName = companyInfo.fullName || companyInfo.name || pdfData.companyDetails.name;
   const companyLegalName = companyInfo.legalName || companyFullName;
-  
+
   // For numbered format, always show logo, signature, footer unless explicitly disabled
   const showLogo = letterFormat.hasLogo !== false;
   const showRefNumber = letterFormat.hasRefNumber !== false;
   const showSignature = letterFormat.hasSignature !== false;
   const showFooter = letterFormat.hasFooter !== false;
-  
+
   let yPos = 20;
-  
+
   // ========== LOGO / HEADER (Use uploaded image if available) ==========
   if (showLogo) {
     if (templateFormat.logoImage) {
@@ -1019,7 +1020,7 @@ function generateDynamicTemplateExperienceLetter(
       try {
         const logoWidth = 40;
         const logoHeight = 20;
-        doc.addImage(templateFormat.logoImage, 'PNG', centerX - logoWidth/2, yPos - 8, logoWidth, logoHeight);
+        doc.addImage(templateFormat.logoImage, 'PNG', centerX - logoWidth / 2, yPos - 8, logoWidth, logoHeight);
         console.log('[PDF Dynamic] Added logo image');
       } catch (imgError) {
         console.error('[PDF Dynamic] Error adding logo image:', imgError);
@@ -1038,7 +1039,7 @@ function generateDynamicTemplateExperienceLetter(
       doc.setDrawColor(0, 51, 102); // Dark blue
       doc.setFillColor(0, 51, 102);
       doc.rect(centerX - 18, yPos - 5, 36, 18, 'F');
-      
+
       // Company short name inside logo box
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(12);
@@ -1047,11 +1048,11 @@ function generateDynamicTemplateExperienceLetter(
       doc.text(logoText, centerX, yPos + 6, { align: 'center' });
       doc.setTextColor(0, 0, 0); // Reset to black
     }
-    
+
     // Move down after logo (no company name text - just logo)
     yPos += 15;
   }
-  
+
   // ========== REFERENCE NUMBER ==========
   if (showRefNumber) {
     yPos += 18;
@@ -1065,7 +1066,7 @@ function generateDynamicTemplateExperienceLetter(
     }
     doc.text(refNumber, rightMargin, yPos, { align: 'right' });
   }
-  
+
   // ========== TITLE (Blue color like original TCS format) ==========
   yPos += 18;
   doc.setFontSize(11);
@@ -1080,7 +1081,7 @@ function generateDynamicTemplateExperienceLetter(
   doc.line((pageWidth - titleWidth) / 2, yPos + 1.5, (pageWidth + titleWidth) / 2, yPos + 1.5);
   doc.setTextColor(0, 0, 0); // Reset to black
   doc.setDrawColor(0, 0, 0); // Reset draw color
-  
+
   // ========== OPENING STATEMENT ==========
   yPos += 16;
   doc.setFontSize(10);
@@ -1088,18 +1089,18 @@ function generateDynamicTemplateExperienceLetter(
   const openingText = `This is to certify that ${salutation} ${pdfData.employeeDetails.name} was employed by us and ${pronoun} particulars of service are as under:`;
   const openingLines = doc.splitTextToSize(openingText, pageWidth - 50);
   doc.text(openingLines, leftMargin, yPos);
-  
+
   yPos += openingLines.length * 5 + 10;
-  
+
   // ========== NUMBERED LIST (Employee Details) ==========
   const colonX = 90; // Adjusted colon position for better alignment
-  
+
   // Format salary with "Rs. XXX /-" format
   const formatSalary = (salary: number | undefined | null): string => {
     if (!salary) return 'N/A';
     return `Rs. ${salary.toLocaleString('en-IN')} /-`;
   };
-  
+
   const details = [
     { label: 'Name', value: `${salutation} ${pdfData.employeeDetails.name}` },
     { label: 'Designation', value: pdfData.employeeDetails.designation || pdfData.employmentDetails.role || 'N/A' },
@@ -1109,35 +1110,35 @@ function generateDynamicTemplateExperienceLetter(
     { label: 'Date of Leaving', value: formatDate(pdfData.employmentDetails.lastWorkingDay) },
     { label: 'Reason for Leaving', value: pdfData.employmentDetails.reasonForLeaving || 'Resigned' },
   ];
-  
+
   doc.setFontSize(10);
   details.forEach((detail, index) => {
     // Label with number (bold) - matching original TCS format
     doc.setFont('helvetica', 'bold');
     doc.text(`${index + 1}. ${detail.label}`, leftMargin, yPos);
-    
+
     // Colon and Value (normal)
     doc.setFont('helvetica', 'normal');
     doc.text(`: ${detail.value}`, colonX, yPos);
-    
+
     yPos += 8;
   });
-  
+
   // ========== DATE LINE ==========
   yPos += 20;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text(`Dated: ${formatDate(pdfData.signature.date)}`, leftMargin, yPos);
-  
+
   // ========== SIGNATURE BLOCK (Use uploaded image if available) ==========
   if (showSignature) {
     const signatureX = rightMargin - 40;
     let sigY = yPos - 10; // Position signature above the dated line
-    
+
     // Get signatory name from template or fallback
     const signatoryName = signatureBlock.signatoryName || pdfData.signature.name || 'HR Manager';
     const signatoryTitle = signatureBlock.signatoryTitle || pdfData.signature.designation || 'Human Resources';
-    
+
     // Use uploaded signature image if available
     if (templateFormat.signatureImage) {
       try {
@@ -1162,23 +1163,23 @@ function generateDynamicTemplateExperienceLetter(
       doc.text(signatoryName, signatureX + 5, sigY, { align: 'center' });
       sigY += 12;
     }
-    
+
     // Signatory name (bold)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.text(signatoryName, signatureX + 5, sigY, { align: 'center' });
-    
+
     // Signatory designation
     sigY += 5;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.text(signatoryTitle, signatureX + 5, sigY, { align: 'center' });
   }
-  
+
   // ========== FOOTER (Always show for numbered format) ==========
   if (showFooter) {
     let footerY = pageHeight - 55;
-    
+
     // If we have footer lines from template, use them
     if (templateFormat.footerLines && templateFormat.footerLines.length > 0) {
       templateFormat.footerLines.forEach((line, index) => {
@@ -1214,7 +1215,7 @@ function generateDynamicTemplateExperienceLetter(
         doc.setFont('helvetica', 'bold');
         doc.text(fullNameUpper, centerX, footerY, { align: 'center' });
       }
-      
+
       // Line 2: Legal Name
       if (companyLegalName && companyLegalName !== companyFullName) {
         footerY += 5;
@@ -1228,7 +1229,7 @@ function generateDynamicTemplateExperienceLetter(
         doc.setFontSize(7);
         doc.text('Tata Consultancy Services Limited', centerX, footerY, { align: 'center' });
       }
-      
+
       // Line 3: Address
       if (companyInfo.address) {
         footerY += 3;
@@ -1237,27 +1238,27 @@ function generateDynamicTemplateExperienceLetter(
         const addressLine = [companyInfo.address, companyInfo.city, companyInfo.country].filter(Boolean).join(' ');
         doc.text(addressLine, centerX, footerY, { align: 'center' });
       }
-      
+
       // Line 4: Contact details
       const contactParts: string[] = [];
       if (companyInfo.phone) contactParts.push(`Tel ${companyInfo.phone}`);
       if (companyInfo.fax) contactParts.push(`Fax ${companyInfo.fax}`);
       if (companyInfo.email) contactParts.push(`e-mail ${companyInfo.email}`);
       if (companyInfo.website) contactParts.push(`website ${companyInfo.website}`);
-      
+
       if (contactParts.length > 0) {
         footerY += 3;
         doc.setFontSize(7);
         doc.text(contactParts.join('  '), centerX, footerY, { align: 'center' });
       }
-      
+
       // Line 5: Registered Office
       if (companyInfo.registeredOffice) {
         footerY += 3;
         doc.setFontSize(7);
         doc.text(`Registered Office  ${companyInfo.registeredOffice}`, centerX, footerY, { align: 'center' });
       }
-      
+
       // Line 6: CIN
       if (companyInfo.cin) {
         footerY += 3;
@@ -1276,7 +1277,7 @@ function generateStandardExperienceLetter(doc: jsPDF, pdfData: ExperienceLetterP
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
   doc.text(pdfData.title, 105, 30, { align: 'center' });
-  
+
   // Company Details
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -1284,15 +1285,15 @@ function generateStandardExperienceLetter(doc: jsPDF, pdfData: ExperienceLetterP
   if (pdfData.companyDetails.address) {
     doc.text(pdfData.companyDetails.address, 105, 45, { align: 'center' });
   }
-  
+
   // Content
   let yPos = 70;
   doc.setFontSize(11);
   const contentLines = doc.splitTextToSize(pdfData.content, 180);
   doc.text(contentLines, 14, yPos);
-  
+
   yPos += contentLines.length * 6 + 20;
-  
+
   // Signature
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -1305,7 +1306,7 @@ function generateStandardExperienceLetter(doc: jsPDF, pdfData: ExperienceLetterP
   doc.text(pdfData.signature.designation, 14, yPos);
   yPos += 5;
   doc.text(`Date: ${pdfData.signature.date}`, 14, yPos);
-  
+
   // Footer
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
@@ -1334,12 +1335,12 @@ function formatDate(dateStr: string): string {
  */
 export function generateRelievingLetterPDF(pdfData: RelievingLetterPDFData, filename?: string): void {
   const doc = new jsPDF('portrait');
-  
+
   // Header
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
   doc.text(pdfData.title, 105, 30, { align: 'center' });
-  
+
   // Company Details
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -1347,15 +1348,15 @@ export function generateRelievingLetterPDF(pdfData: RelievingLetterPDFData, file
   if (pdfData.companyDetails.address) {
     doc.text(pdfData.companyDetails.address, 105, 45, { align: 'center' });
   }
-  
+
   // Content
   let yPos = 70;
   doc.setFontSize(11);
   const contentLines = doc.splitTextToSize(pdfData.content, 180);
   doc.text(contentLines, 14, yPos);
-  
+
   yPos += contentLines.length * 6 + 20;
-  
+
   // Signature
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -1368,7 +1369,7 @@ export function generateRelievingLetterPDF(pdfData: RelievingLetterPDFData, file
   doc.text(pdfData.signature.designation, 14, yPos);
   yPos += 5;
   doc.text(`Date: ${pdfData.signature.date}`, 14, yPos);
-  
+
   // Footer
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
@@ -1378,7 +1379,7 @@ export function generateRelievingLetterPDF(pdfData: RelievingLetterPDFData, file
     doc.internal.pageSize.height - 10,
     { align: 'center' }
   );
-  
+
   doc.save(filename || `relieving_letter_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 

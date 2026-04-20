@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 import { format, addDays } from "date-fns";
 import { Download } from "lucide-react";

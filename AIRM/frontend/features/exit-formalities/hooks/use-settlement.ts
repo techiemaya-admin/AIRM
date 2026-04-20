@@ -9,7 +9,7 @@ import {
   getAssetHandoverPDFData,
   getExperienceLetterPDFData,
   getRelievingLetterPDFData,
-} from '../services/exit-formalitiesService';
+} from '@sdk/exit-formalitiesService';
 import type {
   AssetHandoverPDFData,
   ExperienceLetterPDFData,

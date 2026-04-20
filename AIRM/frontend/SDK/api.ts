@@ -37,12 +37,17 @@ export async function apiRequest<T>(
       // Avoid cached 304 responses (304 has no body and breaks response.json())
       cache: 'no-store',
       headers: {
-        'Content-Type': 'application/json',
+        ...(!(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
         'Cache-Control': 'no-cache',
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
     });
+
+  // If headers explicitly unset Content-Type (e.g. for FormData boundary auto-generation), remove it
+  if (options.headers && 'Content-Type' in options.headers && (options.headers as any)['Content-Type'] === undefined) {
+    // It's already omitted by the spread if not set, but we might need to actively remove if merged
+  }
 
   try {
     let response = await doFetch(fullUrl);
@@ -86,14 +91,14 @@ export const api = {
     apiRequest<T>(endpoint, {
       ...options,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
   put: <T>(endpoint: string, data?: any, options?: RequestInit) =>
     apiRequest<T>(endpoint, {
       ...options,
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
   delete: <T>(endpoint: string, options?: RequestInit) =>
@@ -398,23 +403,58 @@ export const api = {
 
     create: (data: any) =>
       apiRequest('/labels', { method: 'POST', body: JSON.stringify(data) }),
+
+    delete: (id: string) =>
+      apiRequest(`/labels/${id}`, { method: 'DELETE' }),
   },
 
   // Git
   git: {
-    getCommits: () => apiRequest('/git/commits'),
+    getCommits: (repo?: string) => apiRequest(`/git/commits${repo ? `?repo=${repo}` : ''}`),
 
-    getIssues: () => apiRequest('/git/issues'),
+    getIssues: (repo?: string) => apiRequest(`/git/issues${repo ? `?repo=${repo}` : ''}`),
 
     getCommit: (sha: string) => apiRequest(`/git/commits/${sha}`),
 
     getIssue: (id: string) => apiRequest(`/git/issues/${id}`),
+    getRepos: () => apiRequest('/git/repos'),
+    createIssue: (data: any) => apiRequest('/git/issues', { method: 'POST', body: JSON.stringify(data) }),
+    addComment: (id: string, content: string) => apiRequest(`/git/issues/${id}/comments`, { method: 'POST', body: JSON.stringify({ content }) }),
+    updateIssue: (id: string, data: any) => apiRequest(`/git/issues/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    getRepoLabels: () => apiRequest('/git/repo/labels'),
+    getRepoAssignees: () => apiRequest('/git/repo/assignees'),
 
     syncUsers: () => apiRequest('/git/sync-users', { method: 'POST' }),
 
     syncIssues: () => apiRequest('/git/sync-issues', { method: 'POST' }),
 
     getUsers: () => apiRequest('/git/users'),
+  },
+
+  // HR Documents
+  hrDocuments: {
+    uploadTemplate: (type: string, file: File) => {
+      const formData = new FormData();
+      formData.append('templateType', type);
+      formData.append('template', file);
+      return apiRequest('/hr-documents/template/upload', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    getTemplate: async (type: string) => {
+      const token = localStorage.getItem('auth_token');
+      const url = `${API_BASE_URL}/api/hr-documents/template/${type}`;
+      const response = await fetch(url, {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Template not found');
+      }
+      return response.blob();
+    }
   },
 };
 

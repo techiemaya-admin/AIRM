@@ -80,7 +80,7 @@ router.get('/shifts', [
  */
 router.post('/shifts', [
   body('date').isISO8601(),
-  body('shift_type').isIn(['General Shift', 'Second Shift']),
+  body('shift_type').isIn(['General Shift', 'Second Shift', 'Morning', 'Afternoon', 'Night', 'Rotational']),
   body('start_time').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   body('end_time').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
 ], leaveController.updateShiftRoster);

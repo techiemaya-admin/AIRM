@@ -20,9 +20,11 @@ export interface EmployeeData {
   company_name: string;
   bank_name: string;
   bank_account: string;
+  ifsc: string;
   pan_number: string;
   location: string;
   leave_balance: string;
+  leave_availed: string;
   effective_work_days: string;
   lop: string;
   basic_salary: string;
@@ -50,9 +52,11 @@ export const defaultEmployeeData: EmployeeData = {
   company_name: '',
   bank_name: '',
   bank_account: '',
+  ifsc: '',
   pan_number: '',
   location: '',
   leave_balance: '',
+  leave_availed: '',
   effective_work_days: '',
   lop: '',
   basic_salary: '',

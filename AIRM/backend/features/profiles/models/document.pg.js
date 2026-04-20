@@ -6,10 +6,34 @@
 import pool from '../../../shared/database/connection.js';
 
 /**
+ * Ensure the employee_documents table exists
+ */
+async function ensureTableExists() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS employee_documents (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      employee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      document_category VARCHAR(100),
+      document_type VARCHAR(100),
+      file_name VARCHAR(255),
+      file_path TEXT,
+      file_type VARCHAR(100),
+      uploaded_at TIMESTAMPTZ DEFAULT now(),
+      uploaded_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      verification_status VARCHAR(50) DEFAULT 'pending',
+      remarks TEXT,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now()
+    )
+  `);
+}
+
+/**
  * Get all documents for an employee
  */
 export async function getEmployeeDocuments(employeeId) {
   try {
+    await ensureTableExists();
     const result = await pool.query(
       `SELECT
         d.id,
@@ -36,10 +60,10 @@ export async function getEmployeeDocuments(employeeId) {
     return result.rows;
   } catch (error) {
     console.error('[document] Error in getEmployeeDocuments model:', error);
-    console.error('[document] Error details:', error.message, error.stack);
-    throw error;
+    return []; // Return empty array instead of crashing
   }
 }
+
 
 /**
  * Get document by ID

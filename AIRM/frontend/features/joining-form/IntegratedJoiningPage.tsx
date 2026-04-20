@@ -12,8 +12,8 @@ import RecruitmentPage from "../recruitment/page";
 import JoiningFormList from "./JoiningFormList";
 import Profiles from "../profiles/page";
 import { useQuery } from "@tanstack/react-query";
-import { getAllCandidates } from "../recruitment/services/recruitmentService";
-import { getAllJoiningForms } from "./services/joiningFormService";
+import { getAllCandidates } from "@sdk/recruitmentService";
+import { getAllJoiningForms } from "@sdk/joiningFormService";
 import { useProfiles } from "../profiles/hooks/useprofiles";
 import { Badge } from "@/components/ui/badge";
 

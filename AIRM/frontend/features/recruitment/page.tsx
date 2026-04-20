@@ -58,11 +58,11 @@ import {
   AlertTriangle,
   Pencil,
 } from "lucide-react";
-import * as recruitmentService from "./services/recruitmentService";
+import * as recruitmentService from "@sdk/recruitmentService";
 import { TableSkeleton } from "@/components/PageSkeletons";
 import type { Candidate, CandidateSummary, CandidateInfo, InterviewRound, BackgroundVerification } from "./types";
 
-import { sendInterviewRoundMail } from "./services/recruitmentService";
+import { useCandidates, useCandidate, useRecruitmentMutation } from "@/hooks/useRecruitment";
 
 const RecruitmentPage = () => {
   // State for mail sending
@@ -74,7 +74,7 @@ const RecruitmentPage = () => {
   const handleSendInterviewMail = async (candidateId: string, roundId: string) => {
     setMailSending(roundId);
     try {
-      await sendInterviewRoundMail(candidateId, roundId);
+      await mutations.sendInterviewMail.mutateAsync({ candidateId, roundId });
       toast({ title: "Success", description: "Interview round mail sent successfully!" });
     } catch (err) {
       toast({ title: "Error", description: "Failed to send interview round mail", variant: "destructive" });
@@ -87,7 +87,7 @@ const RecruitmentPage = () => {
   const handleSendVerificationMail = async (candidateId: string, verificationId: string) => {
     setMailSending(verificationId);
     try {
-      await recruitmentService.sendVerificationMail(candidateId, verificationId);
+      await mutations.sendVerificationMail.mutateAsync({ candidateId, verificationId });
       toast({ title: "Success", description: "Verification mail sent successfully!" });
     } catch (err) {
       toast({ title: "Error", description: "Failed to send verification mail", variant: "destructive" });
@@ -97,9 +97,28 @@ const RecruitmentPage = () => {
   };
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const [loading, setLoading] = useState(true);
-  const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  // const [loading, setLoading] = useState(true);
+  // const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
+  // const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+
+  const { data: candidates = [], isLoading: candidatesLoading } = useCandidates();
+  const { data: selectedCandidate, isLoading: candidateLoading } = useCandidate(id);
+  const mutations = useRecruitmentMutation();
+
+  const loading = candidatesLoading || candidateLoading ||
+    mutations.createCandidate.isPending ||
+    mutations.updateCandidate.isPending ||
+    mutations.addInterviewRound.isPending ||
+    mutations.updateInterviewRound.isPending ||
+    mutations.deleteInterviewRound.isPending ||
+    mutations.completeInterviewStage.isPending ||
+    mutations.addVerification.isPending ||
+    mutations.updateVerification.isPending ||
+    mutations.completeVerificationStage.isPending ||
+    mutations.completeOnboarding.isPending ||
+    mutations.rejectCandidate.isPending ||
+    mutations.deleteCandidate.isPending;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
 
@@ -177,10 +196,9 @@ const RecruitmentPage = () => {
     }
 
     try {
-      await recruitmentService.updateCandidate(selectedCandidate.id, { candidate_info: candidateForm });
+      await mutations.updateCandidate.mutateAsync({ id: selectedCandidate.id, data: { candidate_info: candidateForm } });
       toast({ title: "Success", description: "Candidate updated successfully" });
       setShowEditCandidateDialog(false);
-      loadCandidate(selectedCandidate.id);
     } catch (error) {
       toast({ title: "Error", description: "Failed to update candidate", variant: "destructive" });
     }
@@ -207,11 +225,10 @@ const RecruitmentPage = () => {
     }
 
     try {
-      await recruitmentService.updateInterviewRound(selectedCandidate.id, editingRoundId, interviewForm);
+      await mutations.updateInterviewRound.mutateAsync({ candidateId: selectedCandidate.id, roundId: editingRoundId, data: interviewForm });
       toast({ title: "Success", description: "Interview round updated" });
       setShowEditRoundDialog(false);
       setEditingRoundId(null);
-      loadCandidate(selectedCandidate.id);
     } catch (error) {
       toast({ title: "Error", description: "Failed to update interview round", variant: "destructive" });
     }
@@ -222,47 +239,46 @@ const RecruitmentPage = () => {
     if (!confirm("Are you sure you want to delete this interview round?")) return;
 
     try {
-      await recruitmentService.deleteInterviewRound(selectedCandidate.id, roundId);
+      await mutations.deleteInterviewRound.mutateAsync({ candidateId: selectedCandidate.id, roundId });
       toast({ title: "Success", description: "Interview round deleted" });
-      loadCandidate(selectedCandidate.id);
     } catch (error) {
       toast({ title: "Error", description: "Failed to delete interview round", variant: "destructive" });
     }
   };
 
-  useEffect(() => {
-    if (id) {
-      loadCandidate(id);
-    } else {
-      loadCandidates();
-    }
-  }, [id]);
+  // useEffect(() => {
+  //   if (id) {
+  //     loadCandidate(id);
+  //   } else {
+  //     loadCandidates();
+  //   }
+  // }, [id]);
 
-  const loadCandidates = async () => {
-    setLoading(true);
-    try {
-      const data = await recruitmentService.getAllCandidates();
-      setCandidates(data);
-    } catch (error) {
-      console.error("Failed to load candidates:", error);
-      toast({ title: "Error", description: "Failed to load candidates", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const loadCandidates = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const data = await recruitmentService.getAllCandidates();
+  //     setCandidates(data);
+  //   } catch (error) {
+  //     console.error("Failed to load candidates:", error);
+  //     toast({ title: "Error", description: "Failed to load candidates", variant: "destructive" });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  const loadCandidate = async (candidateId: string) => {
-    setLoading(true);
-    try {
-      const data = await recruitmentService.getCandidate(candidateId);
-      setSelectedCandidate(data);
-    } catch (error) {
-      console.error("Failed to load candidate:", error);
-      toast({ title: "Error", description: "Failed to load candidate details", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const loadCandidate = async (candidateId: string) => {
+  //   setLoading(true);
+  //   try {
+  //     const data = await recruitmentService.getCandidate(candidateId);
+  //     setSelectedCandidate(data);
+  //   } catch (error) {
+  //     console.error("Failed to load candidate:", error);
+  //     toast({ title: "Error", description: "Failed to load candidate details", variant: "destructive" });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleCreateCandidate = async () => {
     if (!candidateForm.full_name || !candidateForm.email || !candidateForm.position_applied) {
@@ -271,7 +287,7 @@ const RecruitmentPage = () => {
     }
 
     try {
-      await recruitmentService.createCandidate(candidateForm);
+      await mutations.createCandidate.mutateAsync(candidateForm);
       toast({ title: "Success", description: "Candidate added successfully" });
       setShowAddDialog(false);
       setCandidateForm({
@@ -288,7 +304,6 @@ const RecruitmentPage = () => {
         location: "",
         comments: "",
       });
-      loadCandidates();
     } catch (error) {
       toast({ title: "Error", description: "Failed to add candidate", variant: "destructive" });
     }
@@ -301,7 +316,7 @@ const RecruitmentPage = () => {
     }
 
     try {
-      await recruitmentService.addInterviewRound(selectedCandidate.id, interviewForm);
+      await mutations.addInterviewRound.mutateAsync({ candidateId: selectedCandidate.id, round: interviewForm });
       toast({ title: "Success", description: "Interview round added" });
       setShowInterviewDialog(false);
       setInterviewForm({
@@ -313,7 +328,6 @@ const RecruitmentPage = () => {
         feedback: "",
         score: 0,
       });
-      loadCandidate(selectedCandidate.id);
     } catch (error) {
       toast({ title: "Error", description: "Failed to add interview round", variant: "destructive" });
     }
@@ -323,13 +337,16 @@ const RecruitmentPage = () => {
     if (!selectedCandidate) return;
 
     try {
-      await recruitmentService.updateInterviewRound(selectedCandidate.id, roundId, {
-        result,
-        status: 'completed',
-        feedback,
+      await mutations.updateInterviewRound.mutateAsync({
+        candidateId: selectedCandidate.id,
+        roundId,
+        data: {
+          result,
+          status: 'completed',
+          feedback,
+        }
       });
       toast({ title: "Success", description: "Interview result updated" });
-      loadCandidate(selectedCandidate.id);
     } catch (error) {
       toast({ title: "Error", description: "Failed to update result", variant: "destructive" });
     }
@@ -339,12 +356,11 @@ const RecruitmentPage = () => {
     if (!selectedCandidate) return;
 
     try {
-      await recruitmentService.completeInterviewStage(selectedCandidate.id, passed);
+      await mutations.completeInterviewStage.mutateAsync({ candidateId: selectedCandidate.id, passed });
       toast({
         title: passed ? "Interview Stage Passed" : "Candidate Rejected",
         description: passed ? "Moving to onboarding stage" : "Candidate did not pass interview"
       });
-      loadCandidate(selectedCandidate.id);
     } catch (error) {
       toast({ title: "Error", description: "Failed to complete stage", variant: "destructive" });
     }
@@ -357,7 +373,7 @@ const RecruitmentPage = () => {
     }
 
     try {
-      await recruitmentService.addVerification(selectedCandidate.id, verificationForm);
+      await mutations.addVerification.mutateAsync({ candidateId: selectedCandidate.id, verification: verificationForm });
       toast({ title: "Success", description: "Verification added" });
       setShowVerificationDialog(false);
       setVerificationForm({
@@ -366,7 +382,6 @@ const RecruitmentPage = () => {
         status: "pending",
         notes: "",
       });
-      loadCandidate(selectedCandidate.id);
     } catch (error) {
       toast({ title: "Error", description: "Failed to add verification", variant: "destructive" });
     }
@@ -376,13 +391,16 @@ const RecruitmentPage = () => {
     if (!selectedCandidate) return;
 
     try {
-      await recruitmentService.updateVerification(selectedCandidate.id, verificationId, {
-        status,
-        notes,
-        verified_at: new Date().toISOString(),
+      await mutations.updateVerification.mutateAsync({
+        candidateId: selectedCandidate.id,
+        verificationId,
+        data: {
+          status,
+          notes,
+          verified_at: new Date().toISOString(),
+        }
       });
       toast({ title: "Success", description: "Verification updated" });
-      loadCandidate(selectedCandidate.id);
     } catch (error) {
       toast({ title: "Error", description: "Failed to update verification", variant: "destructive" });
     }
@@ -392,12 +410,11 @@ const RecruitmentPage = () => {
     if (!selectedCandidate) return;
 
     try {
-      await recruitmentService.completeVerificationStage(selectedCandidate.id, passed);
+      await mutations.completeVerificationStage.mutateAsync({ candidateId: selectedCandidate.id, passed });
       toast({
         title: passed ? "Verification Passed" : "Candidate Rejected",
         description: passed ? "Ready for onboarding" : "Verification failed"
       });
-      loadCandidate(selectedCandidate.id);
     } catch (error) {
       toast({ title: "Error", description: "Failed to complete stage", variant: "destructive" });
     }
@@ -410,12 +427,16 @@ const RecruitmentPage = () => {
     }
 
     try {
-      await recruitmentService.completeOnboarding(selectedCandidate.id, joiningDate, {
-        full_name: selectedCandidate.candidate_info.full_name,
-        email: selectedCandidate.candidate_info.email,
-        phone: selectedCandidate.candidate_info.phone,
-        department: selectedCandidate.candidate_info.department,
-        designation: selectedCandidate.candidate_info.position_applied,
+      await mutations.completeOnboarding.mutateAsync({
+        candidateId: selectedCandidate.id,
+        joiningDate,
+        employeeData: {
+          full_name: selectedCandidate.candidate_info.full_name,
+          email: selectedCandidate.candidate_info.email,
+          phone: selectedCandidate.candidate_info.phone,
+          department: selectedCandidate.candidate_info.department,
+          designation: selectedCandidate.candidate_info.position_applied,
+        }
       });
       toast({
         title: "🎉 Employee Hired!",
@@ -423,7 +444,6 @@ const RecruitmentPage = () => {
       });
       setShowOnboardDialog(false);
       navigate("/recruitment");
-      loadCandidates();
     } catch (error) {
       toast({ title: "Error", description: "Failed to complete onboarding", variant: "destructive" });
     }
@@ -436,12 +456,11 @@ const RecruitmentPage = () => {
     }
 
     try {
-      await recruitmentService.rejectCandidate(selectedCandidate.id, rejectionReason);
+      await mutations.rejectCandidate.mutateAsync({ candidateId: selectedCandidate.id, reason: rejectionReason });
       toast({ title: "Candidate Rejected", description: "Candidate has been rejected" });
       setShowRejectDialog(false);
       setRejectionReason("");
       navigate("/recruitment");
-      loadCandidates();
     } catch (error) {
       toast({ title: "Error", description: "Failed to reject candidate", variant: "destructive" });
     }
@@ -538,7 +557,7 @@ const RecruitmentPage = () => {
       <div className="h-full flex flex-col p-6 bg-gray-50">
         {/* Header */}
         <div className="mb-6 flex items-center gap-4">
-          <Button variant="ghost" onClick={() => { setSelectedCandidate(null); navigate("/recruitment"); }}>
+          <Button variant="ghost" onClick={() => navigate("/recruitment")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>

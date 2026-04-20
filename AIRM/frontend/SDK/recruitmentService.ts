@@ -44,8 +44,8 @@ export async function sendInterviewRoundMail(candidateId: string, roundId: strin
  * API calls for recruitment/onboarding process
  */
 
-import { api } from "@/lib/api";
-import type { Candidate, CandidateSummary, InterviewRound, BackgroundVerification, CandidateInfo } from "../types";
+import { api } from "@sdk/api";
+import type { Candidate, CandidateSummary, InterviewRound, BackgroundVerification, CandidateInfo } from "../features/recruitment/types";
 
 const API_BASE = "/recruitment";
 

@@ -4,7 +4,7 @@
  */
 
 // Services
-export * from './services/usersService';
+export * from '@sdk/usersService';
 
 // Hooks
 export * from './hooks/useusers';

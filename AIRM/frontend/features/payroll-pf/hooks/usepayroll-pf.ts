@@ -21,7 +21,7 @@ import {
   getEmployeesSalaryInfo,
   generatePayslipForEmployee,
   updateEmployeeSalary,
-} from '../services/payroll-pfService';
+} from '@sdk/payroll-pfService';
 import type {
   Payslip,
   PfDetails,

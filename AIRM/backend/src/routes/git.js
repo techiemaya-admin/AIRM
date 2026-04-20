@@ -19,10 +19,10 @@ const query = async (text, params = []) => {
 router.get('/commits', authenticate, async (req, res) => {
   try {
     const fetch = (await import('node-fetch')).default;
-    
+
     const gitlabUrl = process.env.GITLAB_URL || 'https://git.techiemaya.com';
     const projectId = process.env.GITLAB_PROJECT_ID || '1';
-    
+
     const response = await fetch(`${gitlabUrl}/api/v4/projects/${projectId}/repository/commits?per_page=20`, {
       headers: {
         'PRIVATE-TOKEN': process.env.GITLAB_TOKEN || 'your-gitlab-token'
@@ -36,7 +36,7 @@ router.get('/commits', authenticate, async (req, res) => {
     }
 
     const commits = await response.json();
-    
+
     // Ensure it's an array
     if (!Array.isArray(commits)) {
       console.error('GitLab commits response is not an array:', commits);
@@ -54,10 +54,10 @@ router.get('/commits', authenticate, async (req, res) => {
 router.get('/issues', authenticate, async (req, res) => {
   try {
     const fetch = (await import('node-fetch')).default;
-    
+
     const gitlabUrl = process.env.GITLAB_URL || 'https://git.techiemaya.com';
     const projectId = process.env.GITLAB_PROJECT_ID || '1';
-    
+
     const response = await fetch(`${gitlabUrl}/api/v4/projects/${projectId}/issues?per_page=20`, {
       headers: {
         'PRIVATE-TOKEN': process.env.GITLAB_TOKEN || 'your-gitlab-token'
@@ -71,7 +71,7 @@ router.get('/issues', authenticate, async (req, res) => {
     }
 
     const issues = await response.json();
-    
+
     // Ensure it's an array
     if (!Array.isArray(issues)) {
       console.error('GitLab issues response is not an array:', issues);
@@ -90,7 +90,7 @@ router.get('/commits/:sha', authenticate, async (req, res) => {
   try {
     const { sha } = req.params;
     const fetch = (await import('node-fetch')).default;
-    
+
     const response = await fetch(`https://git.techiemaya.com/api/v4/projects/1/repository/commits/${sha}`, {
       headers: {
         'PRIVATE-TOKEN': process.env.GITLAB_TOKEN || 'your-gitlab-token'
@@ -116,7 +116,7 @@ router.get('/issues/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const fetch = (await import('node-fetch')).default;
-    
+
     // Get issue details
     const issueResponse = await fetch(`https://git.techiemaya.com/api/v4/projects/1/issues/${id}`, {
       headers: {
@@ -155,11 +155,11 @@ router.get('/issues/:id', authenticate, async (req, res) => {
   }
 });
 
-// Sync GitLab users with VCP_Automation users
+// Sync GitLab users with Pulse users
 router.post('/sync-users', authenticate, async (req, res) => {
   try {
     const fetch = (await import('node-fetch')).default;
-    
+
     // Get GitLab users
     const response = await fetch('https://git.techiemaya.com/api/v4/users?per_page=100', {
       headers: {
@@ -177,7 +177,7 @@ router.post('/sync-users', authenticate, async (req, res) => {
 
     for (const gitUser of gitlabUsers) {
       try {
-        // Check if user exists in VCP_Automation
+        // Check if user exists in Pulse
         const existingUser = await query(
           'SELECT id FROM users WHERE email = $1 OR gitlab_id = $2',
           [gitUser.email, gitUser.id]
@@ -190,7 +190,7 @@ router.post('/sync-users', authenticate, async (req, res) => {
              VALUES ($1, $2, $3, $4, NOW()) RETURNING id`,
             [gitUser.email, gitUser.name, gitUser.id, gitUser.username]
           );
-          
+
           // Add default role in user_roles table
           if (insertResult.rows.length > 0) {
             await query(
@@ -216,7 +216,7 @@ router.post('/sync-users', authenticate, async (req, res) => {
       }
     }
 
-    res.json({ 
+    res.json({
       message: `Synced ${syncedCount} new users from GitLab`,
       total: gitlabUsers.length,
       synced: syncedCount
@@ -227,14 +227,14 @@ router.post('/sync-users', authenticate, async (req, res) => {
   }
 });
 
-// Sync GitLab issues with VCP_Automation issues
+// Sync GitLab issues with Pulse issues
 router.post('/sync-issues', authenticate, async (req, res) => {
   try {
     const fetch = (await import('node-fetch')).default;
-    
+
     const gitlabUrl = process.env.GITLAB_URL || 'https://git.techiemaya.com';
     const projectId = process.env.GITLAB_PROJECT_ID || '1';
-    
+
     // Get GitLab issues
     const response = await fetch(`${gitlabUrl}/api/v4/projects/${projectId}/issues?per_page=100&state=all`, {
       headers: {
@@ -258,7 +258,7 @@ router.post('/sync-issues', authenticate, async (req, res) => {
           [gitIssue.id]
         );
 
-        // Find assigned user in VCP_Automation
+        // Find assigned user in Pulse
         let assignedUserId = null;
         if (gitIssue.assignee) {
           const assignedUser = await query(
@@ -270,7 +270,7 @@ router.post('/sync-issues', authenticate, async (req, res) => {
           }
         }
 
-        // Find author in VCP_Automation
+        // Find author in Pulse
         let authorId = null;
         const author = await query(
           'SELECT id FROM users WHERE gitlab_id = $1',
@@ -324,7 +324,7 @@ router.post('/sync-issues', authenticate, async (req, res) => {
       }
     }
 
-    res.json({ 
+    res.json({
       message: `Synced ${syncedCount} new issues from GitLab`,
       total: gitlabIssues.length,
       synced: syncedCount
@@ -335,7 +335,7 @@ router.post('/sync-issues', authenticate, async (req, res) => {
   }
 });
 
-// Get mapped users (GitLab + VCP_Automation)
+// Get mapped users (GitLab + Pulse)
 router.get('/users', authenticate, async (req, res) => {
   try {
     const users = await query(

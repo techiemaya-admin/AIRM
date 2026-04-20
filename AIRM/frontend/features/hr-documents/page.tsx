@@ -5,11 +5,10 @@ import EmployeeDataForm from "./components/EmployeeDataForm";
 import DocumentPreview from "./components/DocumentPreview";
 import { Button } from "@/components/ui/button";
 import { UploadedTemplate, EmployeeData, defaultEmployeeData } from "./types";
-import * as joiningFormService from "../joining-form/services/joiningFormService";
+import * as joiningFormService from "@sdk/joiningFormService";
 import { useToast } from "@/hooks/use-toast";
 import { mergeDocxWithData } from "./lib/docxMerge";
-import { api } from "@/lib/api";
-// @ts-ignore
+import { api } from "@sdk/api";
 import { saveAs } from "file-saver";
 // @ts-ignore
 import jsPDF from "jspdf";
@@ -17,6 +16,10 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 // @ts-ignore
 import { renderAsync } from "docx-preview";
+import { useProfiles } from "../profiles/hooks/useprofiles";
+import { useEmployeesSalaryInfo, usePayslips } from "../payroll-pf/hooks/usepayroll-pf";
+import { useLeaveBalances } from "@/hooks/useLeave";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Template categories for quick selection
 const templateCategories = [
@@ -27,6 +30,9 @@ const templateCategories = [
   { id: 'appointment_letter', name: 'Appointment Letter', description: 'Job appointment letter' },
   { id: 'increment_letter', name: 'Increment Letter', description: 'Salary increment letter' },
   { id: 'termination_letter', name: 'Termination Letter', description: 'Employment termination letter' },
+  { id: 'undertaking', name: 'Undertaking From Employee', description: 'Employee undertaking document' },
+  { id: 'wfh_policy', name: 'Work From Home Policy', description: 'WFH policy agreement' },
+  { id: 'promotion_letter', name: 'Promotion Letter', description: 'Employee promotion letter' },
 ];
 
 interface Employee {
@@ -48,29 +54,16 @@ export default function HRDocumentsPage() {
   const [uploadedTemplates, setUploadedTemplates] = useState<UploadedTemplate[]>([]);
   const [employeeData, setEmployeeData] = useState<EmployeeData>(defaultEmployeeData);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedUploadedTemplateIdx, setSelectedUploadedTemplateIdx] = useState<number | null>(null);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Fetch employees on mount
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      setLoadingEmployees(true);
-      try {
-        const response = await api.profiles.getAll() as any;
-        const profilesList = response.profiles || response || [];
-        setEmployees(profilesList);
-      } catch (error) {
-        console.error('Error fetching employees:', error);
-      } finally {
-        setLoadingEmployees(false);
-      }
-    };
-    fetchEmployees();
-  }, []);
+  const { data: employees = [], isLoading: profilesLoading } = useProfiles();
+
+  // Fetch employees on mount - REMOVED, using useProfiles hook
 
   // Auto-fill employee data when employee is selected
   const handleEmployeeSelect = async (employeeId: string) => {
@@ -91,13 +84,19 @@ export default function HRDocumentsPage() {
       // 2. Fetch specific profile details (for PAN, Bank, etc. if not in joining form)
       let profile: any = null;
       try {
-        profile = await api.profiles.getById(employeeId) as any;
+        profile = employees.find(e => e.id === employeeId);
+        if (!profile || !profile.bank_name) {
+          profile = await api.profiles.getById(employeeId) as any;
+        }
       } catch (e) { console.error('Error fetching profile:', e); }
 
       // 3. Fetch salary info (Gross Salary / PF Details)
       let salaryInfo: any = null;
       try {
-        const salaryResponse = await api.get(`/payroll-pf/employees-salary-info`) as any;
+        const salaryResponse = await queryClient.fetchQuery({
+          queryKey: ['employees-salary-info'],
+          queryFn: () => api.get(`/payroll-pf/employees-salary-info`)
+        }) as any;
         const allEmployees = salaryResponse?.employees || [];
         salaryInfo = allEmployees.find((e: any) => e.id === employeeId);
       } catch (e) { console.error('Error fetching salary info:', e); }
@@ -105,13 +104,25 @@ export default function HRDocumentsPage() {
       // 4. Fetch latest payslip for LOP and actual payout details
       let latestPayslip: any = null;
       try {
-        const payslipResponse = await api.get(`/payroll-pf/payslips?user_id=${employeeId}`) as any;
-        const payslips = payslipResponse?.payslips || [];
+        const payslipResponse = await queryClient.fetchQuery({
+          queryKey: ['payslips', { upcoming_only: true }],
+          queryFn: () => api.get(`/payroll-pf/payslips?upcoming_only=true`)
+        }) as any;
+        const payslips = (payslipResponse?.payslips || []).filter((p: any) => p.user_id === employeeId);
         if (payslips.length > 0) {
           // Get the most recent one
           latestPayslip = payslips.sort((a: any, b: any) =>
             (b.year * 12 + b.month) - (a.year * 12 + a.month)
           )[0];
+        } else {
+          // Try fetching specifically for this user if not in upcoming
+          const specificResponse = await api.get(`/payroll-pf/payslips?user_id=${employeeId}`) as any;
+          const specificPayslips = specificResponse?.payslips || [];
+          if (specificPayslips.length > 0) {
+            latestPayslip = specificPayslips.sort((a: any, b: any) =>
+              (b.year * 12 + b.month) - (a.year * 12 + a.month)
+            )[0];
+          }
         }
       } catch (e) { console.error('Error fetching payslip:', e); }
 
@@ -127,7 +138,7 @@ export default function HRDocumentsPage() {
       } catch (e) { console.error('Error fetching leave balances:', e); }
 
       // Calculation Logic
-      const grossSalary = parseFloat(salaryInfo?.pf_base_salary) || parseFloat(employee?.salary as string) || 0;
+      const grossSalary = parseFloat(salaryInfo?.pf_base_salary) || parseFloat((employee as any)?.salary as string) || 0;
 
       // Use payslip values if available, otherwise calculate from gross
       const basic = (latestPayslip && latestPayslip.basic_pay != null) ? parseFloat(latestPayslip.basic_pay) : Math.round(grossSalary * 0.5);
@@ -193,9 +204,11 @@ export default function HRDocumentsPage() {
         company_name: 'TechieMaya',
         bank_name: profile?.bank_name || info?.bank_name || salaryInfo?.bank_name || '',
         bank_account: profile?.bank_account_number || info?.bank_account_number || salaryInfo?.account_number || '',
-        pan_number: profile?.pan_number || info?.pan_number || profile?.pan || info?.pan || '',
-        location: profile?.location || info?.location || 'Bangalore',
+        ifsc: profile?.ifsc_code || info?.bank_ifsc || info?.ifsc_code || profile?.ifsc || info?.ifsc || salaryInfo?.ifsc || '',
+        pan_number: joiningForm?.verification_info?.pan_number || profile?.pan_number || info?.pan_number || profile?.pan || info?.pan || '',
+        location: profile?.location || info?.current_address || joiningForm?.verification_info?.present_address || info?.location || 'Bangalore',
         leave_balance: totalLeaveBalance,
+        leave_availed: '0',
         effective_work_days: String(paidDays),
         lop: String(lopDays),
         basic_salary: String(basic),
@@ -236,7 +249,7 @@ export default function HRDocumentsPage() {
   };
 
   const getEmployeeFileBaseName = () => {
-    const raw = employeeData.employee_name?.trim();
+    const raw = String(employeeData.employee_name || "").trim();
     return makeSafeFileName(raw || "employee_document");
   };
 
@@ -250,7 +263,7 @@ export default function HRDocumentsPage() {
       return false;
     }
 
-    const filledFields = Object.entries(employeeData).filter(([_, v]) => v.trim() !== "");
+    const filledFields = Object.entries(employeeData).filter(([_, v]) => String(v || "").trim() !== "");
     if (filledFields.length === 0) {
       toast({
         title: "No data entered",
@@ -551,11 +564,27 @@ export default function HRDocumentsPage() {
                   onClick={async () => {
                     setSelectedCategory(cat.id);
                     setSelectedUploadedTemplateIdx(null);
-                    // Try to fetch a default template for this category (if available)
-                    // For now, clear uploaded template and setTemplate(null)
                     setTemplate(null);
-                    // Optionally, fetch a default template from server or static assets here
-                    // Example: await fetchDefaultTemplate(cat.id)
+
+                    try {
+                      // Fetch the template for this category from the backend
+                      const blob = await api.hrDocuments.getTemplate(cat.id);
+                      const fileExt = cat.id === 'payslip' ? 'docx' : 'docx'; // Fallback to docx if unknown
+                      // Try to determine the filename and type from the type, though blob type might be empty
+                      const filename = `${cat.id}.${blob.type === 'application/pdf' ? 'pdf' : 'docx'}`;
+                      const file = new File([blob], filename, { type: blob.type });
+
+                      const fetchedTemplate: UploadedTemplate = {
+                        name: filename,
+                        type: file.name.endsWith('.pdf') ? 'pdf' : 'docx',
+                        content: await blob.arrayBuffer(),
+                        file,
+                      };
+                      setTemplate(fetchedTemplate);
+                    } catch (err) {
+                      // If it fails, no template was uploaded yet for this type
+                      console.log('No existing template for', cat.id);
+                    }
                   }}
                   className={`p-3 rounded-lg border text-left transition-all ${selectedCategory === cat.id && selectedUploadedTemplateIdx === null
                     ? 'border-primary bg-primary/10 text-primary'
@@ -615,11 +644,29 @@ export default function HRDocumentsPage() {
             </div>
 
             <TemplateUpload
-              onTemplateUpload={tpl => {
+              onTemplateUpload={async tpl => {
                 setUploadedTemplates(prev => [...prev, tpl]);
                 setSelectedUploadedTemplateIdx(uploadedTemplates.length); // select the new one
-                setSelectedCategory('');
                 setTemplate(tpl);
+
+                if (selectedCategory) {
+                  try {
+                    await api.hrDocuments.uploadTemplate(selectedCategory, tpl.file);
+                    toast({
+                      title: "Template saved",
+                      description: `Saved as the default template for ${templateCategories.find(c => c.id === selectedCategory)?.name}`,
+                    });
+                  } catch (err) {
+                    console.error('Failed to save template to backend', err);
+                    toast({
+                      title: "Warning",
+                      description: "Template was loaded but could not be saved to the server.",
+                      variant: "destructive"
+                    });
+                  }
+                } else {
+                  setSelectedCategory('');
+                }
               }}
               currentTemplate={template}
               onRemoveTemplate={() => {
@@ -660,7 +707,7 @@ export default function HRDocumentsPage() {
                   disabled={loadingEmployees}
                 >
                   <option value="">
-                    {loadingEmployees ? 'Loading employees...' : '-- Select an employee to auto-fill --'}
+                    {profilesLoading || loadingEmployees ? 'Loading employees...' : '-- Select an employee to auto-fill --'}
                   </option>
                   {employees.map((emp) => (
                     <option key={emp.id} value={emp.id}>

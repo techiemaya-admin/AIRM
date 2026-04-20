@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Clock, Bell, Calendar, CheckCircle, AlertCircle } from "lucide-react";

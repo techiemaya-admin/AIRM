@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
+        '@sdk': path.resolve(__dirname, './SDK'),
         '@': path.resolve(__dirname, './src'),
         '@features': path.resolve(__dirname, './features'),
       },

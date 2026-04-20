@@ -19,42 +19,19 @@ const ResourceManagement = () => {
 
   // Determine active activeTab based on URL
   const getInitialTab = () => {
-    if (location.pathname === "/profiles" || location.pathname.startsWith("/profiles/")) {
-      return "profiles";
-    }
-    if (location.pathname === "/recruitment" || location.pathname.startsWith("/recruitment/")) {
-      return "joining-form";
-    }
-    if (location.pathname === "/joining-form" || location.pathname.startsWith("/joining-form/")) {
-      return "joining-form";
-    }
-    if (location.pathname === "/exit-formalities" || location.pathname.startsWith("/exit-formalities/")) {
-      return "exit-formalities";
-    }
-    if (location.pathname === "/payslips" || location.pathname.startsWith("/payslips/")) {
-      return "payslips";
-    }
-    if (location.pathname === "/hr-documents" || location.pathname.startsWith("/hr-documents/")) {
-      return "hr-documents";
-    }
-    if (location.pathname === "/resource-management") {
-      return "profiles"; // Default to profiles for /resource-management
-    }
-    return "profiles";
+    const path = location.pathname;
+    if (path === "/profiles" || path.startsWith("/profiles/")) return "profiles";
+    if (path === "/recruitment" || path.startsWith("/recruitment/")) return "joining-form";
+    if (path === "/joining-form" || path.startsWith("/joining-form/")) return "joining-form";
+    if (path === "/exit-formalities" || path.startsWith("/exit-formalities/")) return "exit-formalities";
+    if (path === "/payslips" || path.startsWith("/payslips/")) return "payslips";
+    if (path === "/hr-documents" || path.startsWith("/hr-documents/")) return "hr-documents";
+    return "profiles"; // Default to profiles
   };
 
-  const [activeTab, setActiveTab] = useState(getInitialTab());
-
-  // Update tab when location changes
-  useEffect(() => {
-    const newTab = getInitialTab();
-    if (newTab !== activeTab) {
-      setActiveTab(newTab);
-    }
-  }, [location.pathname]);
+  const activeTab = getInitialTab();
 
   const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
     // Navigate to the corresponding route
     if (tabId === "profiles") {
       navigate("/profiles");

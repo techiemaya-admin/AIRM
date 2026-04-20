@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { FolderKanban, Search } from 'lucide-react';
 import Projects from '@features/projects';
 import Issues from '@features/issues';
+import { useProjects } from '@/hooks/useProjects';
+import { useIssues } from '@/hooks/useIssues';
 
 const tabs = [
   { id: 'projects', label: 'Projects', icon: FolderKanban },
@@ -16,6 +18,10 @@ export default function ProjectManagementPage() {
   // Local tab state only
   const [activeTab, setActiveTab] = useState('projects');
   const [selectedProjectName, setSelectedProjectName] = useState('all');
+
+  // Fetch counts
+  const { data: projects = [] } = useProjects();
+  const { data: issues = [] } = useIssues({ project: selectedProjectName });
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -37,6 +43,7 @@ export default function ProjectManagementPage() {
       <div className="flex space-x-1 border-b border-[#d0d7de] mb-6">
         {tabs.map((tab) => {
           const Icon = tab.icon;
+          const count = tab.id === 'projects' ? (projects as any[]).length : (issues as any[]).length;
           return (
             <button
               key={tab.id}
@@ -47,7 +54,7 @@ export default function ProjectManagementPage() {
                 }`}
             >
               <Icon className="h-4 w-4" />
-              <span>{tab.label}</span>
+              <span>{tab.label} ({count})</span>
             </button>
           );
         })}

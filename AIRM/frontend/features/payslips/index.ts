@@ -5,7 +5,7 @@
  */
 
 // Services
-export * from './services/payslipsService';
+export * from '@sdk/payslipsService';
 
 // Hooks
 export * from './hooks/usepayslips';

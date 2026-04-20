@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useUsers } from "@/hooks/useUsers";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,13 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import JoiningForm from "../joining-form/JoiningForm";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 // LAD Architecture: Use SDK instead of direct API calls
-import { useProfiles, useProfileMutation, type EmployeeProfile as SDKEmployeeProfile } from "@/sdk/features/profiles";
-import { getEmployeeAssets } from "../exit-formalities/services/exit-formalitiesService";
+import { useProfiles, useProfile, useProfileMutation, type EmployeeProfile as SDKEmployeeProfile } from "@/sdk/features/profiles";
+import { useExitAssets } from "../exit-formalities/hooks/useExitFeatures";
 import type { EmployeeAsset } from "../exit-formalities/types";
-import { downloadTemplate, uploadProfileFile, uploadBatchProfiles } from "./services/profilesService";
+import { downloadTemplate, uploadProfileFile, uploadBatchProfiles } from "@sdk/profilesService";
 import {
   User,
   Briefcase,
@@ -86,8 +88,13 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
     console.log('[Profiles Page] Error:', profilesError);
   }, [profiles, loading, profilesError]);
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [selectedProfile, setSelectedProfile] = useState<EmployeeProfile | null>(null);
+  // React Query Hooks
+  const { data: usersData = [] } = useUsers();
+  const { data: currentUser } = useCurrentUser();
+  const users = usersData as any[];
+
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(profileId || null);
+  const { data: selectedProfile, isLoading: selectedProfileLoading } = useProfile(selectedProfileId);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // If onlyCurrentUser is true, show detail dialog by default
@@ -95,7 +102,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
     if (onlyCurrentUser && currentUser && profiles.length > 0) {
       const userProfile = profiles.find((p) => p.id === currentUser.id || p.email === currentUser.email);
       if (userProfile) {
-        setSelectedProfile(userProfile);
+        setSelectedProfileId(userProfile.id);
         setIsDetailOpen(true);
       }
     }
@@ -104,9 +111,8 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('basic');
-  const [users, setUsers] = useState<any[]>([]);
-  const [employeeAssets, setEmployeeAssets] = useState<EmployeeAsset[]>([]);
-  const [loadingAssets, setLoadingAssets] = useState(false);
+  const { data: assetsData, isLoading: loadingAssets, refetch: refetchAssets } = useExitAssets(selectedProfileId || undefined);
+  const employeeAssets = (assetsData as any)?.assets || [];
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -150,54 +156,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
     employment_type: 'Full-time',
   });
 
-  useEffect(() => {
-    const initProfiles = async () => {
-      try {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        if (userData.id) {
-          setCurrentUser(userData);
-
-          // Get user role from API
-          try {
-            const currentUserResp = await api.auth.getMe() as any;
-            console.log('🔍 API Response:', currentUserResp);
-            const userRole = currentUserResp?.role || currentUserResp?.user?.role || userData.role || 'user';
-            console.log('🔍 Detected role:', userRole);
-            const userWithRole = {
-              ...userData,
-              role: userRole
-            };
-            setCurrentUser(userWithRole);
-
-            // Profiles are loaded via SDK hook (useProfiles)
-            // Load users if admin
-            if (userWithRole.role === 'admin') {
-              await loadUsers();
-            }
-          } catch (apiError) {
-            console.error('Error fetching user role:', apiError);
-            // Fallback to localStorage role
-            if (userData.role === 'admin') {
-              await loadUsers();
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error initializing profiles:', error);
-      }
-    };
-    initProfiles();
-  }, []);
-
-  const loadUsers = async () => {
-    try {
-      const response = await api.users.getAll() as any;
-      const usersData = response.users || response || [];
-      setUsers(usersData);
-    } catch (error: any) {
-      console.error("Error loading users:", error);
-    }
-  };
+  // No manual init or loadUsers needed
 
   useEffect(() => {
     if (profileId) {
@@ -208,25 +167,18 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
   // LAD Architecture: Profiles loaded via SDK hook
   // No need for loadProfiles function
 
-  const handleViewProfile = async (id: string) => {
-    try {
-      // Use SDK to get profile
-      const { getProfileById } = await import("@/sdk/features/profiles");
-      const response = await getProfileById(id);
-      if (response.profile) {
-        setSelectedProfile(response.profile);
-        setEditForm(response.profile);
-        setIsDetailOpen(true);
-      }
-    } catch (error: any) {
-      console.error("Error loading profile:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load profile details",
-        variant: "destructive",
-      });
-    }
+  const handleViewProfile = (id: string) => {
+    setSelectedProfileId(id);
+    setIsDetailOpen(true);
+    // Edit form will be initialized in a separate useEffect when selectedProfile loads
   };
+
+  // Sync edit form when selectedProfile changes
+  useEffect(() => {
+    if (selectedProfile) {
+      setEditForm(selectedProfile);
+    }
+  }, [selectedProfile]);
 
   // Handle HR Document Template Upload
   const handleTemplateUpload = async (file: File, documentType: string, templateName: string) => {
@@ -334,7 +286,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
         throw new Error("Invalid file type. Please upload Excel or CSV file.");
       }
 
-      const response = await uploadBatchProfiles(file);
+      const response = await updateProfileMutation.uploadBatch.mutateAsync(file);
 
       if (response.success) {
         toast({
@@ -363,7 +315,6 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
         variant: "destructive",
       });
     } finally {
-      setIsUploading(false);
       // Reset input
       e.target.value = '';
     }
@@ -404,15 +355,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
       setIsEditOpen(false);
       refetchProfiles();
 
-      // Reload selected profile
-      if (selectedProfile) {
-        const { getProfileById } = await import("@/sdk/features/profiles");
-        const response = await getProfileById(selectedProfile.id);
-        if (response.profile) {
-          setSelectedProfile(response.profile);
-          setEditForm(response.profile);
-        }
-      }
+      // selectedProfile will automatically reload because the query is invalidated
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
@@ -579,34 +522,8 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
     return filtered;
   }, [profiles, searchQuery, filterDepartment, filterRole, filterStatus, filterExperience, sortBy, sortOrder, onlyCurrentUser, currentUser]);
 
-  // Fetch employee assets
-  const fetchEmployeeAssets = async (userId: string) => {
-    try {
-      setLoadingAssets(true);
-      const response = await getEmployeeAssets(userId);
-      setEmployeeAssets(response.assets || []);
-    } catch (error: any) {
-      console.error("Error fetching employee assets:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch employee assets",
-        variant: "destructive",
-      });
-      setEmployeeAssets([]);
-    } finally {
-      setLoadingAssets(false);
-    }
-  };
-
-  // Reset assets when profile changes
-  useEffect(() => {
-    if (selectedProfile?.id) {
-      setEmployeeAssets([]);
-      if (activeTab === 'assets') {
-        fetchEmployeeAssets(selectedProfile.id);
-      }
-    }
-  }, [selectedProfile?.id]);
+  // Reset assets when profile changes - handled by hook dependencies
+  // No need for fetchEmployeeAssets manual function
 
   // Group profiles by status for Kanban view
   const kanbanColumns = useMemo(() => {
@@ -832,7 +749,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Profile
+                      Add Employee
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -865,7 +782,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
             onSearchChange={setSearchQuery}
             profiles={filteredAndSortedProfiles}
             onProfileSelect={(profile) => {
-              setSelectedProfile(profile);
+              setSelectedProfileId(profile.id);
               setIsDetailOpen(true);
               setIsSearchOpen(false);
             }}
@@ -935,7 +852,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
               <p className="text-gray-500">No employee profiles found</p>
               <p className="text-sm text-gray-400 mt-2">
                 {profiles.length === 0
-                  ? "The database appears to be empty. Use the '+ Add Profile' button to create profiles."
+                  ? "The database appears to be empty. Use the '+ Add Employee' button to create profiles."
                   : "No profiles match your current filters."}
               </p>
               {searchQuery && (
@@ -983,11 +900,11 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
         onEdit={handleEditProfile}
         employeeAssets={employeeAssets}
         loadingAssets={loadingAssets}
-        onFetchAssets={fetchEmployeeAssets}
+        onFetchAssets={() => { }} // Hook handles it automatically
         currentUser={currentUser}
         isAdmin={isAdmin}
         onDeleteSuccess={async () => {
-          setSelectedProfile(null);
+          setSelectedProfileId(null);
           setIsDetailOpen(false);
           // Invalidate the profiles cache to force a fresh fetch
           await queryClient.invalidateQueries({ queryKey: ['profiles'] });
@@ -1013,10 +930,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
                 key={tab}
                 onClick={() => {
                   setActiveTab(tab);
-                  // Fetch assets when assets tab is clicked
-                  if (tab === 'assets' && editForm.id && employeeAssets.length === 0) {
-                    fetchEmployeeAssets(editForm.id);
-                  }
+                  // Fetch assets when assets tab is clicked - Handled by hook
                 }}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab
                   ? 'border-blue-600 text-blue-600'
@@ -1317,7 +1231,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => editForm.id && fetchEmployeeAssets(editForm.id)}
+                      onClick={() => refetchAssets()}
                       disabled={loadingAssets}
                     >
                       <RefreshCw className={`h-4 w-4 mr-2 ${loadingAssets ? 'animate-spin' : ''}`} />

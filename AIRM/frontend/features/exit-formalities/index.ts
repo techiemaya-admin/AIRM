@@ -9,7 +9,7 @@ console.log(
  */
 
 // Services
-export * from './services/exit-formalitiesService';
+export * from '@sdk/exit-formalitiesService';
 
 // Hooks
 export {

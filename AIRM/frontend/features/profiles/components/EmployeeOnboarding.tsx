@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Upload, FileText, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import { DocumentUpload } from './DocumentUpload';
 import { DOCUMENT_CATEGORIES, DOCUMENT_TYPES } from '../types';
-import { getEmployeeDocuments } from '../services/documentService';
+import { getEmployeeDocuments } from '@sdk/documentService';
 import { toast } from 'sonner';
 
 interface EmployeeOnboardingProps {
@@ -59,7 +59,7 @@ export const EmployeeOnboarding: React.FC<EmployeeOnboardingProps> = ({ employee
         const profileId = employeeId || userData.id;
 
         // Fetch employee profile
-        const profileResponse = await import('../services/profilesService').then(m => m.getProfileById(profileId));
+        const profileResponse = await import('@sdk/profilesService').then(m => m.getProfileById(profileId));
         setEmployeeProfile(profileResponse.profile);
 
         // Fetch existing documents

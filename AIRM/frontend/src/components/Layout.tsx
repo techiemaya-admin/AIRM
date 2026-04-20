@@ -22,10 +22,12 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar onLogout={handleLogout} />
-      <main className="flex-1 overflow-auto flex flex-col relative">
-        <div className="absolute top-4 right-6 z-50">
+      <main className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Floating notifications bell */}
+        <div className="absolute top-4 right-4 md:top-8 md:right-8 z-50">
           <Notifications />
         </div>
+        {/* Page content scrolls here */}
         <div className="flex-1 overflow-auto">
           {children}
         </div>

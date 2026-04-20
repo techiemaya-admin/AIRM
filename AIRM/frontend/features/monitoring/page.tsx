@@ -1,15 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useUsers } from "@/hooks/useUsers";
+import { useMonitoring } from "@/hooks/useMonitoring";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Clock, MapPin, Pause, RefreshCw, MessageSquare } from "lucide-react";
+import { Clock, MapPin, Pause, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
-import { Notifications } from "@/components/Notifications";
-import { TableSkeleton, CardSkeleton } from "@/components/PageSkeletons";
-
-
+import { TableSkeleton } from "@/components/PageSkeletons";
 
 interface Issue {
   id: number;
@@ -46,181 +45,64 @@ interface TimeEntry {
 }
 
 const Monitoring = () => {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminCheckComplete, setAdminCheckComplete] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [allEntries, setAllEntries] = useState<TimeEntry[]>([]); // Store all entries
-  const [selectedUserId, setSelectedUserId] = useState<string>("all"); // Filter state
-  const [users, setUsers] = useState<Array<{ user_id: string, email: string }>>([]);
-  const [summaryStats, setSummaryStats] = useState({
-    totalEntries: 0,
-    activeEntries: 0,
-    pausedEntries: 0,
-    clockedOutEntries: 0,
-    clockedOutHours: 0,
-    totalHours: 0,
-    totalPausedHours: 0,
-    uniqueUsers: 0,
-  });
   const navigate = useNavigate();
+  const [selectedUserId, setSelectedUserId] = useState<string>("all");
 
-  const checkAdminStatus = useCallback(async () => {
-    try {
-      // Check localStorage first (faster and more reliable)
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      const isAdminFromStorage = userData.role === 'admin';
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser();
+  const isAdmin = currentUser?.role === 'admin';
 
-      // Also try to get from API as fallback
-      let isAdminFromAPI = false;
-      try {
-        const currentUser = await api.auth.getMe() as any;
-        isAdminFromAPI = currentUser?.user?.role === "admin" ||
-          currentUser?.role === "admin" ||
-          currentUser?.data?.role === "admin";
-      } catch (apiError) {
-        console.warn('Could not fetch user from API, using localStorage:', apiError);
-      }
-
-      const isAdminUser = isAdminFromStorage || isAdminFromAPI;
-      setIsAdmin(isAdminUser);
-      setAdminCheckComplete(true);
-
-      if (!isAdminUser) {
-        console.log('User is not admin');
-        // Don't navigate immediately, let the component render the access denied message
-      }
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-      // Fallback: check localStorage role
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      setIsAdmin(userData.role === 'admin');
-      setAdminCheckComplete(true);
-    }
+  // Get recent entries (last 24 hours) for the query
+  const params = useMemo(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return { start_date: yesterday.toISOString() };
   }, []);
 
-  const loadAllActiveEntries = useCallback(async () => {
-    setLoading(true);
-    try {
-      console.log('Loading monitoring data...');
+  const { data: allEntriesData = [], isLoading: monitoringLoading, refetch: refetchMonitoring } = useMonitoring(params);
+  const { data: usersData = [], isLoading: usersLoading } = useUsers();
 
-      // Load users and active entries in parallel
-      const [usersResponse, activeResponse] = await Promise.all([
-        api.users.getWithRoles().catch((err) => {
-          console.error('Error loading users:', err);
-          return { users: [] };
-        }),
-        api.timesheets.getActive().catch((err) => {
-          console.error('Error loading active entries:', err);
-          return { entries: [] };
-        })
-      ]) as any[];
+  const loading = userLoading || monitoringLoading || usersLoading;
 
-      console.log('Users response:', usersResponse);
-      console.log('Active entries response:', activeResponse);
+  const entries = useMemo(() => {
+    if (selectedUserId === "all") return allEntriesData;
+    return allEntriesData.filter((e: any) => e.user_id === selectedUserId);
+  }, [allEntriesData, selectedUserId]);
 
-      const usersData = usersResponse?.users || usersResponse || [];
-      const userMap = new Map(usersData.map((u: any) => [u.user_id || u.id, u.email]));
+  const summaryStats = useMemo(() => {
+    const clockedOutEntries = entries.filter((e: any) => e.status === "clocked_out");
+    return {
+      totalEntries: entries.length,
+      activeEntries: entries.filter((e: any) => e.status === "clocked_in").length,
+      pausedEntries: entries.filter((e: any) => e.status === "paused").length,
+      clockedOutEntries: clockedOutEntries.length,
+      clockedOutHours: clockedOutEntries.reduce((sum: number, e: any) => sum + (e.total_hours || 0), 0),
+      totalHours: entries.reduce((sum: number, e: any) => {
+        if (e.total_hours) {
+          return sum + e.total_hours;
+        } else if (e.status === "clocked_in" || e.status === "paused") {
+          const clockInTime = new Date(e.clock_in).getTime();
+          const now = Date.now();
+          const pausedMs = (e.paused_duration || 0) * 60 * 60 * 1000;
+          const elapsedMs = now - clockInTime - pausedMs;
+          return sum + (elapsedMs / (1000 * 60 * 60));
+        }
+        return sum;
+      }, 0),
+      totalPausedHours: entries.reduce((sum: number, e: any) => sum + (e.paused_duration || 0), 0),
+      uniqueUsers: new Set(entries.map((e: any) => e.user_id)).size,
+    };
+  }, [entries]);
 
-      // Get recent entries (last 24 hours)
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      // Get entries from last 24 hours (admin can see all)
-      const entriesResponse = await api.timesheets.getEntries({
-        start_date: yesterday.toISOString()
-      }).catch((err) => {
-        console.error('Error loading recent entries:', err);
-        return { entries: [] };
-      }) as any;
-
-      console.log('Recent entries response:', entriesResponse);
-
-      const allEntries = entriesResponse?.entries || [];
-
-      // Combine active entries with recent entries
-      const activeEntries = activeResponse?.entries || [];
-      const combinedEntries = [...activeEntries, ...allEntries];
-
-      console.log('Active entries:', activeEntries.length);
-      console.log('Recent entries:', allEntries.length);
-      console.log('Combined entries:', combinedEntries.length);
-
-      // Remove duplicates and get unique entries
-      const uniqueEntries = Array.from(
-        new Map(combinedEntries.map((e: any) => [e.id, e])).values()
-      );
-
-      console.log('Unique entries:', uniqueEntries.length);
-
-      const entriesWithEmail = uniqueEntries.map((entry: any) => ({
-        ...entry,
-        user_email: userMap.get(entry.user_id) || entry.user_email || entry.user_email || "Unknown User",
-        issue: entry.issue_id ? {
-          id: entry.issue_id,
-          title: entry.issue_title,
-          project_name: entry.issue_project
-        } : (entry.issue || null),
-      }));
-
-      // For now, skip fetching clock-out comments via API (can be added later)
-      // TODO: Add API endpoint for fetching issue comments
-      const entriesWithComments = entriesWithEmail;
-
-      console.log('Final entries count:', entriesWithComments.length);
-
-      setAllEntries(entriesWithComments);
-      setEntries(entriesWithComments);
-
-      const uniqueUsers = Array.from(
-        new Map(
-          entriesWithEmail.map((entry: TimeEntry) => [entry.user_id, { user_id: entry.user_id, email: entry.user_email || "Unknown" }])
-        ).values()
-      );
-      setUsers(uniqueUsers);
-
-      // Calculate summary statistics - count all entries including active/paused ones
-      const clockedOutEntries = entriesWithEmail.filter(e => e.status === "clocked_out");
-      const stats = {
-        totalEntries: entriesWithEmail.length,
-        activeEntries: entriesWithEmail.filter(e => e.status === "clocked_in").length,
-        pausedEntries: entriesWithEmail.filter(e => e.status === "paused").length,
-        clockedOutEntries: clockedOutEntries.length,
-        clockedOutHours: clockedOutEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0),
-        // Calculate total hours: sum of clocked_out entries + calculate active/paused entries
-        totalHours: entriesWithEmail.reduce((sum, e) => {
-          if (e.total_hours) {
-            return sum + e.total_hours;
-          } else if (e.status === "clocked_in" || e.status === "paused") {
-            // Calculate hours for active/paused entries
-            const clockInTime = new Date(e.clock_in).getTime();
-            const now = Date.now();
-            const pausedMs = (e.paused_duration || 0) * 60 * 60 * 1000;
-            const elapsedMs = now - clockInTime - pausedMs;
-            return sum + (elapsedMs / (1000 * 60 * 60));
-          }
-          return sum;
-        }, 0),
-        totalPausedHours: entriesWithEmail.reduce((sum, e) => sum + (e.paused_duration || 0), 0),
-        uniqueUsers: uniqueUsers.length,
+  const usersList = useMemo(() => {
+    const uniqueUserIds = new Set(allEntriesData.map((e: any) => e.user_id));
+    return Array.from(uniqueUserIds).map(userId => {
+      const entry = allEntriesData.find((e: any) => e.user_id === userId);
+      return {
+        user_id: userId,
+        email: entry?.user_email || "Unknown"
       };
-      setSummaryStats(stats);
-    } catch (error: any) {
-      console.error('Error loading entries:', error);
-      console.error('Error details:', error.message, error.stack);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load entries",
-        variant: "destructive",
-      });
-      // Set empty arrays to prevent crashes
-      setAllEntries([]);
-      setEntries([]);
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    });
+  }, [allEntriesData]);
 
   const getElapsedTime = (clockIn: string, pausedDuration: number = 0) => {
     const start = new Date(clockIn).getTime();
@@ -232,115 +114,18 @@ const Monitoring = () => {
     return `${hours}h ${minutes}m`;
   };
 
-  useEffect(() => {
-    const initMonitoring = async () => {
-      try {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        const token = localStorage.getItem('auth_token');
-
-        if (!userData.id || !token) {
-          console.log('No user or token, redirecting to auth');
-          navigate("/auth");
-          return;
-        }
-
-        console.log('Initializing monitoring for user:', userData.id);
-        await checkAdminStatus();
-      } catch (error: any) {
-        console.error('Error initializing monitoring:', error);
-        console.error('Error stack:', error.stack);
-        // Don't redirect immediately, show error instead
-        toast({
-          title: "Error",
-          description: error.message || "Failed to initialize monitoring",
-          variant: "destructive",
-        });
-      }
-    };
-
-    initMonitoring();
-  }, [checkAdminStatus, navigate]);
-
-  // Load entries once admin check is complete and user is admin
-  useEffect(() => {
-    if (adminCheckComplete && isAdmin) {
-      console.log('Admin check complete, loading entries...');
-      loadAllActiveEntries();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminCheckComplete, isAdmin]); // Only run when admin status changes
-
-  useEffect(() => {
-    if (selectedUserId === "all") {
-      setEntries(allEntries);
-      // Recalculate stats for all entries
-      const clockedOutEntries = allEntries.filter(e => e.status === "clocked_out");
-      const stats = {
-        totalEntries: allEntries.length,
-        activeEntries: allEntries.filter(e => e.status === "clocked_in").length,
-        pausedEntries: allEntries.filter(e => e.status === "paused").length,
-        clockedOutEntries: clockedOutEntries.length,
-        clockedOutHours: clockedOutEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0),
-        totalHours: allEntries.reduce((sum, e) => {
-          if (e.total_hours) {
-            return sum + e.total_hours;
-          } else if (e.status === "clocked_in" || e.status === "paused") {
-            const clockInTime = new Date(e.clock_in).getTime();
-            const now = Date.now();
-            const pausedMs = (e.paused_duration || 0) * 60 * 60 * 1000;
-            const elapsedMs = now - clockInTime - pausedMs;
-            return sum + (elapsedMs / (1000 * 60 * 60));
-          }
-          return sum;
-        }, 0),
-        totalPausedHours: allEntries.reduce((sum, e) => sum + (e.paused_duration || 0), 0),
-        uniqueUsers: Array.from(new Set(allEntries.map(e => e.user_id))).length,
-      };
-      setSummaryStats(stats);
-    } else {
-      const filteredEntries = allEntries.filter(entry => entry.user_id === selectedUserId);
-      setEntries(filteredEntries);
-      // Recalculate stats for filtered entries
-      const clockedOutEntries = filteredEntries.filter(e => e.status === "clocked_out");
-      const stats = {
-        totalEntries: filteredEntries.length,
-        activeEntries: filteredEntries.filter(e => e.status === "clocked_in").length,
-        pausedEntries: filteredEntries.filter(e => e.status === "paused").length,
-        clockedOutEntries: clockedOutEntries.length,
-        clockedOutHours: clockedOutEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0),
-        totalHours: filteredEntries.reduce((sum, e) => {
-          if (e.total_hours) {
-            return sum + e.total_hours;
-          } else if (e.status === "clocked_in" || e.status === "paused") {
-            const clockInTime = new Date(e.clock_in).getTime();
-            const now = Date.now();
-            const pausedMs = (e.paused_duration || 0) * 60 * 60 * 1000;
-            const elapsedMs = now - clockInTime - pausedMs;
-            return sum + (elapsedMs / (1000 * 60 * 60));
-          }
-          return sum;
-        }, 0),
-        totalPausedHours: filteredEntries.reduce((sum, e) => sum + (e.paused_duration || 0), 0),
-        uniqueUsers: 1,
-      };
-      setSummaryStats(stats);
-    }
-  }, [selectedUserId, allEntries]);
-
-  if (!adminCheckComplete || (adminCheckComplete && isAdmin && loading)) {
+  if (loading && entries.length === 0) {
     return (
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between mb-6">
           <div className="h-10 w-64 bg-gray-200 animate-pulse rounded" />
           <div className="h-10 w-32 bg-gray-200 animate-pulse rounded" />
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-24 bg-gray-200 animate-pulse rounded-lg" />
           ))}
         </div>
-
         <Card>
           <CardHeader>
             <div className="h-8 w-48 bg-gray-200 animate-pulse rounded" />
@@ -353,7 +138,7 @@ const Monitoring = () => {
     );
   }
 
-  if (adminCheckComplete && !isAdmin) {
+  if (currentUser && !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -368,15 +153,8 @@ const Monitoring = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 mr-14 md:mr-24">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Employee Monitoring</h1>
-          <div className="flex gap-2">
-            <Button onClick={loadAllActiveEntries} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            <Notifications />
-          </div>
         </div>
 
         {/* Summary Statistics Cards */}
@@ -457,10 +235,10 @@ const Monitoring = () => {
                   onChange={(e) => setSelectedUserId(e.target.value)}
                   className="text-sm px-3 py-1.5 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-700"
                 >
-                  <option value="all">All Employees ({allEntries.length})</option>
-                  {users.map((user) => (
+                  <option value="all">All Employees ({allEntriesData.length})</option>
+                  {usersList.map((user) => (
                     <option key={user.user_id} value={user.user_id}>
-                      {user.email} ({allEntries.filter(e => e.user_id === user.user_id).length})
+                      {user.email} ({allEntriesData.filter((e: any) => e.user_id === user.user_id).length})
                     </option>
                   ))}
                 </select>
@@ -479,10 +257,10 @@ const Monitoring = () => {
                   <div
                     key={entry.id}
                     className={`p-4 rounded-lg border ${entry.status === "paused"
-                        ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
-                        : entry.status === "clocked_out"
-                          ? "bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800"
-                          : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                      ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                      : entry.status === "clocked_out"
+                        ? "bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800"
+                        : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                       }`}
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -527,10 +305,10 @@ const Monitoring = () => {
                           <div className="flex items-center gap-2">
                             <span className="font-medium">Status:</span>
                             <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "paused"
-                                ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100"
-                                : entry.status === "clocked_out"
-                                  ? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                                  : "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
+                              ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100"
+                              : entry.status === "clocked_out"
+                                ? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                                : "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
                               }`}>
                               {entry.status === "paused" ? "⏸ Paused" : entry.status === "clocked_out" ? "⏹ Clocked Out" : "▶ Active"}
                             </span>
@@ -631,24 +409,24 @@ const Monitoring = () => {
                         {/* Pause Details Card - Enhanced */}
                         {entry.pause_reason && (
                           <div className={`p-3 rounded-lg border ${entry.status === "paused"
-                              ? "bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700"
-                              : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+                            ? "bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700"
+                            : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
                             }`}>
                             <div className="flex items-start gap-2">
                               <Pause className={`h-5 w-5 flex-shrink-0 mt-0.5 ${entry.status === "paused"
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-gray-500 dark:text-gray-400"
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-gray-500 dark:text-gray-400"
                                 }`} />
                               <div className="flex-1">
                                 <p className={`font-medium text-sm mb-1 ${entry.status === "paused"
-                                    ? "text-amber-900 dark:text-amber-100"
-                                    : "text-gray-700 dark:text-gray-300"
+                                  ? "text-amber-900 dark:text-amber-100"
+                                  : "text-gray-700 dark:text-gray-300"
                                   }`}>
                                   {entry.status === "paused" ? "Currently Paused" : "Pause History"}
                                 </p>
                                 <p className={`text-sm mb-2 ${entry.status === "paused"
-                                    ? "text-amber-800 dark:text-amber-200"
-                                    : "text-gray-600 dark:text-gray-400"
+                                  ? "text-amber-800 dark:text-amber-200"
+                                  : "text-gray-600 dark:text-gray-400"
                                   }`}>
                                   <span className="font-medium">Reason:</span> {entry.pause_reason}
                                 </p>
@@ -661,8 +439,8 @@ const Monitoring = () => {
 
                                 {entry.paused_duration && entry.paused_duration > 0 && (
                                   <div className={`text-xs mt-1 ${entry.status === "paused"
-                                      ? "text-amber-600 dark:text-amber-400"
-                                      : "text-gray-500 dark:text-gray-400"
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "text-gray-500 dark:text-gray-400"
                                     }`}>
                                     <span className="font-medium">Total paused time:</span> {(entry.paused_duration * 60).toFixed(0)} minutes ({(entry.paused_duration).toFixed(2)} hours)
                                   </div>

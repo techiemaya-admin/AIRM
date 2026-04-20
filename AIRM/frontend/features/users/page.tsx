@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useUsers, useUserMutation } from "@/hooks/useUsers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +14,8 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { api } from "@/lib/api";
-import { toast } from "@/hooks/use-toast";
+import { api } from "@sdk/api";
+import { useToast } from "@/hooks/use-toast";
 import { Users as UsersIcon, Shield, User as UserIcon, RefreshCw, UserPlus, Trash2 } from "lucide-react";
 import { TableSkeleton, CardSkeleton } from "@/components/PageSkeletons";
 
@@ -25,81 +27,20 @@ interface UserProfile {
 }
 
 const Users = () => {
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser();
+  const { data: usersData = [], isLoading: usersLoading, refetch: loadUsers } = useUsers();
+  const userMutation = useUserMutation();
+
+  const isAdmin = currentUser?.role === 'admin';
+  const loading = userLoading || usersLoading;
+  const users = usersData as UserProfile[];
+
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [newUserRole, setNewUserRole] = useState("employee");
   const [addingUser, setAddingUser] = useState(false);
-
-  useEffect(() => {
-    const initUsers = async () => {
-      try {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        if (userData.id) {
-          setCurrentUser(userData);
-
-          // Check admin status from localStorage first (faster)
-          const isAdminFromStorage = userData.role === 'admin';
-
-          // Also try to get from API as fallback
-          try {
-            const currentUserResp = await api.auth.getMe() as any;
-            const isAdminFromAPI = currentUserResp?.user?.role === 'admin' ||
-              currentUserResp?.role === 'admin' ||
-              currentUserResp?.data?.role === 'admin';
-            setIsAdmin(isAdminFromStorage || isAdminFromAPI);
-          } catch (apiError) {
-            // If API fails, use localStorage value
-            console.warn('Could not fetch user from API, using localStorage:', apiError);
-            setIsAdmin(isAdminFromStorage);
-          }
-
-          await loadUsers();
-        }
-      } catch (error) {
-        console.error('Error initializing users:', error);
-        // Fallback: check localStorage role
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        setIsAdmin(userData.role === 'admin');
-      }
-    };
-    initUsers();
-  }, []);
-
-  const loadUsers = async () => {
-    setLoading(true);
-    try {
-      const response = await api.users.getWithRoles() as any;
-      const usersData = response.users || response || [];
-
-      if (usersData.length > 0) {
-        const userProfiles = usersData.map((user: any) => ({
-          id: user.user_id || user.id,
-          email: user.email,
-          role: user.role || 'employee',
-          created_at: user.created_at,
-        }));
-
-        setUsers(userProfiles);
-      } else {
-        setUsers([]);
-      }
-    } catch (error: any) {
-      console.error("Error loading users:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load employees",
-        variant: "destructive",
-      });
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const toggleUserRole = async (userId: string, currentRole: string) => {
     if (userId === currentUser?.id) {
@@ -124,25 +65,21 @@ const Users = () => {
       }
     }
 
-    setLoading(true);
     try {
       const newRole = currentRole === "admin" ? "employee" : "admin";
 
-      await api.users.updateRole(userId, newRole);
+      await userMutation.updateRole.mutateAsync({ userId, role: newRole });
 
       toast({
         title: "Role Updated",
         description: `Employee role changed to ${newRole}`,
       });
-      loadUsers();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to update role",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -158,7 +95,7 @@ const Users = () => {
 
     setAddingUser(true);
     try {
-      await api.users.create({
+      await userMutation.create.mutateAsync({
         email: newUserEmail,
         full_name: newUserName,
         role: newUserRole,
@@ -173,7 +110,6 @@ const Users = () => {
       setNewUserEmail("");
       setNewUserName("");
       setNewUserRole("employee");
-      loadUsers();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -199,23 +135,19 @@ const Users = () => {
       return;
     }
 
-    setLoading(true);
     try {
-      await api.users.delete(userId);
+      await userMutation.delete.mutateAsync(userId);
 
       toast({
         title: "Employee Deleted",
         description: `Employee ${userEmail} has been deleted`,
       });
-      loadUsers();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to delete employee",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -309,7 +241,7 @@ const Users = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={loadUsers}
+                onClick={() => loadUsers()}
                 disabled={loading}
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />

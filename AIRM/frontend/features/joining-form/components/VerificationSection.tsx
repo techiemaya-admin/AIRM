@@ -51,7 +51,7 @@ export const VerificationSection = ({
                         <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">Date of Birth</Label>
                         <Input
                             type="date"
-                            value={verificationInfo.date_of_birth || ''}
+                            value={verificationInfo.date_of_birth?.split('T')[0] || ''}
                             onChange={e => updateVerificationField("date_of_birth", e.target.value)}
                             className="h-11 border-gray-200 focus:ring-blue-500"
                         />
@@ -180,57 +180,54 @@ export const VerificationSection = ({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-8">
+                <div className="space-y-6">
                     {verificationInfo.employers.map((emp, idx) => (
-                        <div key={idx} className="p-10 bg-white border border-gray-100 rounded-[2.5rem] shadow-sm hover:shadow-lg transition-all border-t-8 border-t-amber-500/20 group">
-                            <div className="flex items-center justify-between mb-8">
-                                <span className="bg-amber-50 text-amber-700 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm">Record #{idx + 1}</span>
-                                <div className="h-1 w-24 bg-gray-50 rounded-full group-hover:bg-amber-100 transition-colors" />
+                        <div key={idx} className="p-6 md:p-8 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all group">
+                            <div className="flex items-center justify-between mb-6">
+                                <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Previous Employer #{idx + 1}</span>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold uppercase text-gray-500">Employer Name</Label>
-                                    <Input value={emp.employer_name} onChange={e => updateVerificationEmployer(idx, "employer_name", e.target.value)} placeholder="Enter company" className="h-12 border-gray-100" />
+                                    <Input value={emp.employer_name} onChange={e => updateVerificationEmployer(idx, "employer_name", e.target.value)} placeholder="Company name" className="h-11 border-gray-200" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold uppercase text-gray-500">Designation</Label>
-                                    <Input value={emp.designation} onChange={e => updateVerificationEmployer(idx, "designation", e.target.value)} placeholder="Role held" className="h-12 border-gray-100" />
+                                    <Input value={emp.designation} onChange={e => updateVerificationEmployer(idx, "designation", e.target.value)} placeholder="Role" className="h-11 border-gray-200" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold uppercase text-gray-500">Working Period</Label>
-                                    <Input value={emp.period_of_working} onChange={e => updateVerificationEmployer(idx, "period_of_working", e.target.value)} placeholder="Years/Months" className="h-12 border-gray-100" />
+                                    <Input value={emp.period_of_working} onChange={e => updateVerificationEmployer(idx, "period_of_working", e.target.value)} placeholder="Years/Months" className="h-11 border-gray-200" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold uppercase text-gray-500">Location</Label>
-                                    <Input value={emp.location} onChange={e => updateVerificationEmployer(idx, "location", e.target.value)} placeholder="City, Region" className="h-12 border-gray-100" />
+                                    <Input value={emp.location} onChange={e => updateVerificationEmployer(idx, "location", e.target.value)} placeholder="City" className="h-11 border-gray-200" />
                                 </div>
-
-                                <div className="lg:col-span-2 space-y-2">
-                                    <Label className="text-xs font-bold uppercase text-gray-500">HR Contact / Email</Label>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="relative">
-                                            <Phone className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                                            <Input value={emp.hr_contact} onChange={e => updateVerificationEmployer(idx, "hr_contact", e.target.value)} placeholder="HR Number" className="h-12 pl-10 border-gray-100" />
-                                        </div>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                                            <Input value={emp.hr_mail} onChange={e => updateVerificationEmployer(idx, "hr_mail", e.target.value)} placeholder="HR Email" className="h-12 pl-10 border-gray-100" />
-                                        </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold uppercase text-gray-500">HR Contact</Label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
+                                        <Input value={emp.hr_contact} onChange={e => updateVerificationEmployer(idx, "hr_contact", e.target.value)} placeholder="HR Phone" className="h-11 pl-10 border-gray-200" />
                                     </div>
                                 </div>
-
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold uppercase text-gray-500">HR Email</Label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
+                                        <Input value={emp.hr_mail} onChange={e => updateVerificationEmployer(idx, "hr_mail", e.target.value)} placeholder="HR Email" className="h-11 pl-10 border-gray-200" />
+                                    </div>
+                                </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold uppercase text-gray-500">Supervisor Contact</Label>
                                     <div className="relative">
                                         <User2 className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                                        <Input value={emp.supervisor_contact} onChange={e => updateVerificationEmployer(idx, "supervisor_contact", e.target.value)} placeholder="Reporting manager" className="h-12 pl-10 border-gray-100" />
+                                        <Input value={emp.supervisor_contact} onChange={e => updateVerificationEmployer(idx, "supervisor_contact", e.target.value)} placeholder="Manager contact" className="h-11 pl-10 border-gray-200" />
                                     </div>
                                 </div>
-
-                                <div className="space-y-2">
+                                <div className="space-y-2 md:col-span-2 lg:col-span-1">
                                     <Label className="text-xs font-bold uppercase text-gray-500">Reason for Leaving</Label>
-                                    <Input value={emp.reason_for_leaving} onChange={e => updateVerificationEmployer(idx, "reason_for_leaving", e.target.value)} placeholder="Brief reason" className="h-12 border-gray-100" />
+                                    <Input value={emp.reason_for_leaving} onChange={e => updateVerificationEmployer(idx, "reason_for_leaving", e.target.value)} placeholder="Brief reason" className="h-11 border-gray-200" />
                                 </div>
                             </div>
                         </div>

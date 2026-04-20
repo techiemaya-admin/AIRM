@@ -17,7 +17,9 @@ export const DOCUMENT_TYPES = {
   [DOCUMENT_CATEGORIES.KYC_DOCUMENTS]: [
     'Aadhaar',
     'Electricity / Utility Bill',
-    'PAN'
+    'PAN',
+    'Photo',
+    'Bank Account'
   ],
   [DOCUMENT_CATEGORIES.EDUCATION_CERTIFICATES]: [
     'SSC',
@@ -28,7 +30,8 @@ export const DOCUMENT_TYPES = {
   [DOCUMENT_CATEGORIES.EXPERIENCE_DOCUMENTS]: [
     'Experience Letter',
     'Previous Company Salary Slips',
-    'Previous Company Offer / Appointment Letter'
+    'Previous Company Offer / Appointment Letter',
+    'Resume'
   ],
   [DOCUMENT_CATEGORIES.OTHER]: [
     'Reference Letter',

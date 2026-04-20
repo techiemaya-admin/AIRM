@@ -1,5 +1,5 @@
 -- Migration: Add GitLab mapping columns
--- This enables syncing GitLab users, issues, and commits with VCP_Automation
+-- This enables syncing GitLab users, issues, and commits with Pulse
 
 -- Set search path to ERP schema
 SET search_path TO erp, public;

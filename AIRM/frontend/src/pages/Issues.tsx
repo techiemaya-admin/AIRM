@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,13 +45,13 @@ export default function Issues() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
-  
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [newIssueDescription, setNewIssueDescription] = useState("");
   const [newIssueProjectName, setNewIssueProjectName] = useState("");
   const [newIssuePriority, setNewIssuePriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
-  
+
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterAssignee, setFilterAssignee] = useState<string>('all');
 
@@ -60,21 +60,21 @@ export default function Issues() {
       try {
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         if (!userData.id) {
-        navigate("/auth");
-        return;
-      }
+          navigate("/auth");
+          return;
+        }
 
         setCurrentUser(userData);
         const currentUser = await api.auth.getMe() as any;
         setIsAdmin(currentUser?.user?.role === 'admin');
-      await loadLabels();
-      await loadUsers();
-      await loadIssues();
+        await loadLabels();
+        await loadUsers();
+        await loadIssues();
       } catch (error) {
         console.error('Error initializing page:', error);
         navigate("/auth");
       } finally {
-      setLoading(false);
+        setLoading(false);
       }
     };
 
@@ -105,16 +105,16 @@ export default function Issues() {
   const loadIssues = async () => {
     try {
       const params: any = {};
-    if (filterStatus !== 'all') {
+      if (filterStatus !== 'all') {
         params.status = filterStatus;
       }
       if (filterAssignee !== 'all') {
         params.assignee = filterAssignee;
-    }
+      }
 
       const response = await api.issues.getAll(params) as any;
       const issuesData = response.issues || response || [];
-      
+
       // Transform issues to match interface
       const transformedIssues = issuesData.map((issue: any) => ({
         ...issue,
@@ -383,7 +383,7 @@ export default function Issues() {
                 id="project"
                 value={newIssueProjectName}
                 onChange={(e) => setNewIssueProjectName(e.target.value)}
-                placeholder="e.g., VCP Automation"
+                placeholder="e.g., Pulse"
               />
             </div>
             <div>

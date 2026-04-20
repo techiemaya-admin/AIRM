@@ -4,7 +4,7 @@
  * LAD Architecture: Uses SDK hooks only
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { useExitRequests, useExitRequest, useExitMutation } from '@/sdk/features/exit-formalities';
+import { useExitRequests, useExitRequest, useExitMutation, useCalculateSettlement } from '@/sdk/features/exit-formalities';
 import type { ExitStatus } from '@/sdk/features/exit-formalities';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useUsers } from '@/hooks/useUsers';
+import { useExitAssetRecovery, useExitDeprovisioning, useExitCompliance, useExitSettlementDetails, useExitDues, useExitFeatureMutation } from './hooks/useExitFeatures';
 import {
   LogOut,
   Search,
@@ -35,7 +38,6 @@ import {
   Percent,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import * as exitAPI from './services/exit-formalitiesService';
 import { SettlementTab } from './components/SettlementTab';
 import { DocumentGenerator } from './components/DocumentGenerator';
 import { TableSkeleton } from '@/components/PageSkeletons';
@@ -50,22 +52,12 @@ const ExitFormalities = () => {
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isInitiateOpen, setIsInitiateOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  // New feature data states
-  const [assets, setAssets] = useState<any[]>([]);
-  const [deprovisioning, setDeprovisioning] = useState<any[]>([]);
-  const [settlement, setSettlement] = useState<any>(null);
-  const [payableDues, setPayableDues] = useState<any[]>([]);
-  const [recoverableDues, setRecoverableDues] = useState<any[]>([]);
-  const [pfManagement, setPFManagement] = useState<any>(null);
-  const [gratuity, setGratuity] = useState<any>(null);
-  const [compliance, setCompliance] = useState<any[]>([]);
-  const [progress, setProgress] = useState<number>(0);
-  const [risks, setRisks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data: currentUser } = useCurrentUser();
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'hr';
 
   const [initiateForm, setInitiateForm] = useState({
+    user_id: '',
     resignation_date: '',
     last_working_day: '',
     reason_category: '',
@@ -74,77 +66,57 @@ const ExitFormalities = () => {
     exit_type: 'Resignation' as 'Resignation' | 'Termination' | 'Absconded' | 'Contract End',
   });
 
+  const [pfManagement, setPFManagement] = useState<any>(null);
+  const [gratuity, setGratuity] = useState<any>(null);
+  const [risks, setRisks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const filters = {
     status: statusFilter !== 'all' ? statusFilter : undefined,
   };
 
-  const { data: exitRequests = [], isLoading, refetch } = useExitRequests(filters);
-  const { data: exitRequestDetail, isLoading: detailLoading, refetch: refetchDetail } = useExitRequest(selectedExit);
+  const { data: exitRequests = [], isLoading: requestsLoading, refetch } = useExitRequests(filters);
+  const { data: exitRequestDetail, isLoading: detailLoading } = useExitRequest(selectedExit);
   const mutations = useExitMutation();
+  const { data: usersData = [] } = useUsers();
 
-  // Check admin status
-  useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    setIsAdmin(userData.role === 'admin' || userData.role === 'hr');
-  }, []);
+  // Feature Hooks
+  const { data: assetsData } = useExitAssetRecovery(selectedExit);
+  const { data: deprovisioningData } = useExitDeprovisioning(selectedExit);
+  const { data: complianceData } = useExitCompliance(selectedExit);
+  const { data: settlementData } = useExitSettlementDetails(selectedExit);
+  const { data: duesData } = useExitDues(selectedExit);
+  const featureMutations = useExitFeatureMutation();
+  const calculateSettlementMutation = useCalculateSettlement();
 
-  // Load feature data when exit is selected
-  useEffect(() => {
-    if (selectedExit && isDetailOpen) {
-      loadFeatureData();
-    }
-  }, [selectedExit, isDetailOpen, activeTab]);
+  const assets = assetsData?.assets || [];
+  const deprovisioning = deprovisioningData?.deprovisioning || [];
+  const compliance = complianceData?.compliance || [];
+  const settlement = settlementData?.settlement || null;
+  const payableDues = duesData?.payable || [];
+  const recoverableDues = duesData?.recoverable || [];
 
-  const loadFeatureData = async () => {
-    if (!selectedExit) return;
-    setLoading(true);
-    try {
-      // Load progress
-      const progressData = await exitAPI.getExitProgress(selectedExit);
-      setProgress(progressData.progress_percentage);
+  const progress = useMemo(() => {
+    if (!exitRequestDetail?.exit_request) return 0;
+    const req = exitRequestDetail.exit_request;
 
-      // Load based on active tab
-      switch (activeTab) {
-        case 'assets':
-          const assetsData = await exitAPI.getAssetRecovery(selectedExit);
-          setAssets(assetsData.assets);
-          break;
-        case 'deprovisioning':
-          const deprovisioningData = await exitAPI.getAccessDeprovisioning(selectedExit);
-          setDeprovisioning(deprovisioningData.deprovisioning);
-          break;
-        case 'settlement':
-          const settlementData = await exitAPI.getSettlement(selectedExit);
-          setSettlement(settlementData.settlement);
-          const payableData = await exitAPI.getPayableDues(selectedExit);
-          setPayableDues(payableData.dues);
-          const recoverableData = await exitAPI.getRecoverableDues(selectedExit);
-          setRecoverableDues(recoverableData.dues);
-          break;
-        case 'pf-gratuity':
-          const pfData = await exitAPI.getPFManagement(selectedExit);
-          setPFManagement(pfData.pf_management);
-          const gratuityData = await exitAPI.getGratuity(selectedExit);
-          setGratuity(gratuityData.gratuity);
-          break;
-        case 'compliance':
-          const complianceData = await exitAPI.getComplianceChecklist(selectedExit);
-          setCompliance(complianceData.compliance);
-          break;
-        case 'progress':
-          const risksData = await exitAPI.getAssetRisks(selectedExit);
-          setRisks(risksData.risks);
-          break;
-      }
-    } catch (error: any) {
-      console.error('Error loading feature data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const statusProgress: Record<string, number> = {
+      'initiated': 10,
+      'manager_approved': 20,
+      'hr_approved': 40,
+      'clearance_completed': 60,
+      'settlement_pending': 80,
+      'completed': 100,
+      'rejected': 0,
+    };
+
+    return statusProgress[req.status] || 0;
+  }, [exitRequestDetail]);
+
+  const isLoading = requestsLoading || (selectedExit && detailLoading);
 
   // Filter by search query
-  const filteredExits = exitRequests.filter((exit) => {
+  const filteredExits = exitRequests.filter((exit: any) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -157,18 +129,32 @@ const ExitFormalities = () => {
 
   const handleInitiateExit = async () => {
     if (!initiateForm.resignation_date || !initiateForm.last_working_day) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
 
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      let targetFullName = userData.full_name || 'Employee';
+      let targetUserId = userData.id;
+      let targetEmployeeId = userData.employee_id;
+      let targetDepartment = userData.department;
+
+      if (isAdmin && initiateForm.user_id) {
+        const selectedUser = usersData.find((u: any) => u.id === initiateForm.user_id);
+        if (selectedUser) {
+          targetFullName = selectedUser.full_name || selectedUser.name || 'Employee';
+          targetUserId = selectedUser.id;
+          targetEmployeeId = selectedUser.employee_id;
+          targetDepartment = selectedUser.department;
+        }
+      }
+
       await mutations.createExitRequest.mutateAsync({
-        full_name: userData.full_name || 'Employee',
+        user_id: targetUserId,
+        employee_id: targetEmployeeId,
+        full_name: targetFullName,
+        department: targetDepartment,
         resignation_date: initiateForm.resignation_date,
         last_working_day: initiateForm.last_working_day,
         reason_category: initiateForm.reason_category,
@@ -177,12 +163,10 @@ const ExitFormalities = () => {
         exit_type: initiateForm.exit_type,
       });
 
-      toast({
-        title: 'Success',
-        description: 'Exit request submitted successfully',
-      });
+      toast({ title: 'Success', description: 'Exit request submitted successfully' });
       setIsInitiateOpen(false);
       setInitiateForm({
+        user_id: '',
         resignation_date: '',
         last_working_day: '',
         reason_category: '',
@@ -192,30 +176,19 @@ const ExitFormalities = () => {
       });
       refetch();
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to submit exit request',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message || 'Failed to submit exit request', variant: 'destructive' });
     }
   };
 
   const handleApprove = async (id: string, role: 'manager' | 'hr') => {
     try {
       await mutations.approveExitRequest.mutateAsync({ id, data: { role } });
-      toast({
-        title: 'Success',
-        description: `Exit request ${role === 'manager' ? 'manager' : 'HR'} approved`,
-      });
+      toast({ title: 'Success', description: `Exit request ${role === 'manager' ? 'manager' : 'HR'} approved` });
       refetch();
       setIsDetailOpen(false);
       setSelectedExit(null);
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to approve',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message || 'Failed to approve', variant: 'destructive' });
     }
   };
 
@@ -223,19 +196,15 @@ const ExitFormalities = () => {
     if (!selectedExit) return;
     try {
       setLoading(true);
-      const result = await exitAPI.calculateSettlement(selectedExit);
-      setSettlement(result.settlement);
-      toast({
-        title: 'Success',
-        description: 'Settlement calculated successfully',
-      });
-      await loadFeatureData();
+      toast({ title: 'Processing', description: 'Calculating settlement...' });
+
+      // Real implementation using the mutation hook
+      await calculateSettlementMutation.mutateAsync({ exitRequestId: selectedExit });
+
+      toast({ title: 'Success', description: 'Settlement calculated successfully' });
+      refetch();
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to calculate settlement',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message || 'Failed to calculate settlement', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -243,24 +212,15 @@ const ExitFormalities = () => {
 
   const getStatusColor = (status: ExitStatus): string => {
     switch (status) {
-      case 'initiated':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'manager_approved':
-        return 'bg-blue-100 text-blue-800';
-      case 'hr_approved':
-        return 'bg-purple-100 text-purple-800';
-      case 'clearance_pending':
-        return 'bg-orange-100 text-orange-800';
-      case 'clearance_completed':
-        return 'bg-green-100 text-green-800';
-      case 'settlement_pending':
-        return 'bg-indigo-100 text-indigo-800';
-      case 'completed':
-        return 'bg-gray-100 text-gray-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'initiated': return 'bg-yellow-100 text-yellow-800';
+      case 'manager_approved': return 'bg-blue-100 text-blue-800';
+      case 'hr_approved': return 'bg-purple-100 text-purple-800';
+      case 'clearance_pending': return 'bg-orange-100 text-orange-800';
+      case 'clearance_completed': return 'bg-green-100 text-green-800';
+      case 'settlement_pending': return 'bg-indigo-100 text-indigo-800';
+      case 'completed': return 'bg-gray-100 text-gray-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -483,8 +443,8 @@ const ExitFormalities = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
                       }`}
                   >
                     <div className="flex items-center space-x-2">
@@ -592,10 +552,10 @@ const ExitFormalities = () => {
                                 </div>
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs font-medium ${item.status === 'approved'
-                                      ? 'bg-green-100 text-green-800'
-                                      : item.status === 'rejected'
-                                        ? 'bg-red-100 text-red-800'
-                                        : 'bg-yellow-100 text-yellow-800'
+                                    ? 'bg-green-100 text-green-800'
+                                    : item.status === 'rejected'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-yellow-100 text-yellow-800'
                                     }`}
                                 >
                                   {item.status.toUpperCase()}
@@ -646,10 +606,10 @@ const ExitFormalities = () => {
                                 </div>
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs font-medium ${asset.recovery_status === 'returned'
-                                      ? 'bg-green-100 text-green-800'
-                                      : asset.recovery_status === 'lost' || asset.recovery_status === 'damaged'
-                                        ? 'bg-red-100 text-red-800'
-                                        : 'bg-yellow-100 text-yellow-800'
+                                    ? 'bg-green-100 text-green-800'
+                                    : asset.recovery_status === 'lost' || asset.recovery_status === 'damaged'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-yellow-100 text-yellow-800'
                                     }`}
                                 >
                                   {asset.recovery_status.toUpperCase()}
@@ -676,8 +636,8 @@ const ExitFormalities = () => {
                           {isAdmin && (
                             <Button onClick={async () => {
                               try {
-                                await exitAPI.autoRevokeAccess(selectedExit);
-                                await loadFeatureData();
+                                await featureMutations.autoRevokeAccess.mutateAsync(selectedExit!);
+                                refetch();
                                 toast({ title: 'Success', description: 'Access auto-revoked' });
                               } catch (error: any) {
                                 toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -698,8 +658,8 @@ const ExitFormalities = () => {
                                 </div>
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs font-medium ${item.status === 'revoked'
-                                      ? 'bg-green-100 text-green-800'
-                                      : 'bg-yellow-100 text-yellow-800'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
                                     }`}
                                 >
                                   {item.status.toUpperCase()}
@@ -718,7 +678,7 @@ const ExitFormalities = () => {
                   <SettlementTab
                     exitRequest={exitRequestDetail.exit_request}
                     isAdmin={isAdmin}
-                    onRefresh={loadFeatureData}
+                    onRefresh={refetch}
                   />
                 )}
 
@@ -802,10 +762,10 @@ const ExitFormalities = () => {
                               </div>
                               <span
                                 className={`px-3 py-1 rounded-full text-xs font-medium ${item.status === 'completed'
-                                    ? 'bg-green-100 text-green-800'
-                                    : item.status === 'not_applicable'
-                                      ? 'bg-gray-100 text-gray-800'
-                                      : 'bg-yellow-100 text-yellow-800'
+                                  ? 'bg-green-100 text-green-800'
+                                  : item.status === 'not_applicable'
+                                    ? 'bg-gray-100 text-gray-800'
+                                    : 'bg-yellow-100 text-yellow-800'
                                   }`}
                               >
                                 {item.status.toUpperCase()}
@@ -862,12 +822,12 @@ const ExitFormalities = () => {
                                   </div>
                                   <span
                                     className={`px-3 py-1 rounded-full text-xs font-medium ${risk.risk_level === 'critical'
-                                        ? 'bg-red-100 text-red-800'
-                                        : risk.risk_level === 'high'
-                                          ? 'bg-orange-100 text-orange-800'
-                                          : risk.risk_level === 'medium'
-                                            ? 'bg-yellow-100 text-yellow-800'
-                                            : 'bg-blue-100 text-blue-800'
+                                      ? 'bg-red-100 text-red-800'
+                                      : risk.risk_level === 'high'
+                                        ? 'bg-orange-100 text-orange-800'
+                                        : risk.risk_level === 'medium'
+                                          ? 'bg-yellow-100 text-yellow-800'
+                                          : 'bg-blue-100 text-blue-800'
                                       }`}
                                   >
                                     {risk.risk_level.toUpperCase()}
@@ -963,6 +923,24 @@ const ExitFormalities = () => {
             <DialogTitle>Initiate Exit Request</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {isAdmin && (
+              <div>
+                <Label htmlFor="exit_user">Select Employee *</Label>
+                <select
+                  id="exit_user"
+                  value={initiateForm.user_id}
+                  onChange={(e) => setInitiateForm({ ...initiateForm, user_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Ensure Employee is selected --</option>
+                  {usersData.map((user: any) => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name || user.name} {user.employee_id ? `(${user.employee_id})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <Label htmlFor="exit_type">Exit Type *</Label>
               <select

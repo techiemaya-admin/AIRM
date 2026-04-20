@@ -16,10 +16,16 @@ const router = express.Router();
 router.get('/commits', authenticate, gitController.getCommits);
 
 /**
- * Get all issues from GitLab
+ * Get all issues from GitHub
  * GET /api/git/issues
  */
 router.get('/issues', authenticate, gitController.getIssues);
+
+/**
+ * Create a new issue on GitHub
+ * POST /api/git/issues
+ */
+router.post('/issues', authenticate, gitController.createIssue);
 
 /**
  * Get commit details with diff
@@ -34,6 +40,18 @@ router.get('/commits/:sha', authenticate, gitController.getCommit);
 router.get('/issues/:id', authenticate, gitController.getIssue);
 
 /**
+ * Add a comment to a GitHub issue
+ * POST /api/git/issues/:id/comments
+ */
+router.post('/issues/:id/comments', authenticate, gitController.addComment);
+
+/**
+ * Update a GitHub issue (labels, assignees, state)
+ * PATCH /api/git/issues/:id
+ */
+router.patch('/issues/:id', authenticate, gitController.updateIssue);
+
+/**
  * Sync GitLab users with local users
  * POST /api/git/sync-users
  */
@@ -46,9 +64,27 @@ router.post('/sync-users', authenticate, gitController.syncUsers);
 router.post('/sync-issues', authenticate, gitController.syncIssues);
 
 /**
+ * Get all repositories
+ * GET /api/git/repos
+ */
+router.get('/repos', authenticate, gitController.getRepos);
+
+/**
  * Get mapped users (GitLab + local)
  * GET /api/git/users
  */
 router.get('/users', authenticate, gitController.getMappedUsers);
+
+/**
+ * Get repo labels
+ */
+router.get('/repo/labels', authenticate, gitController.getRepoLabels);
+
+
+/**
+ * Get repo assignees
+ */
+router.get('/repo/assignees', authenticate, gitController.getRepoAssignees);
+
 
 export default router;

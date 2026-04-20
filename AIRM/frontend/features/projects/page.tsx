@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 import { Trash2, AlertTriangle, AlertCircle } from "lucide-react";
 import { CardSkeleton } from "@/components/PageSkeletons";

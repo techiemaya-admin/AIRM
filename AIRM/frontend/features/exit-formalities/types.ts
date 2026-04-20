@@ -39,7 +39,7 @@ export interface ExitRequest {
 /**
  * Exit Status Types
  */
-export type ExitStatus = 
+export type ExitStatus =
   | 'initiated'
   | 'manager_approved'
   | 'hr_approved'
@@ -115,6 +115,7 @@ export interface ExitActivityLog {
  * Create Exit Request Request
  */
 export interface CreateExitRequestRequest {
+  user_id?: string;
   employee_id?: string;
   full_name: string;
   department?: string;

@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// import { ... } from '../services/leave-calendarService';
+// import { ... } from '@sdk/leave-calendarService';
 
 // Add Leave Calendar-specific hooks here as needed
 

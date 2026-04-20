@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// import { ... } from '../services/timesheetService';
+// import { ... } from '@sdk/timesheetService';
 
 // Add Timesheet-specific hooks here as needed
 

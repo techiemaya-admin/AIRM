@@ -35,7 +35,7 @@ import {
   Percent,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import * as exitAPI from './api';
+import * as exitAPI from '@sdk/exit-formalitiesApi';
 
 type ExitStatusFilter = 'all' | ExitStatus;
 type DetailTab = 'overview' | 'assets' | 'deprovisioning' | 'settlement' | 'pf-gratuity' | 'compliance' | 'progress';

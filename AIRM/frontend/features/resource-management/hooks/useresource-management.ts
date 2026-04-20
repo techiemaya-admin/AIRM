@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// import { ... } from '../services/resource-managementService';
+// import { ... } from '@sdk/resource-managementService';
 
 // Add Resource Management-specific hooks here as needed
 

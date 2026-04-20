@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Clock, Play, Square, Pause, FolderKanban } from "lucide-react";
@@ -557,7 +557,7 @@ const TimeClock = () => {
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground">
-                    Started: {format(new Date(currentEntry.clock_in), "PPp")}
+                    Started: {currentEntry.clock_in ? format(new Date(currentEntry.clock_in), "PPp") : "Unknown"}
                   </p>
                   {currentEntry.paused_duration && currentEntry.paused_duration > 0 && (
                     <p className="text-sm text-muted-foreground">
@@ -712,7 +712,7 @@ const TimeClock = () => {
                         <span>{entry.project_name || "No Project"}</span>
                       </div>
                       <p className="text-sm text-muted-foreground ml-4">
-                        {format(new Date(entry.clock_in), "PPp")}
+                        {entry.clock_in ? format(new Date(entry.clock_in), "PPp") : "Unknown"}
                         {entry.clock_out &&
                           ` - ${format(new Date(entry.clock_out), "PPp")}`}
                       </p>

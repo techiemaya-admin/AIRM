@@ -11,12 +11,12 @@ import * as utils from './timesheet-utils.service.js';
  */
 export async function getTimesheets(userId, weekStart) {
   const timesheets = await timesheetModel.getTimesheets(userId, weekStart);
-  
+
   // Fetch entries for each timesheet
   const timesheetsWithEntries = [];
   for (const t of timesheets) {
     const entries = await timesheetModel.getTimesheetEntries(t.id);
-    
+
     timesheetsWithEntries.push({
       ...t,
       week_start: t.week_start ? new Date(t.week_start).toISOString().split('T')[0] : t.week_start,
@@ -36,7 +36,7 @@ export async function getTimesheets(userId, weekStart) {
       })),
     });
   }
-  
+
   return timesheetsWithEntries;
 }
 
@@ -49,7 +49,7 @@ export async function saveTimesheet(userId, weekStart, entries) {
   // Get or create timesheet
   let timesheet = await timesheetModel.getTimesheetByWeek(userId, weekStart);
   let timesheetId;
-  
+
   if (timesheet) {
     timesheetId = timesheet.id;
   } else {
@@ -84,10 +84,7 @@ export async function saveTimesheet(userId, weekStart, entries) {
     // Calculate total hours
     const totalHours = monHours + tueHours + wedHours + thuHours + friHours + satHours + sunHours;
 
-    // Skip entries with no hours
-    if (totalHours === 0) {
-      continue;
-    }
+    // Removed totalHours === 0 skip, allow saving tasks with 0 hours
 
     await timesheetModel.createTimesheetEntry(timesheetId, {
       project: entry.project,
@@ -100,7 +97,7 @@ export async function saveTimesheet(userId, weekStart, entries) {
       sat_hours: satHours,
       sun_hours: sunHours,
     });
-    
+
     insertedCount++;
   }
 
@@ -115,7 +112,7 @@ export async function saveTimesheet(userId, weekStart, entries) {
  */
 export async function getTimesheetById(timesheetId) {
   const timesheet = await timesheetModel.getTimesheetById(timesheetId);
-  
+
   if (!timesheet) {
     throw new Error('Timesheet not found');
   }

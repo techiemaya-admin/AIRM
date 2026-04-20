@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { uploadDocument } from '../services/documentService';
+import { uploadDocument } from '@sdk/documentService';
 import { DOCUMENT_CATEGORIES, DOCUMENT_TYPES } from '../types';
 import { toast } from 'sonner';
 

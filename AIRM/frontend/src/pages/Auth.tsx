@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 const logo = "/techiemaya-logo.png";
 
@@ -13,7 +13,6 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [magicLinkUrl, setMagicLinkUrl] = useState("");
   const [lastResponse, setLastResponse] = useState<any>(null);
 
   useEffect(() => {
@@ -70,32 +69,7 @@ const Auth = () => {
 
       setMagicLinkSent(true);
 
-      // Always capture the magic link if provided (for testing/development)
-      // Check multiple possible response fields
-      const linkUrl = response.frontendUrl || response.magicLink || response.magic_link;
-      console.log('🔍 Checking for magic link URL:', {
-        frontendUrl: response.frontendUrl,
-        magicLink: response.magicLink,
-        magic_link: response.magic_link,
-        found: linkUrl,
-        fullResponse: response
-      });
 
-      if (linkUrl) {
-        console.log('✅ Magic link URL captured:', linkUrl);
-        setMagicLinkUrl(linkUrl);
-      } else {
-        console.warn('⚠️ No magic link URL in response. Full response:', JSON.stringify(response, null, 2));
-        // Try to construct the link from token if available
-        if (response.token) {
-          const frontendUrl = window.location.origin;
-          const constructedLink = `${frontendUrl}/auth/verify?token=${response.token}`;
-          console.log('🔧 Constructed magic link from token:', constructedLink);
-          setMagicLinkUrl(constructedLink);
-        } else {
-          console.error('❌ No magic link URL or token found in response');
-        }
-      }
 
       if (response.emailSent) {
         toast({
@@ -106,7 +80,7 @@ const Auth = () => {
         // Fallback for development when email service is not configured
         toast({
           title: "Magic Link Generated! 🔗",
-          description: response.note || "Email service unavailable. Use the test link below.",
+          description: response.note || "Magic link generated successfully.",
         });
       }
 
@@ -129,16 +103,6 @@ const Auth = () => {
     }
   };
 
-  const handleMagicLinkClick = () => {
-    if (magicLinkUrl) {
-      // Extract token from URL and verify
-      const url = new URL(magicLinkUrl);
-      const token = url.searchParams.get('token');
-      if (token) {
-        verifyMagicLink(token);
-      }
-    }
-  };
 
   // If verifying magic link, show loading state
   if (searchParams.get('token')) {
@@ -203,41 +167,20 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Only show test link in dev/fallback mode — never when email was sent */}
-              {!lastResponse?.emailSent && magicLinkUrl && (
-                <div className="text-center">
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-yellow-800">
-                      🚧 <strong>Development Mode:</strong> Email service not configured.
-                    </p>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Use the link below to access your account:
-                  </p>
-                  <Button
-                    onClick={handleMagicLinkClick}
-                    className="w-full mb-4"
-                  >
-                    🔗 Use Magic Link
-                  </Button>
-                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded break-all">
-                    <strong>Test Link:</strong> {magicLinkUrl}
-                  </div>
-                </div>
-              )}
 
-              <div className="text-center">
+
+
+              <div className="text-center mt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setMagicLinkSent(false);
-                    setMagicLinkUrl("");
                     setEmail("");
                     setLastResponse(null);
                   }}
                   className="text-primary hover:underline text-sm"
                 >
-                  📧 Send to different email
+                  <span role="img" aria-label="email" className="mr-1">📧</span> Send to different email
                 </button>
               </div>
             </div>

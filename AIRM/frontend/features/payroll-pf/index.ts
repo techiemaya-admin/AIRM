@@ -4,7 +4,7 @@
  */
 
 // Services
-export * from './services/payroll-pfService';
+export * from '@sdk/payroll-pfService';
 
 // Hooks
 export {

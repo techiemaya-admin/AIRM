@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// import { ... } from '../services/gitService';
+// import { ... } from '@sdk/gitService';
 
 // Add Git-specific hooks here as needed
 

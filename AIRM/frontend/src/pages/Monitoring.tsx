@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
-import { Clock, MapPin, Pause, RefreshCw, MessageSquare } from "lucide-react";
+import { Clock, MapPin, Pause, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
-import { Notifications } from "@/components/Notifications";
 
 
 
@@ -51,7 +50,7 @@ const Monitoring = () => {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [allEntries, setAllEntries] = useState<TimeEntry[]>([]); // Store all entries
   const [selectedUserId, setSelectedUserId] = useState<string>("all"); // Filter state
-  const [users, setUsers] = useState<Array<{user_id: string, email: string}>>([]);
+  const [users, setUsers] = useState<Array<{ user_id: string, email: string }>>([]);
   const [summaryStats, setSummaryStats] = useState({
     totalEntries: 0,
     activeEntries: 0,
@@ -69,22 +68,22 @@ const Monitoring = () => {
       // Check localStorage first (faster and more reliable)
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const isAdminFromStorage = userData.role === 'admin';
-      
+
       // Also try to get from API as fallback
       let isAdminFromAPI = false;
       try {
         const currentUser = await api.auth.getMe() as any;
-        isAdminFromAPI = currentUser?.user?.role === "admin" || 
-                        currentUser?.role === "admin" ||
-                        currentUser?.data?.role === "admin";
+        isAdminFromAPI = currentUser?.user?.role === "admin" ||
+          currentUser?.role === "admin" ||
+          currentUser?.data?.role === "admin";
       } catch (apiError) {
         console.warn('Could not fetch user from API, using localStorage:', apiError);
       }
-      
+
       const isAdminUser = isAdminFromStorage || isAdminFromAPI;
       setIsAdmin(isAdminUser);
       setAdminCheckComplete(true);
-      
+
       if (!isAdminUser) {
         console.log('User is not admin');
         // Don't navigate immediately, let the component render the access denied message
@@ -102,7 +101,7 @@ const Monitoring = () => {
     setLoading(true);
     try {
       console.log('Loading monitoring data...');
-      
+
       // Load users and active entries in parallel
       const [usersResponse, activeResponse] = await Promise.all([
         api.users.getWithRoles().catch((err) => {
@@ -124,7 +123,7 @@ const Monitoring = () => {
       // Get recent entries (last 24 hours)
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       // Get entries from last 24 hours (admin can see all)
       const entriesResponse = await api.timesheets.getEntries({
         start_date: yesterday.toISOString()
@@ -136,15 +135,15 @@ const Monitoring = () => {
       console.log('Recent entries response:', entriesResponse);
 
       const allEntries = entriesResponse?.entries || [];
-      
+
       // Combine active entries with recent entries
       const activeEntries = activeResponse?.entries || [];
       const combinedEntries = [...activeEntries, ...allEntries];
-      
+
       console.log('Active entries:', activeEntries.length);
       console.log('Recent entries:', allEntries.length);
       console.log('Combined entries:', combinedEntries.length);
-      
+
       // Remove duplicates and get unique entries
       const uniqueEntries = Array.from(
         new Map(combinedEntries.map((e: any) => [e.id, e])).values()
@@ -161,16 +160,16 @@ const Monitoring = () => {
           project_name: entry.issue_project
         } : (entry.issue || null),
       }));
-      
+
       // For now, skip fetching clock-out comments via API (can be added later)
       // TODO: Add API endpoint for fetching issue comments
       const entriesWithComments = entriesWithEmail;
-      
+
       console.log('Final entries count:', entriesWithComments.length);
-      
+
       setAllEntries(entriesWithComments);
       setEntries(entriesWithComments);
-      
+
       const uniqueUsers = Array.from(
         new Map(
           entriesWithEmail.map((entry: TimeEntry) => [entry.user_id, { user_id: entry.user_id, email: entry.user_email || "Unknown" }])
@@ -236,13 +235,13 @@ const Monitoring = () => {
       try {
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         const token = localStorage.getItem('auth_token');
-        
+
         if (!userData.id || !token) {
           console.log('No user or token, redirecting to auth');
           navigate("/auth");
           return;
         }
-      
+
         console.log('Initializing monitoring for user:', userData.id);
         await checkAdminStatus();
       } catch (error: any) {
@@ -256,7 +255,7 @@ const Monitoring = () => {
         });
       }
     };
-    
+
     initMonitoring();
   }, [checkAdminStatus, navigate]);
 
@@ -352,15 +351,8 @@ const Monitoring = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 mr-14 md:mr-24">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Employee Monitoring</h1>
-          <div className="flex gap-2">
-            <Button onClick={loadAllActiveEntries} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            <Notifications />
-          </div>
         </div>
 
         {/* Summary Statistics Cards */}
@@ -374,7 +366,7 @@ const Monitoring = () => {
               <p className="text-xs text-gray-500 mt-1">Last 24 hours</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Employees</CardTitle>
@@ -388,7 +380,7 @@ const Monitoring = () => {
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Clocked Out Summary</CardTitle>
@@ -398,14 +390,14 @@ const Monitoring = () => {
                 {summaryStats.clockedOutEntries}
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                {summaryStats.clockedOutEntries > 0 
+                {summaryStats.clockedOutEntries > 0
                   ? `${Number(summaryStats.clockedOutHours || 0).toFixed(1)}h total`
                   : "No clock outs"
                 }
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Hours</CardTitle>
@@ -419,7 +411,7 @@ const Monitoring = () => {
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Unique Employees</CardTitle>
@@ -462,48 +454,47 @@ const Monitoring = () => {
                 {entries.map((entry) => (
                   <div
                     key={entry.id}
-                    className={`p-4 rounded-lg border ${
-                      entry.status === "paused"
-                        ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
-                        : entry.status === "clocked_out"
+                    className={`p-4 rounded-lg border ${entry.status === "paused"
+                      ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                      : entry.status === "clocked_out"
                         ? "bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800"
                         : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                    }`}
+                      }`}
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <h3 className="font-semibold text-lg mb-2">{entry.user_email}</h3>
-                        
+
                         <div className="space-y-2 text-sm">
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4" />
                             <span className="font-medium">Issue:</span>
                             <span>{entry.issue?.title || "N/A"}</span>
                           </div>
-                          
+
                           {entry.project_name && (
                             <div className="flex items-center gap-2">
                               <span className="font-medium">Project:</span>
                               <span>{entry.project_name}</span>
                             </div>
                           )}
-                          
+
                           <div className="flex items-center gap-2">
                             <span className="font-medium">Clock In:</span>
                             <span>{format(new Date(entry.clock_in), "MMM dd, yyyy hh:mm a")}</span>
                           </div>
-                          
+
                           {entry.clock_out && (
                             <div className="flex items-center gap-2">
                               <span className="font-medium">Clock Out:</span>
                               <span>{format(new Date(entry.clock_out), "MMM dd, yyyy hh:mm a")}</span>
                             </div>
                           )}
-                          
+
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{entry.clock_out ? "Total Time:" : "Elapsed Time:"}</span>
                             <span className="text-blue-600 dark:text-blue-400 font-semibold">
-                              {entry.clock_out 
+                              {entry.clock_out
                                 ? `${Number(entry.total_hours || 0).toFixed(2)}h`
                                 : getElapsedTime(entry.clock_in, entry.paused_duration || 0)}
                             </span>
@@ -511,13 +502,12 @@ const Monitoring = () => {
 
                           <div className="flex items-center gap-2">
                             <span className="font-medium">Status:</span>
-                            <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                              entry.status === "paused"
-                                ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100"
-                                : entry.status === "clocked_out"
+                            <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "paused"
+                              ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100"
+                              : entry.status === "clocked_out"
                                 ? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                 : "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
-                            }`}>
+                              }`}>
                               {entry.status === "paused" ? "⏸ Paused" : entry.status === "clocked_out" ? "⏹ Clocked Out" : "▶ Active"}
                             </span>
                           </div>
@@ -568,7 +558,7 @@ const Monitoring = () => {
                                 )}
                               </div>
                             </div>
-                            
+
                             {entry.latitude && entry.longitude && (
                               <a
                                 href={`https://www.google.com/maps?q=${entry.latitude},${entry.longitude}`}
@@ -616,45 +606,40 @@ const Monitoring = () => {
 
                         {/* Pause Details Card - Enhanced */}
                         {entry.pause_reason && (
-                          <div className={`p-3 rounded-lg border ${
-                            entry.status === "paused"
-                              ? "bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700"
-                              : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
-                          }`}>
+                          <div className={`p-3 rounded-lg border ${entry.status === "paused"
+                            ? "bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700"
+                            : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+                            }`}>
                             <div className="flex items-start gap-2">
-                              <Pause className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-                                entry.status === "paused"
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-gray-500 dark:text-gray-400"
-                              }`} />
+                              <Pause className={`h-5 w-5 flex-shrink-0 mt-0.5 ${entry.status === "paused"
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-gray-500 dark:text-gray-400"
+                                }`} />
                               <div className="flex-1">
-                                <p className={`font-medium text-sm mb-1 ${
-                                  entry.status === "paused"
-                                    ? "text-amber-900 dark:text-amber-100"
-                                    : "text-gray-700 dark:text-gray-300"
-                                }`}>
+                                <p className={`font-medium text-sm mb-1 ${entry.status === "paused"
+                                  ? "text-amber-900 dark:text-amber-100"
+                                  : "text-gray-700 dark:text-gray-300"
+                                  }`}>
                                   {entry.status === "paused" ? "Currently Paused" : "Pause History"}
                                 </p>
-                                <p className={`text-sm mb-2 ${
-                                  entry.status === "paused"
-                                    ? "text-amber-800 dark:text-amber-200"
-                                    : "text-gray-600 dark:text-gray-400"
-                                }`}>
+                                <p className={`text-sm mb-2 ${entry.status === "paused"
+                                  ? "text-amber-800 dark:text-amber-200"
+                                  : "text-gray-600 dark:text-gray-400"
+                                  }`}>
                                   <span className="font-medium">Reason:</span> {entry.pause_reason}
                                 </p>
-                                
+
                                 {entry.pause_start && (
                                   <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                                     <span className="font-medium">Paused at:</span> {format(new Date(entry.pause_start), "MMM dd, yyyy hh:mm a")}
                                   </div>
                                 )}
-                                
+
                                 {entry.paused_duration && entry.paused_duration > 0 && (
-                                  <div className={`text-xs mt-1 ${
-                                    entry.status === "paused"
-                                      ? "text-amber-600 dark:text-amber-400"
-                                      : "text-gray-500 dark:text-gray-400"
-                                  }`}>
+                                  <div className={`text-xs mt-1 ${entry.status === "paused"
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "text-gray-500 dark:text-gray-400"
+                                    }`}>
                                     <span className="font-medium">Total paused time:</span> {(entry.paused_duration * 60).toFixed(0)} minutes ({(entry.paused_duration).toFixed(2)} hours)
                                   </div>
                                 )}

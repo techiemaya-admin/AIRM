@@ -1,6 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useIssues, useIssueMutation } from "@/hooks/useIssues";
+import { useLabels, useLabelMutation } from "@/hooks/useLabels";
+import { useUsers } from "@/hooks/useUsers";
+import { useProjects } from "@/hooks/useProjects";
+import { api } from "@sdk/api";
 import { Notifications } from '@/components/Notifications';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,13 +51,30 @@ interface UserProfile {
 export default function Issues({ initialProject = 'all' }: { initialProject?: string }) {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [labels, setLabels] = useState<Label[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
+
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterAssignee, setFilterAssignee] = useState<string>('all');
+  const [filterProject, setFilterProject] = useState<string>(initialProject);
+  const [filterSearch, setFilterSearch] = useState<string>("");
+  const [view, setView] = useState<'list' | 'kanban' | 'burnout'>('kanban');
+
+  // React Query Hooks
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser();
+  const { data: issuesData = [], isLoading: issuesLoading } = useIssues({
+    status: filterStatus,
+    assignee: filterAssignee,
+    project: filterProject,
+    search: filterSearch
+  });
+  const { data: labels = [], isLoading: labelsLoading } = useLabels();
+  const labelMutation = useLabelMutation();
+  const { data: users = [], isLoading: usersLoading } = useUsers();
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const issueMutation = useIssueMutation();
+
+  const isAdmin = currentUser?.role === 'admin';
+  const loading = userLoading || issuesLoading || labelsLoading || usersLoading || projectsLoading;
+  const issues = issuesData as Issue[];
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newIssueTitle, setNewIssueTitle] = useState("");
@@ -65,11 +87,6 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
   const [labelSearch, setLabelSearch] = useState("");
   const [customLabelName, setCustomLabelName] = useState("");
   const [customLabelColor, setCustomLabelColor] = useState("#6366f1");
-
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterAssignee, setFilterAssignee] = useState<string>('all');
-  const [filterProject, setFilterProject] = useState<string>(initialProject);
-  const [view, setView] = useState<'list' | 'kanban' | 'burnout'>('kanban');
 
   // Custom columns support
   const [availableColumns, setAvailableColumns] = useState<Array<{ id: string, name: string, color: string, description?: string }>>(() => {
@@ -108,111 +125,10 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
 
 
   useEffect(() => {
-    const initPage = async () => {
-      try {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        if (!userData.id) {
-          navigate("/auth");
-          return;
-        }
-
-        setCurrentUser(userData);
-
-        // Fetch metrics, labels, users, issues, and auth check in parallel
-        const results = await Promise.all([
-          loadLabels(),
-          loadUsers(),
-          api.auth.getMe(),
-          loadProjects()
-        ]) as any;
-
-        const currentUserData = results[2];
-        const lsUserData = JSON.parse(localStorage.getItem('user') || '{}');
-        setIsAdmin(
-          currentUserData?.user?.role === 'admin' ||
-          currentUserData?.role === 'admin' ||
-          lsUserData?.role === 'admin'
-        );
-      } catch (error) {
-        console.error('Error initializing page:', error);
-        navigate("/auth");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initPage();
-  }, [navigate]);
-
-  const loadLabels = async () => {
-    try {
-      const response = await api.labels.getAll() as any;
-      setLabels(response.labels || response || []);
-    } catch (error) {
-      console.error("Error loading labels:", error);
-      setLabels([]);
+    if (!userLoading && !currentUser?.id) {
+      navigate("/auth");
     }
-  };
-
-  const loadUsers = async () => {
-    try {
-      const response = await api.users.getWithRoles() as any;
-      const usersData = response.users || response || [];
-      setUsers(usersData);
-    } catch (error) {
-      console.error("Error loading users:", error);
-      setUsers([]);
-    }
-  };
-
-  const loadProjects = async () => {
-    try {
-      const response = await api.projects.getAll() as any;
-      setProjects(response.projects || response || []);
-    } catch (error) {
-      console.error("Error loading projects:", error);
-      setProjects([]);
-    }
-  };
-
-  const loadIssues = async () => {
-    try {
-      const params: any = {};
-      if (filterStatus !== 'all') {
-        params.status = filterStatus;
-      }
-      if (filterAssignee !== 'all') {
-        params.assignee = filterAssignee;
-      }
-      if (filterProject !== 'all') {
-        params.project = filterProject;
-      }
-
-      const response = await api.issues.getAll(params) as any;
-      const issuesData = response.issues || response || [];
-
-      // Transform issues to match interface
-      const transformedIssues = issuesData.map((issue: any) => ({
-        ...issue,
-        assignees: issue.assignees || [],
-        labels: issue.labels || []
-      }));
-
-      setIssues(transformedIssues);
-    } catch (error) {
-      console.error("Error loading issues:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load issues",
-        variant: "destructive",
-      });
-      setIssues([]);
-    }
-  };
-
-  useEffect(() => {
-    loadIssues();
-  }, [filterStatus, filterAssignee, filterProject]);
+  }, [currentUser, userLoading, navigate]);
 
   useEffect(() => {
     if (initialProject && initialProject !== filterProject) {
@@ -221,7 +137,7 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
         setNewIssueProjectName(initialProject);
       }
     }
-  }, [initialProject]);
+  }, [initialProject, filterProject]);
 
   useEffect(() => {
     if (filterProject !== 'all') {
@@ -256,21 +172,14 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
 
     // Status changed
     if (destination.droppableId !== source.droppableId) {
-      const issueId = parseInt(draggableId);
+      const issueId = draggableId;
       const newStatus = destination.droppableId as 'open' | 'in_progress' | 'closed';
 
-      // Optimistic update
-      const updatedIssues = issues.map(issue => {
-        if (issue.id === issueId) {
-          return { ...issue, status: newStatus };
-        }
-        return issue;
-      });
-      setIssues(updatedIssues);
-
-      // API call
       try {
-        await api.issues.update(draggableId, { status: newStatus });
+        await issueMutation.update.mutateAsync({
+          id: issueId,
+          data: { status: newStatus }
+        });
         toast({
           title: "Status Updated",
           description: `Issue moved to ${newStatus.replace('_', ' ')}`,
@@ -282,8 +191,6 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
           description: "Failed to update status",
           variant: "destructive",
         });
-        // Revert on error (could reload from server)
-        await loadIssues();
       }
     }
   };
@@ -298,11 +205,9 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
       return;
     }
 
-    setLoading(true);
-
     try {
       // First create the issue
-      const response = await api.issues.create({
+      const response = await issueMutation.create.mutateAsync({
         title: newIssueTitle,
         description: newIssueDescription,
         project_name: newIssueProjectName,
@@ -333,15 +238,12 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
       setNewIssueStatus('open');
       setNewIssueEstimatedHours("0");
       setNewIssueLabels([]);
-      await loadIssues();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to create issue",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -356,16 +258,13 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
   const handleCreateLabel = async () => {
     if (!customLabelName.trim()) return;
     try {
-      const newLabel = await api.labels.create({
+      const response = await labelMutation.create.mutateAsync({
         name: customLabelName,
         color: customLabelColor,
         description: ""
       }) as any;
 
-      const newLabelId = newLabel.id || newLabel.label?.id;
-
-      // Refresh labels list
-      await loadLabels();
+      const newLabelId = response.id || response.label?.id;
 
       // Auto-select the new label
       if (newLabelId) {
@@ -390,12 +289,11 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
   const handleDeleteIssue = async (id: number) => {
     if (!confirm("Are you sure you want to delete this issue?")) return;
     try {
-      await api.issues.delete(String(id));
+      await issueMutation.delete.mutateAsync(String(id));
       toast({
         title: "Success",
         description: "Issue deleted successfully",
       });
-      loadIssues();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -407,12 +305,11 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
 
   const handleArchiveIssue = async (id: number) => {
     try {
-      await api.issues.update(String(id), { status: 'archived' });
+      await issueMutation.update.mutateAsync({ id: String(id), data: { status: 'archived' } });
       toast({
         title: "Success",
         description: "Issue archived successfully",
       });
-      loadIssues();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -424,12 +321,11 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
 
   const handleMoveIssue = async (id: number, newStatus: string) => {
     try {
-      await api.issues.update(String(id), { status: newStatus });
+      await issueMutation.update.mutateAsync({ id: String(id), data: { status: newStatus } });
       toast({
         title: "Success",
         description: `Issue moved to ${newStatus.replace('_', ' ')}`,
       });
-      loadIssues();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -532,52 +428,101 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
             </h2>
           </div>
         )}
-        {/* Views Tabs (GitHub Style) */}
-        <div className="flex items-center justify-between border-b border-gray-200 w-full px-6">
-          <div className="flex items-center">
+        {/* Views Tabs & Core Actions (GitHub Style) */}
+        <div className="flex flex-wrap items-center justify-between border-b border-gray-200 w-full px-6 py-2 gap-4">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             <button
               onClick={() => setView('kanban')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${view === 'kanban' ? 'border-[#fd8c73] text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${view === 'kanban' ? 'border-[#fd8c73] text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             >
-              <Kanban className="h-4 w-4" />
+              <Kanban className="h-4 w-4 text-gray-500" />
               Board
             </button>
             <button
               onClick={() => setView('list')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${view === 'list' ? 'border-[#fd8c73] text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${view === 'list' ? 'border-[#fd8c73] text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             >
-              <List className="h-4 w-4" />
+              <List className="h-4 w-4 text-gray-500" />
               Table
             </button>
             <button
               onClick={() => setView('burnout')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${view === 'burnout' ? 'border-[#fd8c73] text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${view === 'burnout' ? 'border-[#fd8c73] text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             >
-              <BarChart3 className="h-4 w-4" />
+              <BarChart3 className="h-4 w-4 text-gray-500" />
               Insights
             </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center bg-[#e8f1ff] px-2.5 py-0.5 rounded-full min-w-[24px]">
-              <span className="text-[#0969da] text-xs font-bold">{issues.length}</span>
+
+            {/* Search Input right after Insights */}
+            <div className="flex items-center gap-2 px-3 py-1.5 border border-[#d0d7de] rounded-md bg-white focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 w-64 ml-4 shadow-sm transition-all h-8">
+              <Search className="h-4 w-4 text-[#656d76] shrink-0" />
+              <input
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
+                className="flex-1 bg-transparent border-none outline-none focus:ring-0 text-sm placeholder:text-[#656d76]"
+                placeholder="Search issues..."
+              />
             </div>
-            <span className="text-sm text-[#656d76]">Issues found</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {view === 'kanban' && isAdmin && (
+              <div className="flex items-center gap-2 mr-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNewColumnDialog(true)}
+                  className="h-8 px-3 text-xs font-semibold bg-white border-[#d0d7de] text-[#24292f] hover:bg-[#f6f8fa] shadow-sm"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                  New Column
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-[#656d76] hover:bg-[#f6f8fa]">
+                      <Settings2 className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 shadow-lg border-[#d0d7de]">
+                    <DropdownMenuLabel className="text-xs font-bold text-[#656d76] uppercase tracking-wider">Show Columns</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-[#d0d7de]" />
+                    {availableColumns.map(column => (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        checked={visibleColumns.includes(column.id)}
+                        className="text-sm focus:bg-[#f6f8fa] focus:text-[#24292f]"
+                        onCheckedChange={(checked) => {
+                          if (checked) setVisibleColumns([...visibleColumns, column.id]);
+                          else setVisibleColumns(visibleColumns.filter(c => c !== column.id));
+                        }}
+                      >
+                        {column.name}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowCreateDialog(true)}
+              className="h-8 px-4 text-[13px] font-bold rounded-md shadow-sm flex items-center gap-1.5 transition-colors hover:opacity-90 active:scale-95"
+              style={{
+                backgroundColor: '#2da44e',
+                color: 'white',
+                border: '1px solid rgba(27, 31, 36, 0.15)'
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Issue</span>
+            </button>
           </div>
         </div>
 
-        {/* Filter & Action Bar */}
-        <div className="flex items-center justify-between gap-3 px-6 py-3 bg-[#f6f8fa]/50 border-b border-[#d0d7de]">
+        {/* Filter Bar (Second Line) */}
+        <div className="flex items-center gap-3 px-6 py-2 bg-[#f6f8fa]/50 border-b border-[#d0d7de]">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            {/* Search Input - Robust Flex Layout */}
-            <div className="flex items-center gap-2 px-3 py-1.5 border border-[#d0d7de] rounded-md bg-white focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 max-w-md flex-1 shadow-sm transition-all">
-              <Search className="h-4 w-4 text-[#656d76] shrink-0" />
-              <input
-                type="text"
-                placeholder="Search or create issue..."
-                className="block w-full border-none outline-none text-sm bg-transparent placeholder-gray-500"
-                onChange={() => loadIssues()}
-              />
-            </div>
 
             {/* Selects - Clean Custom Background Arrows */}
             <div className="flex items-center gap-2 hidden sm:flex">
@@ -615,62 +560,6 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
               </select>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            {view === 'kanban' && isAdmin && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowNewColumnDialog(true)}
-                  className="h-8 px-3 text-xs font-semibold bg-white border-[#d0d7de] text-[#24292f] hover:bg-[#f6f8fa] shadow-sm"
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                  New Column
-                </Button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-[#656d76] hover:bg-[#f6f8fa]">
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 shadow-lg border-[#d0d7de]">
-                    <DropdownMenuLabel className="text-xs font-bold text-[#656d76] uppercase tracking-wider">Show Columns</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-[#d0d7de]" />
-                    {availableColumns.map(column => (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        checked={visibleColumns.includes(column.id)}
-                        className="text-sm focus:bg-[#f6f8fa] focus:text-[#24292f]"
-                        onCheckedChange={(checked) => {
-                          if (checked) setVisibleColumns([...visibleColumns, column.id]);
-                          else setVisibleColumns(visibleColumns.filter(c => c !== column.id));
-                        }}
-                      >
-                        {column.name}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
-
-            {isAdmin && (
-              <button
-                onClick={() => setShowCreateDialog(true)}
-                className="h-8 px-4 text-[13px] font-bold rounded-md shadow-sm flex items-center gap-1.5 transition-colors hover:opacity-90 active:scale-95"
-                style={{
-                  backgroundColor: '#2da44e',
-                  color: 'white',
-                  border: '1px solid rgba(27, 31, 36, 0.15)'
-                }}
-              >
-                <Plus className="h-4 w-4" />
-                <span>Create Issue</span>
-              </button>
-            )}
-          </div>
         </div>
       </div>
 
@@ -688,17 +577,15 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
                 <div className="text-center py-12 text-gray-500">
                   <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No issues found</p>
-                  {isAdmin && (
-                    <Button className="mt-4" onClick={() => setShowCreateDialog(true)}>
-                      Create First Issue
-                    </Button>
-                  )}
+                  <Button className="mt-4" onClick={() => setShowCreateDialog(true)}>
+                    Create First Issue
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {issues.map((issue) => (
+                  {issues.map((issue, issueIndex) => (
                     <div
-                      key={issue.id}
+                      key={issue.id || `list-issue-${issueIndex}`}
                       className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                       onClick={() => navigate(`/issues/${issue.id}`)}
                     >
@@ -712,9 +599,9 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
                               {issue.title}
                             </h3>
                             <span className="text-gray-500">#{issue.id}</span>
-                            {issue.labels.map((label) => (
+                            {issue.labels.map((label, labelIndex) => (
                               <span
-                                key={label.id}
+                                key={label.id || `list-label-${labelIndex}`}
                                 className="px-2 py-1 rounded text-xs text-white"
                                 style={{ backgroundColor: label.color }}
                               >
@@ -762,14 +649,6 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => window.open(`/issues/${issue.id}`, '_blank')}>
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              Open in new tab
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/issues/${issue.id}`, "Link Copied")}>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy link
-                            </DropdownMenuItem>
                             {isAdmin && (
                               <>
                                 <DropdownMenuSeparator />
@@ -865,11 +744,10 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
                               <span className="text-[#0969da] text-xs font-semibold">{statusIssues.length}</span>
                             </div>
                             <span className="text-xs text-[#656d76] ml-2">issues</span>
-                            <div className="flex items-center gap-2 ml-2">
-                              <span className="text-xs text-[#656d76] font-normal">Estimate: {statusIssues.reduce((sum, i) => sum + (i.estimated_hours || 0), 0)}h</span>
-                              <span className="text-xs text-[#656d76] font-normal">•</span>
-                              <span className="text-xs text-[#656d76] font-normal">Assigned: {statusIssues.filter(i => i.assignees.length > 0).length}</span>
-                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 mb-1 pl-6">
+                            <span className="text-[#656d76] font-normal border px-1.5 py-0.5 rounded-sm bg-gray-50 shadow-sm" style={{ fontSize: '11px' }}>Est: {statusIssues.reduce((sum, i) => sum + Number(i.estimated_hours || 0), 0)}h</span>
+                            <span className="text-[#656d76] font-normal border px-1.5 py-0.5 rounded-sm bg-gray-50 shadow-sm" style={{ fontSize: '11px' }}>Assigned: {statusIssues.filter(i => i.assignees?.length > 0).length}</span>
                           </div>
                           <p className="text-xs text-[#656d76] font-normal pl-6 line-clamp-1">{column.description || getDescription(column.id)}</p>
                         </div>
@@ -917,7 +795,7 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
                               }`}
                           >
                             {statusIssues.map((issue, index) => (
-                              <Draggable key={issue.id} draggableId={issue.id.toString()} index={index}>
+                              <Draggable key={issue.id || `issue-${index}`} draggableId={issue.id ? issue.id.toString() : `issue-${index}`} index={index}>
                                 {(provided, snapshot) => (
                                   <div
                                     ref={provided.innerRef}
@@ -955,18 +833,6 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
                                               </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
-                                              <DropdownMenuItem onClick={() => window.open(`/issues/${issue.id}`, '_blank')}>
-                                                <ExternalLink className="h-4 w-4 mr-2" />
-                                                Open in new tab
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/issues/${issue.id}`, "Link Copied")}>
-                                                <Copy className="h-4 w-4 mr-2" />
-                                                Copy link
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/project-management?project=${issue.project_name}&issue=${issue.id}`, "Project Link Copied")}>
-                                                <Copy className="h-4 w-4 mr-2" />
-                                                Copy link in project
-                                              </DropdownMenuItem>
 
                                               {isAdmin && (
                                                 <>
@@ -1020,9 +886,9 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
                                           {/* Labels (dot style) */}
                                           {issue.labels.length > 0 && (
                                             <div className="flex -space-x-1">
-                                              {issue.labels.slice(0, 3).map(l => (
+                                              {issue.labels.slice(0, 3).map((l, labelIndex) => (
                                                 <div
-                                                  key={l.id}
+                                                  key={l.id || `label-${labelIndex}`}
                                                   className="w-2.5 h-2.5 rounded-full border border-white shadow-sm"
                                                   style={{ backgroundColor: l.color }}
                                                   title={l.name}
@@ -1079,20 +945,22 @@ export default function Issues({ initialProject = 'all' }: { initialProject?: st
                       </Droppable>
 
                       {/* Add Item Footer */}
-                      {isAdmin && (
-                        <div className="p-2">
-                          <button
-                            onClick={() => {
-                              setNewIssueStatus(column.id as any);
-                              setShowCreateDialog(true);
-                            }}
-                            className="flex items-center gap-2 w-full px-2 py-1.5 text-gray-500 hover:text-gray-900 hover:bg-white rounded-md transition-all text-sm font-medium text-left"
-                          >
-                            <Plus className="h-4 w-4" />
-                            Add item
-                          </button>
-                        </div>
-                      )}
+                      {
+                        isAdmin && (
+                          <div className="p-2">
+                            <button
+                              onClick={() => {
+                                setNewIssueStatus(column.id as any);
+                                setShowCreateDialog(true);
+                              }}
+                              className="flex items-center gap-2 w-full px-2 py-1.5 text-gray-500 hover:text-gray-900 hover:bg-white rounded-md transition-all text-sm font-medium text-left"
+                            >
+                              <Plus className="h-4 w-4" />
+                              Add item
+                            </button>
+                          </div>
+                        )
+                      }
                     </div>
                   );
                 })}

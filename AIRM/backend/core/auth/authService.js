@@ -18,7 +18,7 @@ export async function sendMagicLink(email) {
   const userQuery = `
     SELECT u.id, u.email, u.full_name
     FROM users u
-    WHERE u.email = $1
+    WHERE LOWER(u.email) = LOWER($1)
   `;
   let userResult;
   try {
@@ -38,9 +38,8 @@ export async function sendMagicLink(email) {
         { expiresIn: '15m' }
       );
 
-      // Use APP_BASE_URL with localhost fallback for local development
-      const PORT = process.env.PORT || 3001;
-      const frontendUrl = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
+      // Use FRONTEND_URL for local development (frontend runs on 5173)
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const magicLink = `${frontendUrl}/auth/verify?token=${magicToken}`;
 
       return {
@@ -72,9 +71,8 @@ export async function sendMagicLink(email) {
     { expiresIn: '15m' } // Magic links expire in 15 minutes
   );
 
-  // Create the magic link URL - use APP_BASE_URL with localhost fallback for local development
-  const PORT = process.env.PORT || 3001;
-  const frontendUrl = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
+  // Create the magic link URL - FRONTEND_URL must point to the frontend app (not backend)
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const magicLink = `${frontendUrl}/auth/verify?token=${magicToken}`;
 
   // Send email with magic link

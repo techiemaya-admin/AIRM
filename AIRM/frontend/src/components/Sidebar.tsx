@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import {
   Home,
   Search,
@@ -22,20 +23,8 @@ interface SidebarProps {
 export function Sidebar({ onLogout }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<any>(null);
+  const { data: user } = useCurrentUser();
   const [isCollapsed, setIsCollapsed] = useState(false);
-
-  useEffect(() => {
-    // Get user data from localStorage or API
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-      }
-    }
-  }, []);
 
   const isAdmin = user?.role === 'admin';
 
@@ -107,8 +96,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
               key={item.path}
               onClick={() => handleNavigation(item.path)}
               className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${isActive
-                  ? 'bg-blue-900 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-blue-900 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
                 } ${isCollapsed ? 'justify-center' : ''}`}
               title={isCollapsed ? item.label : ''}
             >
@@ -121,8 +110,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
         <button
           onClick={() => handleNavigation('/project-management')}
           className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${location.pathname.startsWith('/project-management')
-              ? 'bg-blue-900 text-white'
-              : 'text-gray-700 hover:bg-gray-100'
+            ? 'bg-blue-900 text-white'
+            : 'text-gray-700 hover:bg-gray-100'
             } ${isCollapsed ? 'justify-center' : ''}`}
           title={isCollapsed ? 'Project Management' : ''}
         >
@@ -149,8 +138,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
               key={item.path}
               onClick={() => handleNavigation(item.path)}
               className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${isActive
-                  ? 'bg-blue-900 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-blue-900 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
                 } ${isCollapsed ? 'justify-center' : ''}`}
               title={isCollapsed ? item.label : ''}
             >

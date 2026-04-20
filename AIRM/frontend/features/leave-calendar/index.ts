@@ -7,7 +7,7 @@
 export { default } from './page';
 
 // Services
-export * from './services/leave-calendarService';
+export * from '@sdk/leave-calendarService';
 
 // Hooks
 export * from './hooks/useleave-calendar';

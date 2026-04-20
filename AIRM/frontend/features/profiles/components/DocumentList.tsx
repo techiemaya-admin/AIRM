@@ -16,7 +16,7 @@ import {
   Upload
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { getEmployeeDocuments, downloadDocument, getDocumentPreviewUrl } from '../services/documentService';
+import { getEmployeeDocuments, downloadDocument, getDocumentPreviewUrl } from '@sdk/documentService';
 import { EmployeeDocument, DOCUMENT_CATEGORIES, DOCUMENT_TYPES } from '../types';
 import { toast } from 'sonner';
 

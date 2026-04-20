@@ -7,6 +7,7 @@ import * as documentService from '../services/document.service.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { getFileFromGCS } from '../../../SDK/storage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -271,9 +272,43 @@ export async function downloadDocument(req, res) {
     res.setHeader('Content-Disposition', `attachment; filename="${document.file_name}"`);
 
     // Stream the file
-    const filePath = path.join(__dirname, '../../../', document.file_path);
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    if (document.file_path && document.file_path.startsWith('https://storage.googleapis.com')) {
+      // It's a GCS file
+      try {
+        const file = getFileFromGCS(document.file_path);
+        const fileStream = file.createReadStream();
+
+        fileStream.on('error', (err) => {
+          console.error('[document.controller] GCS Stream error:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, error: 'Failed to stream from Cloud Storage' });
+          } else {
+            res.end();
+          }
+        });
+
+        fileStream.pipe(res);
+      } catch (gcsError) {
+        console.error('[document.controller] GCS error:', gcsError);
+        return res.status(500).json({ success: false, error: 'Invalid Cloud Storage URL' });
+      }
+    } else {
+      // It's a local fallback file
+      const baseDir = process.env.K_SERVICE ? '/tmp' : path.join(__dirname, '../../../');
+      const filePath = path.join(baseDir, document.file_path);
+      const fileStream = fs.createReadStream(filePath);
+
+      fileStream.on('error', (err) => {
+        console.error('[document.controller] Local Stream error:', err);
+        if (!res.headersSent) {
+          res.status(404).json({ success: false, error: 'File not found locally' });
+        } else {
+          res.end();
+        }
+      });
+
+      fileStream.pipe(res);
+    }
 
   } catch (error) {
     console.error('[document.controller] Error in downloadDocument:', error);

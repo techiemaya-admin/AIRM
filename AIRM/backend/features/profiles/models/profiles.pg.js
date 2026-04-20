@@ -171,6 +171,16 @@ export async function updateUserName(userId, fullName) {
 }
 
 /**
+ * Update user official email
+ */
+export async function updateUserEmail(userId, email) {
+  await pool.query(
+    'UPDATE users SET email = $1, updated_at = now() WHERE id = $2',
+    [email, userId]
+  );
+}
+
+/**
  * Insert or update profile
  */
 export async function upsertProfile(profileData) {

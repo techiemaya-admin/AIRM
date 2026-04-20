@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {

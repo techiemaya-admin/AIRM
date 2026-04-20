@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAllProfiles, getProfileById, updateProfile, deleteProfile } from '../services/profilesService';
+import { getAllProfiles, getProfileById, updateProfile, deleteProfile, uploadBatchProfiles, uploadProfileFile } from '@sdk/profilesService';
 import type {
   EmployeeProfile,
   GetProfileResponse,
@@ -28,8 +28,7 @@ export function useProfiles() {
         throw error;
       }
     },
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 0, // Don't cache old data
+    staleTime: 30000, // 30 seconds
     retry: 1,
   });
 }
@@ -38,14 +37,14 @@ export function useProfiles() {
  * Hook to fetch a single profile by ID
  */
 export function useProfile(id: string | null) {
-  return useQuery<GetProfileResponse>({
+  return useQuery<EmployeeProfile | null>({
     queryKey: ['profile', id],
     queryFn: async () => {
-      if (!id) throw new Error('Profile ID is required');
+      if (!id) return null;
       try {
         const response = await getProfileById(id);
         console.log('[useProfile] Response:', response);
-        return response;
+        return response.profile;
       } catch (error: any) {
         console.error('[useProfile] Error fetching profile:', error);
         throw error;
@@ -79,11 +78,27 @@ export function useProfileMutation() {
     },
   });
 
+  const uploadBatch = useMutation({
+    mutationFn: (file: File) => uploadBatchProfiles(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    },
+  });
+
+  const uploadSingle = useMutation({
+    mutationFn: (file: File) => uploadProfileFile(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    },
+  });
+
   return {
     updateProfile: updateMutation,
     deleteProfile: deleteMutation,
+    uploadBatch,
+    uploadSingle,
     mutateAsync: updateMutation.mutateAsync,
-    isPending: updateMutation.isPending || deleteMutation.isPending,
+    isPending: updateMutation.isPending || deleteMutation.isPending || uploadBatch.isPending || uploadSingle.isPending,
   };
 }
 

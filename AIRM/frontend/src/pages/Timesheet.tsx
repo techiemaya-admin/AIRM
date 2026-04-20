@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 import { format, startOfWeek, endOfWeek, addDays, addWeeks, isAfter } from "date-fns";
 import { Plus, Trash2, Save, Share2, ChevronLeft, ChevronRight, Download, RefreshCw } from "lucide-react";
@@ -28,6 +28,19 @@ interface UserProfile {
   id: string;
   email: string;
 }
+
+const HOLIDAYS_LIST = [
+  { date: '2026-01-01', name: "New Year's Day" },
+  { date: '2026-01-12', name: "Makar Sankranti" },
+  { date: '2026-01-26', name: "Republic Day" },
+  { date: '2026-03-19', name: "Ugadi" },
+  { date: '2026-04-03', name: "Good Friday" },
+  { date: '2026-09-14', name: "Ganesh Chaturthi" },
+  { date: '2026-10-02', name: "Gandhi Jayanti" },
+  { date: '2026-10-20', name: "Dussehra" },
+  { date: '2026-11-09', name: "Diwali" },
+  { date: '2026-12-25', name: "Christmas Day" },
+];
 
 const Timesheet = () => {
   console.log('🎬 Timesheet component rendered');
@@ -233,11 +246,12 @@ const Timesheet = () => {
       console.log('📞 API params:', apiParams);
 
       // Load all data in parallel
-      const [timesheetResult, leaveResult, issuesResult, attendanceResult] = await Promise.allSettled([
+      const [timesheetResult, leaveResult, issuesResult, attendanceResult, currentEntryResult] = await Promise.allSettled([
         api.timesheets.getTimesheets(apiParams),
         api.leave.getAll().catch(() => ({ leave_requests: [] })),
         api.issues.getAll().catch(() => ({ issues: [] })),
-        api.leaveCalendar.getAttendance(weekStartStr, weekEndStr).catch(() => ({ attendance_records: [] }))
+        api.leaveCalendar.getAttendance(weekStartStr, weekEndStr).catch(() => ({ attendance_records: [] })),
+        api.timesheets.getCurrent().catch(() => ({ entry: null }))
       ]);
 
       // Extract results
@@ -253,6 +267,9 @@ const Timesheet = () => {
       const attendanceResponse = attendanceResult.status === 'fulfilled'
         ? attendanceResult.value as any
         : { attendance_records: [] };
+      const currentEntryResponse = currentEntryResult.status === 'fulfilled'
+        ? currentEntryResult.value as any
+        : { entry: null };
 
       setWeeklyAttendance(attendanceResponse.attendance_records || attendanceResponse.attendance || []);
 
@@ -699,15 +716,14 @@ const Timesheet = () => {
   };
 
   const calculateTotal = (entry: TimesheetEntry) => {
-    return (
-      entry.mon_hours +
-      entry.tue_hours +
-      entry.wed_hours +
-      entry.thu_hours +
-      entry.fri_hours +
-      entry.sat_hours +
-      entry.sun_hours
-    );
+    let sum = (Number(entry.mon_hours) || 0) +
+      (Number(entry.tue_hours) || 0) +
+      (Number(entry.wed_hours) || 0) +
+      (Number(entry.thu_hours) || 0) +
+      (Number(entry.fri_hours) || 0) +
+      (Number(entry.sat_hours) || 0) +
+      (Number(entry.sun_hours) || 0);
+    return sum;
   };
 
   const calculateDayTotal = (day: keyof TimesheetEntry) => {
@@ -718,8 +734,9 @@ const Timesheet = () => {
     return entries.reduce((sum, entry) => sum + calculateTotal(entry), 0);
   };
 
-  const formatHours = (hours: number) => {
-    return hours % 1 === 0 ? hours.toString() : hours.toFixed(2);
+  const formatHours = (hours: any) => {
+    const num = Number(hours) || 0;
+    return num % 1 === 0 ? num.toString() : num.toFixed(2);
   };
 
   const moveToNextWeek = () => {
@@ -1063,7 +1080,7 @@ const Timesheet = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
+        <div className="mb-6 mr-14 md:mr-24">
           <h1 className="text-2xl font-bold">Timesheet</h1>
         </div>
 
@@ -1143,34 +1160,21 @@ const Timesheet = () => {
                     <th className="border border-border bg-muted p-2 text-left font-semibold">
                       Task
                     </th>
-                    <th className="border border-border bg-muted p-2 text-center font-semibold">
-                      <div>MON</div>
-                      <div className="text-xs font-normal">{getDayDate(0)}</div>
-                    </th>
-                    <th className="border border-border bg-muted p-2 text-center font-semibold">
-                      <div>TUE</div>
-                      <div className="text-xs font-normal">{getDayDate(1)}</div>
-                    </th>
-                    <th className="border border-border bg-muted p-2 text-center font-semibold">
-                      <div>WED</div>
-                      <div className="text-xs font-normal">{getDayDate(2)}</div>
-                    </th>
-                    <th className="border border-border bg-muted p-2 text-center font-semibold">
-                      <div>THU</div>
-                      <div className="text-xs font-normal">{getDayDate(3)}</div>
-                    </th>
-                    <th className="border border-border bg-muted p-2 text-center font-semibold">
-                      <div>FRI</div>
-                      <div className="text-xs font-normal">{getDayDate(4)}</div>
-                    </th>
-                    <th className="border border-border bg-slate-200 p-2 text-center font-semibold">
-                      <div>SAT</div>
-                      <div className="text-xs font-normal">{getDayDate(5)}</div>
-                    </th>
-                    <th className="border border-border bg-slate-200 p-2 text-center font-semibold">
-                      <div>SUN</div>
-                      <div className="text-xs font-normal">{getDayDate(6)}</div>
-                    </th>
+                    {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((day, i) => {
+                      const dateStr = format(addDays(weekStart, i), 'yyyy-MM-dd');
+                      const holiday = HOLIDAYS_LIST.find(h => h.date === dateStr);
+                      const isWeekend = i === 5 || i === 6;
+                      
+                      return (
+                        <th key={day} className={`border border-border p-2 text-center font-semibold ${holiday ? 'bg-green-50' : (isWeekend ? 'bg-slate-200' : 'bg-muted')}`}>
+                          <div>{day}</div>
+                          <div className="text-[10px] font-normal">{getDayDate(i)}</div>
+                          {holiday && (
+                            <div className="text-[9px] font-bold text-green-600 bg-green-100 rounded-full px-1 uppercase mt-0.5">Holiday</div>
+                          )}
+                        </th>
+                      );
+                    })}
                     <th className="border border-border bg-muted p-2 text-center font-semibold">
                       TOTAL
                     </th>
@@ -1192,10 +1196,13 @@ const Timesheet = () => {
                         return recDate === dateStr && a.user_id === (selectedUserId || user?.id);
                       });
 
+                      const holiday = HOLIDAYS_LIST.find(h => h.date === dateStr);
                       const isWeekend = i === 5 || i === 6;
                       let display = isWeekend ? 'Week Off' : '-';
 
-                      if (record) {
+                      if (holiday) {
+                        display = 'Holiday';
+                      } else if (record) {
                         if (record.clock_in) {
                           display = format(new Date(record.clock_in), 'hh:mm a');
                         } else if (record.status === 'week_off') {

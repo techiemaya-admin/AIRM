@@ -164,6 +164,7 @@ function normalizeDateString(date) {
 export async function upsertEmployeeInfo(profileId, data) {
   const {
     full_name,
+    email,
     employee_id,
     date_of_birth,
     gender,
@@ -268,8 +269,16 @@ export async function upsertEmployeeInfo(profileId, data) {
   // Sync full_name to users table if provided
   if (full_name) {
     await pool.query(
-      'UPDATE users SET full_name = $1 WHERE id = $2',
+      'UPDATE users SET full_name = $1, updated_at = now() WHERE id = $2',
       [full_name, profileId]
+    );
+  }
+
+  // Update official email in users table if provided
+  if (email) {
+    await pool.query(
+      'UPDATE users SET email = $1, updated_at = now() WHERE id = $2',
+      [email.toLowerCase().trim(), profileId]
     );
   }
 }

@@ -252,10 +252,33 @@ export async function updateCandidate(id, data) {
   const values = [];
   let paramIndex = 1;
 
-  Object.keys(data).forEach(key => {
-    if (data[key] !== undefined && key !== 'id') {
+  // Flatten candidate_info if it exists
+  const updateData = { ...data };
+  if (updateData.candidate_info) {
+    Object.assign(updateData, updateData.candidate_info);
+    delete updateData.candidate_info;
+  }
+
+  // Remove fields that are not columns in recruitment_candidates table
+  delete updateData.interview_rounds;
+  delete updateData.background_verifications;
+  delete updateData.id;
+
+  // List of valid columns in erp.recruitment_candidates
+  const validColumns = [
+    'full_name', 'email', 'phone', 'position_applied', 'department',
+    'experience_years', 'current_company', 'current_ctc', 'expected_ctc',
+    'notice_period', 'resume_url', 'photo_url', 'location', 'comments',
+    'current_stage', 'interview_status', 'interview_notes',
+    'verification_status', 'verification_notes', 'onboarding_status',
+    'final_status', 'rejection_reason', 'offer_letter_sent',
+    'offer_accepted', 'joining_date'
+  ];
+
+  Object.keys(updateData).forEach(key => {
+    if (updateData[key] !== undefined && validColumns.includes(key)) {
       fields.push(`${key} = $${paramIndex}`);
-      values.push(data[key]);
+      values.push(updateData[key]);
       paramIndex++;
     }
   });
@@ -264,12 +287,11 @@ export async function updateCandidate(id, data) {
     return getCandidateById(id);
   }
 
-  fields.push(`updated_at = NOW()`);
   values.push(id);
 
   const result = await pool.query(`
     UPDATE erp.recruitment_candidates 
-    SET ${fields.join(', ')}
+    SET ${fields.join(', ')}, updated_at = NOW()
     WHERE id = $${paramIndex}
     RETURNING *
   `, values);

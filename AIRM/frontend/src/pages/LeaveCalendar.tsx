@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -286,6 +286,7 @@ export default function LeaveCalendar() {
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
+                    className="text-[#1E3A8A] hover:text-[#1E3A8A] hover:bg-blue-50"
                     onClick={() => {
                       const newMonth = new Date(currentMonth);
                       newMonth.setMonth(newMonth.getMonth() - 1);
@@ -296,12 +297,14 @@ export default function LeaveCalendar() {
                   </Button>
                   <Button
                     variant="outline"
+                    className="text-[#1E3A8A] hover:text-[#1E3A8A] hover:bg-blue-50"
                     onClick={() => setCurrentMonth(new Date())}
                   >
                     Today
                   </Button>
                   <Button
                     variant="outline"
+                    className="text-[#1E3A8A] hover:text-[#1E3A8A] hover:bg-blue-50"
                     onClick={() => {
                       const newMonth = new Date(currentMonth);
                       newMonth.setMonth(newMonth.getMonth() + 1);

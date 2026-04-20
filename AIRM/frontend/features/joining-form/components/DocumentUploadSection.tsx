@@ -1,19 +1,21 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, GraduationCap, Briefcase, FileUp, CheckCircle, Eye, Download } from "lucide-react";
+import { ShieldCheck, GraduationCap, Briefcase, FileUp, CheckCircle, Download, Upload, Trash2 } from "lucide-react";
 import { EmployeeDocument, DOCUMENT_CATEGORIES } from "../../profiles/types";
-import { getDocumentPreviewUrl, downloadDocument } from "../../profiles/services/documentService";
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { downloadDocument } from "@sdk/documentService";
+import { useRef, useState } from "react";
 
 interface DocumentUploadSectionProps {
     handleKycUpload: (e: React.ChangeEvent<HTMLInputElement>, category: string, type: string) => void;
+    handleDocumentDelete: (doc: EmployeeDocument) => Promise<void>;
     uploadedDocuments: EmployeeDocument[];
 }
 
-export const DocumentUploadSection = ({ handleKycUpload, uploadedDocuments }: DocumentUploadSectionProps) => {
-    const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
+export const DocumentUploadSection = ({ handleKycUpload, handleDocumentDelete, uploadedDocuments }: DocumentUploadSectionProps) => {
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    // Per-doc hidden file input refs for reupload
+    const reuploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     const documentGroups = [
         {
@@ -24,6 +26,8 @@ export const DocumentUploadSection = ({ handleKycUpload, uploadedDocuments }: Do
                 { id: "aadhaar", label: "Aadhaar Card", category: DOCUMENT_CATEGORIES.KYC_DOCUMENTS, type: 'Aadhaar' },
                 { id: "utility_bill", label: "Electricity / Utility Bill", category: DOCUMENT_CATEGORIES.KYC_DOCUMENTS, type: 'Electricity / Utility Bill' },
                 { id: "pan", label: "PAN Card", category: DOCUMENT_CATEGORIES.KYC_DOCUMENTS, type: 'PAN' },
+                { id: "photo", label: "Photo", category: DOCUMENT_CATEGORIES.KYC_DOCUMENTS, type: 'Photo' },
+                { id: "bank_account", label: "Bank Account Details", category: DOCUMENT_CATEGORIES.KYC_DOCUMENTS, type: 'Bank Account' },
             ]
         },
         {
@@ -45,6 +49,7 @@ export const DocumentUploadSection = ({ handleKycUpload, uploadedDocuments }: Do
                 { id: "experience_letter", label: "Previous Experience Letter", category: DOCUMENT_CATEGORIES.EXPERIENCE_DOCUMENTS, type: 'Experience Letter' },
                 { id: "salary_slips", label: "Salary Slips (Last 3 Months)", category: DOCUMENT_CATEGORIES.EXPERIENCE_DOCUMENTS, type: 'Previous Company Salary Slips' },
                 { id: "offer_letter", label: "Offer / Appointment Letter", category: DOCUMENT_CATEGORIES.EXPERIENCE_DOCUMENTS, type: 'Previous Company Offer / Appointment Letter' },
+                { id: "resume", label: "Resume / CV", category: DOCUMENT_CATEGORIES.EXPERIENCE_DOCUMENTS, type: 'Resume' },
             ]
         }
     ];
@@ -97,20 +102,54 @@ export const DocumentUploadSection = ({ handleKycUpload, uploadedDocuments }: Do
                                         {uploadedDoc ? (
                                             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                                                 <div className="flex items-center gap-2 text-green-700 text-sm font-medium mb-2">
-                                                    <CheckCircle className="h-4 w-4" />
+                                                    <CheckCircle className="h-4 w-4 flex-shrink-0" />
                                                     <span className="truncate max-w-[150px]" title={uploadedDoc.file_name}>
                                                         {uploadedDoc.file_name}
                                                     </span>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                {/* Hidden file input for reupload */}
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    ref={(el) => { reuploadRefs.current[doc.id] = el; }}
+                                                    onChange={(e) => handleKycUpload(e, doc.category, doc.type)}
+                                                />
+                                                <div className="flex gap-1.5 flex-wrap">
                                                     <Button
                                                         type="button"
                                                         variant="outline"
                                                         size="sm"
-                                                        className="h-7 text-xs w-full bg-white text-green-700 border-green-200 hover:bg-green-100"
+                                                        className="h-7 text-xs flex-1 bg-white text-green-700 border-green-200 hover:bg-green-100"
                                                         onClick={() => handleDownload(uploadedDoc)}
                                                     >
                                                         <Download className="h-3 w-3 mr-1" /> Download
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 text-xs flex-1 bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+                                                        onClick={() => reuploadRefs.current[doc.id]?.click()}
+                                                    >
+                                                        <Upload className="h-3 w-3 mr-1" /> Reupload
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        disabled={deletingId === uploadedDoc.id}
+                                                        className="h-7 text-xs flex-1 bg-white text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-60"
+                                                        onClick={async () => {
+                                                            setDeletingId(uploadedDoc.id);
+                                                            try {
+                                                                await handleDocumentDelete(uploadedDoc);
+                                                            } finally {
+                                                                setDeletingId(null);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-3 w-3 mr-1" />
+                                                        {deletingId === uploadedDoc.id ? 'Deleting…' : 'Delete'}
                                                     </Button>
                                                 </div>
                                             </div>

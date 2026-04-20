@@ -8,7 +8,7 @@
  */
 
 // Services
-export * from './services/resource-managementService';
+export * from '@sdk/resource-managementService';
 
 // Hooks
 export * from './hooks/useresource-management';

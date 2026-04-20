@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { formatDistanceToNow } from 'date-fns';
-import { api } from '../lib/api';
+import { api } from '@sdk/api';
 
 interface Commit {
   id: string;
@@ -39,24 +39,33 @@ interface Issue {
 export default function Git() {
   const [commits, setCommits] = useState<Commit[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [repos, setRepos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'commits' | 'issues' | 'sync'>('commits');
+  const [activeTab, setActiveTab] = useState<'commits' | 'issues' | 'repositories' | 'sync'>('commits');
+  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchGitData();
-  }, []);
+    fetchGitData(selectedRepo);
+  }, [selectedRepo]);
 
-  const fetchGitData = async () => {
+  const fetchGitData = async (repoName: string | null = null) => {
     try {
       setLoading(true);
-      const [commitsData, issuesData] = await Promise.all([
-        api.git.getCommits(),
-        api.git.getIssues()
+      console.log('--- Fetching Git Data (DEBUG) ---');
+      console.log('Current repoName param:', repoName);
+      const [commitsData, issuesData, reposData] = await Promise.all([
+        api.git.getCommits(repoName || undefined), // Fetch commits for specific repo if selected
+        api.git.getIssues(repoName || undefined),
+        repos.length === 0 ? api.git.getRepos() : Promise.resolve(repos)
       ]);
+      console.log('Received Issues from API:', (issuesData as any)?.length);
 
       setCommits(Array.isArray(commitsData) ? commitsData : []);
       setIssues(Array.isArray(issuesData) ? issuesData : []);
+      if (repos.length === 0 && Array.isArray(reposData)) {
+        setRepos(reposData);
+      }
     } catch (error) {
       console.error('Error fetching Git data:', error);
       setCommits([]);
@@ -95,45 +104,51 @@ export default function Git() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="container mx-auto px-4 py-8 max-w-6xl bg-red-50/5">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Git Activities</h1>
+        <h1 className="text-3xl font-bold mb-2">GIT INTEGRATION (DEBUG)</h1>
         <p className="text-muted-foreground">
           View recent commits and manage project issues
         </p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex space-x-1 bg-muted p-1 rounded-lg mb-6">
+      <div className="flex space-x-1 bg-muted p-1 rounded-lg mb-6 overflow-x-auto">
         <button
           onClick={() => setActiveTab('commits')}
-          className={`flex-1 py-2 px-4 rounded-md transition-colors ${
-            activeTab === 'commits'
+          className={`whitespace-nowrap flex-1 py-2 px-4 rounded-md transition-colors ${activeTab === 'commits'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
           Recent Commits
         </button>
         <button
           onClick={() => setActiveTab('issues')}
-          className={`flex-1 py-2 px-4 rounded-md transition-colors ${
-            activeTab === 'issues'
+          className={`whitespace-nowrap flex-1 py-2 px-4 rounded-md transition-colors ${activeTab === 'issues'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
           Issues
         </button>
         <button
-          onClick={() => setActiveTab('sync')}
-          className={`flex-1 py-2 px-4 rounded-md transition-colors ${
-            activeTab === 'sync'
+          onClick={() => setActiveTab('repositories')}
+          className={`whitespace-nowrap flex-1 py-2 px-4 rounded-md transition-colors ${activeTab === 'repositories'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
-          GitLab Sync
+          Repositories
+        </button>
+        <button
+          onClick={() => setActiveTab('sync')}
+          className={`whitespace-nowrap flex-1 py-2 px-4 rounded-md transition-colors ${activeTab === 'sync'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          Sync
         </button>
       </div>
 
@@ -188,6 +203,11 @@ export default function Git() {
                               <span>
                                 {formatDistanceToNow(new Date(commit.created_at), { addSuffix: true })}
                               </span>
+                              {(commit as any).repository && (
+                                <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                  {(commit as any).repository}
+                                </span>
+                              )}
                               <code className="px-2 py-1 bg-muted rounded font-mono text-xs">
                                 {commit.short_id}
                               </code>
@@ -210,8 +230,16 @@ export default function Git() {
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  Issues ({issues.length})
+                  Issues ({issues.length}) {selectedRepo && <span className="text-sm font-normal text-muted-foreground ml-2">in {selectedRepo}</span>}
                 </CardTitle>
+                {selectedRepo && (
+                  <button 
+                    onClick={() => setSelectedRepo(null)}
+                    className="text-xs text-primary hover:underline ml-auto"
+                  >
+                    Clear Filter
+                  </button>
+                )}
               </CardHeader>
               <CardContent>
                 {issues.length === 0 ? (
@@ -237,11 +265,10 @@ export default function Git() {
                               <span className="text-sm font-medium text-muted-foreground">
                                 #{issue.iid}
                               </span>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                issue.state === 'opened' 
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${issue.state === 'opened'
                                   ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
                                   : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                              }`}>
+                                }`}>
                                 {issue.state}
                               </span>
                             </div>
@@ -278,28 +305,89 @@ export default function Git() {
               </CardContent>
             </Card>
           )}
-          
+
+          {/* Repositories Tab */}
+          {activeTab === 'repositories' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+                  </svg>
+                  GitHub Repositories ({repos.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {repos.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">No repositories found.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {repos.map((repo) => (
+                      <div
+                        key={repo.id}
+                        onClick={() => {
+                          setSelectedRepo(repo.name);
+                          setActiveTab('issues');
+                        }}
+                        className={`border rounded-lg p-5 cursor-pointer transition-colors ${
+                          selectedRepo === repo.name 
+                            ? 'border-primary bg-primary/5' 
+                            : 'hover:border-primary/50 hover:bg-muted/30'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-semibold text-lg">{repo.name}</h3>
+                          <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 px-2 py-1 rounded-full">
+                            {repo.private ? 'Private' : 'Public'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2 min-h-[40px]">
+                          {repo.description || 'No description provided.'}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground font-medium">
+                          {repo.language && (
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-blue-500"></span> 
+                              {repo.language}
+                            </span>
+                          )}
+                          <span className="flex flex-row items-center gap-1">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                            {repo.stars}
+                          </span>
+                          <span>Updated {formatDistanceToNow(new Date(repo.updated_at))} ago</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Sync Tab */}
           {activeTab === 'sync' && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  🔄 GitLab Integration & Sync
+                  🔄 GitHub Integration & Sync
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                      GitLab to VCP_Automation Mapping
+                      GitHub to Pulse Mapping
                     </h3>
                     <p className="text-blue-800 mb-3">
-                      Sync GitLab users, projects, and issues with your VCP_Automation HRMS system.
+                      Sync GitHub users, projects, and issues with your Pulse HRMS system.
                     </p>
                     <ul className="text-sm text-blue-700 space-y-1">
-                      <li>• GitLab Users → VCP_Automation Users</li>
-                      <li>• GitLab Issues → VCP_Automation Issues</li>
-                      <li>• GitLab Commits → Development Activities</li>
+                      <li>• GitHub Users → Pulse Users</li>
+                      <li>• GitHub Issues → Pulse Issues</li>
+                      <li>• GitHub Commits → Development Activities</li>
                       <li>• Project Management & Deployment Integration</li>
                     </ul>
                   </div>
@@ -311,14 +399,14 @@ export default function Git() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Import GitLab users into VCP_Automation user management system.
+                          Import GitLab users into Pulse user management system.
                         </p>
                         <button
                           onClick={syncUsers}
                           disabled={syncing}
                           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {syncing ? 'Syncing...' : 'Sync GitLab Users'}
+                          {syncing ? 'Syncing...' : 'Sync GitHub Users'}
                         </button>
                       </CardContent>
                     </Card>
@@ -329,14 +417,14 @@ export default function Git() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Import GitLab issues into VCP_Automation project management.
+                          Import GitLab issues into Pulse project management.
                         </p>
                         <button
                           onClick={syncIssues}
                           disabled={syncing}
                           className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {syncing ? 'Syncing...' : 'Sync GitLab Issues'}
+                          {syncing ? 'Syncing...' : 'Sync GitHub Issues'}
                         </button>
                       </CardContent>
                     </Card>
@@ -346,9 +434,9 @@ export default function Git() {
                     <h4 className="font-semibold text-yellow-900 mb-2">⚠️ Important Notes</h4>
                     <ul className="text-sm text-yellow-800 space-y-1">
                       <li>• Syncing will create new users/issues and update existing ones</li>
-                      <li>• GitLab data takes priority during sync operations</li>
+                      <li>• GitHub data takes priority during sync operations</li>
                       <li>• Users will be assigned 'employee' role by default</li>
-                      <li>• Make sure GitLab token is configured in backend .env</li>
+                      <li>• Make sure GitHub token is configured in backend .env</li>
                     </ul>
                   </div>
                 </div>

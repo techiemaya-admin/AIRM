@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getJoiningFormById } from '../../joining-form/services/joiningFormService';
+import { getJoiningFormById } from "@sdk/joiningFormService";
 import type { JoiningForm } from '../../joining-form/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -137,42 +137,7 @@ export const ProfileDetailDialog = ({
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              {canEdit && (
-                <Button onClick={onEdit} variant="outline" size="sm">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              )}
-              {(isAdmin || (currentUser && currentUser.id === profile.id)) && (
-                <Button
-                  onClick={async () => {
-                    const ok = window.confirm('Are you sure you want to delete this profile? This action cannot be undone.');
-                    if (!ok) return;
-                    try {
-                      setDeleting(true);
-                      // lazy import to avoid cycle
-                      const svc = await import('../services/profilesService');
-                      await svc.deleteProfile(profile.id as string);
-                      toast({ title: 'Deleted', description: 'Profile deleted successfully' });
-                      onOpenChange(false);
-                      onDeleteSuccess && onDeleteSuccess();
-                    } catch (e: any) {
-                      console.error('Delete profile failed', e);
-                      toast({ title: 'Delete failed', description: e?.message || String(e) });
-                    } finally {
-                      setDeleting(false);
-                    }
-                  }}
-                  variant="destructive"
-                  size="sm"
-                  disabled={deleting}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {deleting ? 'Deleting...' : 'Delete'}
-                </Button>
-              )}
-            </div>
+            {/* Actions (Edit/Delete) intentionally removed as requested */}
             <DialogDescription className="sr-only">Detailed profile view for {profile.full_name || profile.email}</DialogDescription>
           </div>
         </DialogHeader>
@@ -212,7 +177,7 @@ export const ProfileDetailDialog = ({
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Date of Birth</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.date_of_birth || 'N/A'}</p>
+                    <p className="text-sm font-medium">{joiningForm.employee_info.date_of_birth?.split('T')[0] || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Gender</Label>
@@ -220,7 +185,7 @@ export const ProfileDetailDialog = ({
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Joining Date</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.join_date || 'N/A'}</p>
+                    <p className="text-sm font-medium">{joiningForm.employee_info.join_date?.split('T')[0] || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Designation</Label>
@@ -597,7 +562,7 @@ export const ProfileDetailDialog = ({
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">Date of Birth</Label>
-                        <p className="text-sm font-medium">{joiningForm.verification_info.date_of_birth || 'N/A'}</p>
+                        <p className="text-sm font-medium">{joiningForm.verification_info.date_of_birth?.split('T')[0] || 'N/A'}</p>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">Gender</Label>

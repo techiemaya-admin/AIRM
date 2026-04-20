@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 import { format, addDays } from "date-fns";
 import { Download } from "lucide-react";
@@ -59,7 +59,7 @@ const SharedTimesheet = () => {
       const timesheetData = await response.json();
       const timesheet = timesheetData.timesheet || timesheetData;
       const entries = timesheet.entries || [];
-      
+
       setTimesheet({
         week_start: timesheet.week_start,
         week_end: timesheet.week_end || timesheet.week_start,
@@ -109,8 +109,13 @@ const SharedTimesheet = () => {
     ) || 0;
   };
 
-  const formatHours = (hours: number) => {
-    return hours % 1 === 0 ? hours.toString() : hours.toFixed(2);
+  const formatHours = (hours: number | string) => {
+    const num = Number(hours) || 0;
+    if (num === 0) return "0:00";
+    const h = Math.floor(Math.abs(num));
+    const m = Math.round((Math.abs(num) - h) * 60);
+    const sign = num < 0 ? "-" : "";
+    return `${sign}${h}:${m.toString().padStart(2, '0')}`;
   };
 
   const getDayDate = (dayIndex: number) => {
@@ -121,21 +126,21 @@ const SharedTimesheet = () => {
 
   const handleDownload = () => {
     if (!timesheet) return;
-    
+
     const weekStart = new Date(timesheet.week_start);
     const weekEnd = new Date(timesheet.week_end);
     const doc = new jsPDF('landscape');
-    
+
     // Add title
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(' Timesheet', 14, 15);
-    
+
     // Add week info
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     doc.text(`Week: ${format(weekStart, "dd MMMM yyyy")} - ${format(weekEnd, "dd MMMM yyyy")}`, 14, 22);
-    
+
     // Prepare table data
     const headers = [
       'Project',
@@ -149,7 +154,7 @@ const SharedTimesheet = () => {
       `SUN\n${format(addDays(weekStart, 6), "dd MMM")}`,
       'TOTAL'
     ];
-    
+
     const body: any[] = timesheet.timesheet_entries.map(entry => [
       entry.project,
       entry.task,
@@ -162,7 +167,7 @@ const SharedTimesheet = () => {
       formatHours(entry.sun_hours),
       formatHours(calculateTotal(entry))
     ]);
-    
+
     // Add totals row
     body.push([
       { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
@@ -175,7 +180,7 @@ const SharedTimesheet = () => {
       formatHours(calculateDayTotal("sun_hours")),
       { content: formatHours(calculateGrandTotal()), styles: { fontStyle: 'bold' } }
     ]);
-    
+
     // Generate table
     autoTable(doc, {
       head: [headers],
@@ -203,7 +208,7 @@ const SharedTimesheet = () => {
         8: { halign: 'center', cellWidth: 20 },
         9: { halign: 'center', cellWidth: 20, fontStyle: 'bold' },
       },
-      didDrawPage: function() {
+      didDrawPage: function () {
         // Footer
         doc.setFontSize(8);
         doc.setFont('helvetica', 'italic');
@@ -211,10 +216,10 @@ const SharedTimesheet = () => {
         doc.text('*Overtime is not authorized without Customer Management Approval', 14, doc.internal.pageSize.height - 10);
       }
     });
-    
+
     // Save PDF
     doc.save(`timesheet_${format(weekStart, "yyyy-MM-dd")}.pdf`);
-    
+
     toast({
       title: "Downloaded",
       description: "Timesheet PDF downloaded successfully",
@@ -314,27 +319,13 @@ const SharedTimesheet = () => {
                     <tr key={entry.id}>
                       <td className="border border-border p-2">{entry.project}</td>
                       <td className="border border-border p-2">{entry.task}</td>
-                      <td className="border border-border p-2 text-center">
-                        {entry.mon_hours}
-                      </td>
-                      <td className="border border-border p-2 text-center">
-                        {entry.tue_hours}
-                      </td>
-                      <td className="border border-border p-2 text-center">
-                        {entry.wed_hours}
-                      </td>
-                      <td className="border border-border p-2 text-center">
-                        {entry.thu_hours}
-                      </td>
-                      <td className="border border-border p-2 text-center">
-                        {entry.fri_hours}
-                      </td>
-                      <td className="border border-border p-2 text-center">
-                        {entry.sat_hours}
-                      </td>
-                      <td className="border border-border p-2 text-center">
-                        {entry.sun_hours}
-                      </td>
+                      <td className="border border-border p-2 text-center">{formatHours(entry.mon_hours)}</td>
+                      <td className="border border-border p-2 text-center">{formatHours(entry.tue_hours)}</td>
+                      <td className="border border-border p-2 text-center">{formatHours(entry.wed_hours)}</td>
+                      <td className="border border-border p-2 text-center">{formatHours(entry.thu_hours)}</td>
+                      <td className="border border-border p-2 text-center">{formatHours(entry.fri_hours)}</td>
+                      <td className="border border-border p-2 text-center">{formatHours(entry.sat_hours)}</td>
+                      <td className="border border-border p-2 text-center">{formatHours(entry.sun_hours)}</td>
                       <td className="border border-border p-2 text-center font-semibold">
                         {formatHours(calculateTotal(entry))}
                       </td>

@@ -4,7 +4,7 @@
  */
 
 // Services
-export * from './services/gitService';
+export * from '@sdk/gitService';
 
 // Hooks
 export * from './hooks/usegit';

@@ -160,6 +160,11 @@ export async function updateProfile(userId, profileData) {
     await profilesModel.updateUserName(userId, profileData.full_name);
   }
 
+  // Update official email (users.email) if provided
+  if (profileData.email) {
+    await profilesModel.updateUserEmail(userId, profileData.email.toLowerCase().trim());
+  }
+
   // Upsert profile. Ensure the canonical `id` (UUID) comes from the route/userId
   // and cannot be overridden by client-supplied `id` in profileData.
   await profilesModel.upsertProfile({

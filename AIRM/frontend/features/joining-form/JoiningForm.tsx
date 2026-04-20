@@ -11,7 +11,7 @@ import {
   User, Briefcase, GraduationCap, Users, Heart,
   Plus, Trash2, Save, ArrowLeft, CheckCircle, ShieldCheck, FileText
 } from "lucide-react";
-import * as joiningFormService from "../joining-form/services/joiningFormService";
+import * as joiningFormService from "@sdk/joiningFormService";
 import { FormSkeleton, TableSkeleton } from "@/components/PageSkeletons";
 import type {
   EmployeeInfo,
@@ -21,7 +21,7 @@ import type {
   VerificationInfo,
   EmployerVerification
 } from "../joining-form/types";
-import { uploadDocument, getEmployeeDocuments } from "../profiles/services/documentService";
+import { uploadDocument, getEmployeeDocuments, deleteDocument } from "@sdk/documentService";
 import type { EmployeeDocument } from "../profiles/types";
 
 const emptyEmployeeInfo: EmployeeInfo = {
@@ -181,6 +181,21 @@ export default function JoiningForm({
           variant: "destructive"
         });
       }
+    }
+  };
+
+  // KYC document delete handler
+  const handleDocumentDelete = async (doc: EmployeeDocument) => {
+    if (!profileIdState) return;
+    try {
+      await deleteDocument(doc.id);
+      toast({ title: "Deleted", description: `${doc.document_type} removed successfully` });
+      // Refresh documents list
+      const docs = await getEmployeeDocuments(profileIdState);
+      setUploadedDocuments(docs);
+    } catch (error) {
+      console.error("Delete failed", error);
+      toast({ title: "Delete Failed", description: "Failed to delete document. Please try again.", variant: "destructive" });
     }
   };
 
@@ -545,6 +560,7 @@ export default function JoiningForm({
                     <div className="pt-8 border-t">
                       <DocumentUploadSection
                         handleKycUpload={handleKycUpload}
+                        handleDocumentDelete={handleDocumentDelete}
                         uploadedDocuments={uploadedDocuments}
                       />
                     </div>

@@ -1,10 +1,10 @@
-import { api } from '@/lib/api';
+import { api } from "@sdk/api";
 import {
   EmployeeDocument,
   GetDocumentsResponse,
   UploadDocumentResponse,
   UpdateDocumentStatusResponse
-} from '../types';
+} from "../features/profiles/types";
 
 /**
  * Document Service
@@ -39,11 +39,7 @@ export const uploadDocument = async (
     formData.append('document_type', documentType);
     formData.append('file', file);
 
-    const response = await api.post(`/profiles/${employeeId}/documents`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }) as UploadDocumentResponse;
+    const response = await api.post(`/profiles/${employeeId}/documents`, formData) as UploadDocumentResponse;
 
     return response.document;
   } catch (error) {
@@ -90,7 +86,15 @@ export const deleteDocument = async (documentId: string): Promise<void> => {
  */
 export const downloadDocument = async (documentId: string): Promise<Blob> => {
   try {
-    const res = await fetch(`/profiles/documents/${documentId}/download`);
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const token = localStorage.getItem('auth_token');
+
+    const res = await fetch(`${apiBase}/api/profiles/documents/${documentId}/download`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+
     if (!res.ok) throw new Error('Failed to download document');
     const blob = await res.blob();
     return blob;

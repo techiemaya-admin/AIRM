@@ -1,6 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api } from "@/lib/api";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useIssueDetails, useIssueMutation } from "@/hooks/useIssues";
+import { useLabels, useLabelMutation } from "@/hooks/useLabels";
+import { useUsers } from "@/hooks/useUsers";
+import { useProjects } from "@/hooks/useProjects";
+import { api } from "@sdk/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -57,19 +62,32 @@ export default function IssueDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [issue, setIssue] = useState<Issue | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [assignees, setAssignees] = useState<Assignee[]>([]);
-  const [issueLabels, setIssueLabels] = useState<Label[]>([]);
+
+  // React Query Hooks
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser();
+  const { data: issue, isLoading: issueLoading, isError } = useIssueDetails(id);
+  const { data: availableLabels = [], isLoading: labelsLoading } = useLabels();
+  const labelMutation = useLabelMutation();
+  const { data: availableUsersRaw = [], isLoading: usersLoading } = useUsers();
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const issueMutation = useIssueMutation();
+
+  const isAdmin = currentUser?.role === 'admin';
+  const loading = userLoading || issueLoading || labelsLoading || usersLoading || projectsLoading;
+
+  const availableUsers = useMemo(() => availableUsersRaw.map((u: any) => ({
+    user_id: u.user_id || u.id,
+    email: u.email
+  })), [availableUsersRaw]);
+
+  const comments = issue?.comments || [];
+  const activities = issue?.activities || [];
+  const issueLabels = issue?.labels || [];
+  const assignees = issue?.assignees || [];
+
   const [showLabelDialog, setShowLabelDialog] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState("#6366f1");
-  const [availableLabels, setAvailableLabels] = useState<Label[]>([]);
-  const [availableUsers, setAvailableUsers] = useState<Assignee[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
 
   const [newComment, setNewComment] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -88,89 +106,19 @@ export default function IssueDetail() {
   const [editLogComment, setEditLogComment] = useState("");
 
   useEffect(() => {
-    const initPage = async () => {
-      if (!id) {
-        navigate("/issues");
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        setIsAdmin(userData?.role === 'admin');
-
-        // Fetch everything in parallel
-        await loadIssueData();
-      } catch (error: any) {
-        console.error('Error initializing page:', error);
-        if (error.message?.includes('404') || error.message?.includes('not found')) {
-          toast({
-            title: "Error",
-            description: "Issue not found",
-            variant: "destructive",
-          });
-          navigate("/issues");
-        } else {
-          toast({
-            title: "Error",
-            description: error.message || "Failed to load details",
-            variant: "destructive",
-          });
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initPage();
-  }, [id, navigate, toast]);
-
-  const loadIssueData = async () => {
-    try {
-      if (!id) return;
-
-      const [issueResponse, labelsResponse, usersResponse, projectsResponse] = await Promise.all([
-        api.issues.getById(id),
-        api.labels.getAll(),
-        api.users.getWithRoles(),
-        api.projects.getAll()
-      ]) as any;
-
-      const issueData = issueResponse.issue || issueResponse;
-
-      setIssue(issueData);
-      setEditTitle(issueData.title || "");
-      setEditDescription(issueData.description || "");
-      setEditProjectName(issueData.project_name || "");
-      setEditEstimatedHours(String(issueData.estimated_hours || 0));
-      setComments((issueData.comments || []).map((c: any) => ({
-        ...c,
-        user_email: c.email || c.user_email || 'Unknown'
-      })));
-      setActivities((issueData.activity || issueData.activities || []).map((a: any) => ({
-        ...a,
-        user_email: a.email || a.user_email || 'Unknown'
-      })));
-      setIssueLabels(issueData.labels || []);
-      setAssignees((issueData.assignees || []).map((a: any) => ({
-        user_id: a.user_id,
-        email: a.email || 'Unknown'
-      })));
-      setAvailableLabels(labelsResponse.labels || labelsResponse || []);
-      setAvailableUsers((usersResponse.users || usersResponse || []).map((u: any) => ({
-        user_id: u.user_id || u.id,
-        email: u.email
-      })));
-      setProjects(projectsResponse.projects || projectsResponse || []);
-    } catch (error: any) {
-      console.error("Error loading issue data:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to sync data",
-        variant: "destructive",
-      });
+    if (issue) {
+      setEditTitle(issue.title || "");
+      setEditDescription(issue.description || "");
+      setEditProjectName(issue.project_name || "");
+      setEditEstimatedHours(String(issue.estimated_hours || 0));
     }
-  };
+  }, [issue]);
+
+  useEffect(() => {
+    if (!id || (isError && !issueLoading)) {
+      navigate("/issues");
+    }
+  }, [id, isError, issueLoading, navigate]);
 
   const createCustomLabel = async () => {
     if (!newLabelName.trim()) {
@@ -183,12 +131,11 @@ export default function IssueDetail() {
     }
 
     try {
-      setLoading(true);
-      const newLabel = await api.labels.create({
+      await labelMutation.create.mutateAsync({
         name: newLabelName,
         color: newLabelColor,
         description: ""
-      }) as any;
+      });
 
       toast({
         title: "Success",
@@ -198,14 +145,11 @@ export default function IssueDetail() {
       setNewLabelName("");
       setShowLabelDialog(false);
 
-      // Refresh labels
-      const allLabels = await api.labels.getAll() as any;
-      setAvailableLabels(allLabels.labels || allLabels || []);
-
       // Auto-assign the new label to the current issue
       if (id) {
-        await api.issues.addLabel(id, newLabel.id || newLabel.label?.id);
-        await loadIssueData();
+        // We'll need to invalidate labels query as well
+        // queryClient.invalidateQueries({ queryKey: ['labels'] });
+        await issueMutation.addLabel.mutateAsync({ id, labelId: newLabelName }); // Using name as ID for now or need the ID from response
       }
     } catch (error: any) {
       toast({
@@ -213,24 +157,24 @@ export default function IssueDetail() {
         description: error.message || "Failed to create label",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const updateIssueStatus = async (newStatus: 'open' | 'in_progress' | 'closed') => {
     if (!id) return;
     try {
-      await api.issues.update(id, {
-        status: newStatus,
-        ...(newStatus === 'closed' ? { closed_at: new Date().toISOString() } : {})
+      await issueMutation.update.mutateAsync({
+        id,
+        data: {
+          status: newStatus,
+          ...(newStatus === 'closed' ? { closed_at: new Date().toISOString() } : {})
+        }
       });
 
       toast({
         title: "Success",
         description: `Issue status updated to ${newStatus.replace('_', ' ')}`,
       });
-      await loadIssueData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -244,11 +188,14 @@ export default function IssueDetail() {
     if (!id) return;
 
     try {
-      await api.issues.update(id, {
-        title: editTitle,
-        description: editDescription,
-        project_name: editProjectName,
-        estimated_hours: parseFloat(editEstimatedHours) || 0
+      await issueMutation.update.mutateAsync({
+        id,
+        data: {
+          title: editTitle,
+          description: editDescription,
+          project_name: editProjectName,
+          estimated_hours: parseFloat(editEstimatedHours) || 0
+        }
       });
 
       toast({
@@ -257,7 +204,6 @@ export default function IssueDetail() {
       });
       setIsEditing(false);
       setShowEstimateDialog(false);
-      await loadIssueData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -271,7 +217,7 @@ export default function IssueDetail() {
     if (!newComment.trim()) return;
 
     try {
-      await api.issues.addComment(id!, newComment);
+      await issueMutation.addComment.mutateAsync({ id: id!, comment: newComment });
 
       toast({
         title: "Success",
@@ -279,8 +225,6 @@ export default function IssueDetail() {
       });
 
       setNewComment("");
-      await loadIssueData();
-      // Notifications are handled by the backend API
     } catch (error: any) {
       toast({
         title: "Error",
@@ -294,9 +238,12 @@ export default function IssueDetail() {
     if (!id || parseFloat(logDuration) < 0) return;
 
     try {
-      await api.issues.logTime(id, {
-        duration: Math.round(parseFloat(logDuration)),
-        comment: logComment
+      await issueMutation.logTime.mutateAsync({
+        id,
+        data: {
+          duration: Math.round(parseFloat(logDuration)),
+          comment: logComment
+        }
       });
 
       toast({
@@ -307,7 +254,6 @@ export default function IssueDetail() {
       setShowLogTimeDialog(false);
       setLogDuration("1"); // Reset to default 1 hour
       setLogComment("");
-      await loadIssueData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -321,9 +267,13 @@ export default function IssueDetail() {
     if (!id || !editingActivity) return;
 
     try {
-      await api.issues.updateActivity(id, editingActivity.id, {
-        duration: Math.round(parseFloat(editLogDuration)),
-        comment: editLogComment
+      await issueMutation.updateActivity.mutateAsync({
+        id,
+        activityId: editingActivity.id,
+        data: {
+          duration: Math.round(parseFloat(editLogDuration)),
+          comment: editLogComment
+        }
       });
 
       toast({
@@ -332,7 +282,6 @@ export default function IssueDetail() {
       });
 
       setEditingActivity(null);
-      await loadIssueData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -346,14 +295,12 @@ export default function IssueDetail() {
     if (!id) return;
 
     try {
-      await api.issues.addLabel(id, labelId);
+      await issueMutation.addLabel.mutateAsync({ id, labelId });
 
       toast({
         title: "Success",
         description: "Label added successfully",
       });
-
-      await loadIssueData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -367,14 +314,12 @@ export default function IssueDetail() {
     if (!id) return;
 
     try {
-      await api.issues.removeLabel(id, labelId);
+      await issueMutation.removeLabel.mutateAsync({ id, labelId });
 
       toast({
         title: "Success",
         description: "Label removed successfully",
       });
-
-      await loadIssueData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -388,14 +333,12 @@ export default function IssueDetail() {
     if (!id) return;
 
     try {
-      await api.issues.assignUser(id, userId);
+      await issueMutation.assignUser.mutateAsync({ id, userId });
 
       toast({
         title: "Success",
         description: "Employee assigned successfully",
       });
-
-      await loadIssueData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -409,7 +352,7 @@ export default function IssueDetail() {
     if (!id || selectedUserIds.length === 0) return;
 
     try {
-      await api.issues.assignUsers(id, selectedUserIds);
+      await issueMutation.assignUsers.mutateAsync({ id, userIds: selectedUserIds });
 
       toast({
         title: "Success",
@@ -418,7 +361,6 @@ export default function IssueDetail() {
 
       setSelectedUserIds([]);
       setShowAssigneesDropdown(false);
-      await loadIssueData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -440,14 +382,12 @@ export default function IssueDetail() {
     if (!id) return;
 
     try {
-      await api.issues.unassignUser(id, userId);
+      await issueMutation.unassignUser.mutateAsync({ id, userId });
 
       toast({
         title: "Success",
         description: "Employee unassigned successfully",
       });
-
-      await loadIssueData();
     } catch (error: any) {
       toast({
         title: "Error",

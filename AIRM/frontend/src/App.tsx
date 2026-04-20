@@ -193,7 +193,7 @@ const App = () => (
               element={
                 <AuthGuard>
                   <Layout>
-                    <Profiles />
+                    <ResourceManagement />
                   </Layout>
                 </AuthGuard>
               }
@@ -293,7 +293,7 @@ const App = () => (
               element={
                 <AuthGuard>
                   <Layout>
-                    <Profiles />
+                    <ResourceManagement />
                   </Layout>
                 </AuthGuard>
               }

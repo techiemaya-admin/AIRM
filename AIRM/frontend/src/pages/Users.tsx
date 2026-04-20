@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 import { Users as UsersIcon, Shield, User as UserIcon, RefreshCw, Plus } from "lucide-react";
 
@@ -148,7 +148,7 @@ const Users = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
-        <div className="flex items-center justify-between mb-6 mr-12">
+        <div className="flex items-center justify-between mb-6 mr-14 md:mr-24">
           <h1 className="text-2xl font-bold">Employee Management</h1>
           <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4" />

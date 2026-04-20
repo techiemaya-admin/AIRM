@@ -6,18 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 // LAD Architecture: Use SDK instead of direct API calls
 import { useProfiles, useProfileMutation, type EmployeeProfile as SDKEmployeeProfile } from "@/sdk/features/profiles";
 import { usePfDetails, usePfContributions, usePayrollMutation } from "@/sdk/features/payroll-pf";
 import {
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  Briefcase, 
-  Code, 
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  Briefcase,
+  Code,
   ExternalLink,
   RefreshCw,
   Search,
@@ -52,18 +52,18 @@ interface ProfilesProps {
 
 const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
   const { id: profileId } = useParams();
-  
+
   // LAD Architecture: Use SDK hooks
   const { data: profiles = [], isLoading: loading, error: profilesError, refetch: refetchProfiles } = useProfiles();
   const updateProfileMutation = useProfileMutation();
-  
+
   // Log profiles data for debugging
   useEffect(() => {
     console.log('[Profiles Page] Profiles data:', profiles);
     console.log('[Profiles Page] Loading:', loading);
     console.log('[Profiles Page] Error:', profilesError);
   }, [profiles, loading, profilesError]);
-  
+
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [selectedProfile, setSelectedProfile] = useState<EmployeeProfile | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -84,7 +84,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
   const [users, setUsers] = useState<any[]>([]);
-  
+
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDepartment, setFilterDepartment] = useState<string>("all");
@@ -95,10 +95,10 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  
+
   // Edit form state
   const [editForm, setEditForm] = useState<Partial<EmployeeProfile>>({});
-  
+
   // Cmd+K global search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -113,7 +113,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isSearchOpen]);
-  
+
   // Add profile form state
   const [addForm, setAddForm] = useState<Partial<EmployeeProfile>>({
     email: '',
@@ -159,7 +159,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
           documents: 'Resume,Cover Letter',
         }
       ];
-      
+
       // Convert to CSV format
       const headers = Object.keys(sampleData[0]);
       const csvContent = [
@@ -172,7 +172,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
           return value;
         }).join(','))
       ].join('\n');
-      
+
       // Create a blob and download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
@@ -183,7 +183,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast({
         title: 'Success',
         description: 'Template downloaded successfully',
@@ -202,26 +202,26 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
   const handleUploadProfiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     try {
       // Reset the file input
       if (e.target) {
         e.target.value = '';
       }
-      
+
       // Show loading state
       toast({
         title: 'Processing',
         description: 'Uploading profiles...',
       });
-      
+
       // Create form data
       const formData = new FormData();
       formData.append('file', file);
-      
+
       // Get token from localStorage (the key might be different in your app)
       const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-      
+
       // Upload the file to the backend
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
       if (!API_BASE_URL) throw new Error('VITE_API_BASE_URL is not set!');
@@ -233,18 +233,18 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
           'Authorization': `Bearer ${token || ''}`,
         },
       });
-      
+
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.message || 'Upload failed');
       }
-      
+
       toast({
         title: 'Success',
         description: `${result.message || `${file.name} uploaded successfully`}`,
       });
-      
+
       // Refresh profiles after upload
       refetchProfiles();
     } catch (error: any) {
@@ -263,7 +263,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         if (userData.id) {
           setCurrentUser(userData);
-          
+
           // Get user role from API
           try {
             const currentUserResp = await api.auth.getMe() as any;
@@ -275,7 +275,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
               role: userRole
             };
             setCurrentUser(userWithRole);
-            
+
             // Profiles are loaded via SDK hook (useProfiles)
             // Load users if admin
             if (userWithRole.role === 'admin') {
@@ -341,27 +341,27 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
 
   const handleSaveProfile = async () => {
     if (!selectedProfile) return;
-    
+
     try {
       // Prepare form data, converting null to undefined for API
       const profileData: any = { ...editForm };
       if (profileData.phone === null || profileData.phone === '') {
         profileData.phone = undefined;
       }
-      
+
       // LAD Architecture: Use SDK mutation
       await updateProfileMutation.mutateAsync({
         id: selectedProfile.id,
         data: profileData
       });
-      
+
       toast({
         title: "Success",
         description: "Profile updated successfully",
       });
       setIsEditOpen(false);
       refetchProfiles();
-      
+
       // Reload selected profile
       if (selectedProfile) {
         const { getProfileById } = await import("@/sdk/features/profiles");
@@ -408,13 +408,13 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
       if (profileData.phone === null || profileData.phone === '') {
         profileData.phone = undefined;
       }
-      
+
       // LAD Architecture: Use SDK mutation
       await updateProfileMutation.mutateAsync({
         id: user.id,
         data: profileData
       });
-      
+
       toast({
         title: "Success",
         description: "Profile created successfully",
@@ -476,7 +476,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        filtered = filtered.filter(p => 
+        filtered = filtered.filter(p =>
           p.full_name?.toLowerCase().includes(query) ||
           p.email?.toLowerCase().includes(query) ||
           p.skills?.some(s => s.toLowerCase().includes(query)) ||
@@ -613,7 +613,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
 
   const isAdmin = currentUser?.role === 'admin';
   const canEdit = isAdmin || (selectedProfile && selectedProfile.id === currentUser?.id);
-  
+
   // Debug logging
   useEffect(() => {
     console.log('🔍 Current User:', currentUser);
@@ -642,236 +642,236 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
             {onlyCurrentUser ? 'My Profile' : 'Employee Profiles'}
           </h1>
           <p className="text-gray-500 mt-1">
-            {onlyCurrentUser 
-              ? 'View and manage your profile details' 
+            {onlyCurrentUser
+              ? 'View and manage your profile details'
               : 'View and manage employee directory and professional history'}
           </p>
         </div>
         {!onlyCurrentUser && (
-        <div className="flex items-center space-x-2">
-          {/* View Mode Toggle */}
-          <div className="flex items-center border rounded-md overflow-hidden">
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('grid')}
-              className="rounded-none border-0"
-            >
-              <Grid3x3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className="rounded-none border-0"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'kanban' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('kanban')}
-              className="rounded-none border-0"
-            >
-              <Columns className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          {/* Download Template Button */}
-          <Button
-            variant="outline"
-            onClick={handleDownloadTemplate}
-            className="flex items-center space-x-2"
-          >
-            <Download className="h-4 w-4" />
-            <span>Download Template</span>
-          </Button>
-          
-          {/* Upload Profiles Button */}
-          <label className="cursor-pointer">
+          <div className="flex items-center space-x-2">
+            {/* View Mode Toggle */}
+            <div className="flex items-center border rounded-md overflow-hidden">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className="rounded-none border-0"
+              >
+                <Grid3x3 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="rounded-none border-0"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('kanban')}
+                className="rounded-none border-0"
+              >
+                <Columns className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Download Template Button */}
             <Button
               variant="outline"
+              onClick={handleDownloadTemplate}
               className="flex items-center space-x-2"
             >
-              <UploadIcon className="h-4 w-4" />
-              <span>Upload Profiles</span>
+              <Download className="h-4 w-4" />
+              <span>Download Template</span>
             </Button>
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={handleUploadProfiles}
-            />
-          </label>
-          
-          {(isAdmin || true) && (
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Profile
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Add Employee Profile</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="add_email">Select User *</Label>
-                    <select
-                      id="add_email"
-                      value={addForm.email || ''}
-                      onChange={(e) => {
-                        const selectedUser = users.find(u => u.email === e.target.value);
-                        setAddForm({
-                          ...addForm,
-                          email: e.target.value,
-                          full_name: selectedUser?.full_name || addForm.full_name,
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select a user...</option>
-                      {users
-                        .filter(u => !profiles.find(p => p.email === u.email))
-                        .map(user => (
-                          <option key={user.id} value={user.email}>
-                            {user.email} {user.full_name ? `(${user.full_name})` : ''}
-                          </option>
-                        ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Only users without profiles are shown
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+
+            {/* Upload Profiles Button */}
+            <label className="cursor-pointer">
+              <Button
+                variant="outline"
+                className="flex items-center space-x-2"
+              >
+                <UploadIcon className="h-4 w-4" />
+                <span>Upload Profiles</span>
+              </Button>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handleUploadProfiles}
+              />
+            </label>
+
+            {(isAdmin || true) && (
+              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Profile
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Add Employee Profile</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
                     <div>
-                      <Label htmlFor="add_full_name">Full Name</Label>
-                      <Input
-                        id="add_full_name"
-                        value={addForm.full_name || ''}
-                        onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="add_job_title">Job Title</Label>
-                      <Input
-                        id="add_job_title"
-                        value={addForm.job_title || ''}
-                        onChange={(e) => setAddForm({ ...addForm, job_title: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="add_department">Department</Label>
-                      <Input
-                        id="add_department"
-                        value={addForm.department || ''}
-                        onChange={(e) => setAddForm({ ...addForm, department: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="add_phone">Phone</Label>
-                      <Input
-                        id="add_phone"
-                        value={addForm.phone || ''}
-                        onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="add_join_date">Join Date</Label>
-                      <Input
-                        id="add_join_date"
-                        type="date"
-                        value={addForm.join_date?.split('T')[0] || ''}
-                        onChange={(e) => setAddForm({ ...addForm, join_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="add_experience_years">Experience (Years)</Label>
-                      <Input
-                        id="add_experience_years"
-                        type="number"
-                        step="0.1"
-                        value={addForm.experience_years || 0}
-                        onChange={(e) => setAddForm({ ...addForm, experience_years: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="add_employment_type">Employment Type</Label>
+                      <Label htmlFor="add_email">Select User *</Label>
                       <select
-                        id="add_employment_type"
-                        value={addForm.employment_type || 'Full-time'}
-                        onChange={(e) => setAddForm({ ...addForm, employment_type: e.target.value })}
+                        id="add_email"
+                        value={addForm.email || ''}
+                        onChange={(e) => {
+                          const selectedUser = users.find(u => u.email === e.target.value);
+                          setAddForm({
+                            ...addForm,
+                            email: e.target.value,
+                            full_name: selectedUser?.full_name || addForm.full_name,
+                          });
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="Full-time">Full-time</option>
-                        <option value="Contract">Contract</option>
-                        <option value="Intern">Intern</option>
-                        <option value="Part-time">Part-time</option>
+                        <option value="">Select a user...</option>
+                        {users
+                          .filter(u => !profiles.find(p => p.email === u.email))
+                          .map(user => (
+                            <option key={user.id} value={user.email}>
+                              {user.email} {user.full_name ? `(${user.full_name})` : ''}
+                            </option>
+                          ))}
                       </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Only users without profiles are shown
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="add_full_name">Full Name</Label>
+                        <Input
+                          id="add_full_name"
+                          value={addForm.full_name || ''}
+                          onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="add_job_title">Job Title</Label>
+                        <Input
+                          id="add_job_title"
+                          value={addForm.job_title || ''}
+                          onChange={(e) => setAddForm({ ...addForm, job_title: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="add_department">Department</Label>
+                        <Input
+                          id="add_department"
+                          value={addForm.department || ''}
+                          onChange={(e) => setAddForm({ ...addForm, department: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="add_phone">Phone</Label>
+                        <Input
+                          id="add_phone"
+                          value={addForm.phone || ''}
+                          onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="add_join_date">Join Date</Label>
+                        <Input
+                          id="add_join_date"
+                          type="date"
+                          value={addForm.join_date?.split('T')[0] || ''}
+                          onChange={(e) => setAddForm({ ...addForm, join_date: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="add_experience_years">Experience (Years)</Label>
+                        <Input
+                          id="add_experience_years"
+                          type="number"
+                          step="0.1"
+                          value={addForm.experience_years || 0}
+                          onChange={(e) => setAddForm({ ...addForm, experience_years: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="add_employment_type">Employment Type</Label>
+                        <select
+                          id="add_employment_type"
+                          value={addForm.employment_type || 'Full-time'}
+                          onChange={(e) => setAddForm({ ...addForm, employment_type: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="Full-time">Full-time</option>
+                          <option value="Contract">Contract</option>
+                          <option value="Intern">Intern</option>
+                          <option value="Part-time">Part-time</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="add_skills">Skills (comma-separated)</Label>
+                      <Input
+                        id="add_skills"
+                        value={Array.isArray(addForm.skills) ? addForm.skills.join(', ') : ''}
+                        onChange={(e) => setAddForm({
+                          ...addForm,
+                          skills: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                        })}
+                        placeholder="e.g., React, Node.js, TypeScript"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="add_bio">Bio</Label>
+                      <Textarea
+                        id="add_bio"
+                        value={addForm.bio || ''}
+                        onChange={(e) => setAddForm({ ...addForm, bio: e.target.value })}
+                        rows={3}
+                      />
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="add_skills">Skills (comma-separated)</Label>
-                    <Input
-                      id="add_skills"
-                      value={Array.isArray(addForm.skills) ? addForm.skills.join(', ') : ''}
-                      onChange={(e) => setAddForm({ 
-                        ...addForm, 
-                        skills: e.target.value.split(',').map(s => s.trim()).filter(s => s) 
-                      })}
-                      placeholder="e.g., React, Node.js, TypeScript"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="add_bio">Bio</Label>
-                    <Textarea
-                      id="add_bio"
-                      value={addForm.bio || ''}
-                      onChange={(e) => setAddForm({ ...addForm, bio: e.target.value })}
-                      rows={3}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => {
-                    setIsAddOpen(false);
-                    setAddForm({
-                      email: '',
-                      full_name: '',
-                      job_title: '',
-                      department: '',
-                      phone: '',
-                      join_date: '',
-                      experience_years: 0,
-                      employment_type: 'Full-time',
-                    });
-                  }}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddProfile} disabled={updateProfileMutation.isPending || !addForm.email}>
-                    {updateProfileMutation.isPending ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Profile
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-          <Button onClick={() => refetchProfiles()} variant="outline" disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => {
+                      setIsAddOpen(false);
+                      setAddForm({
+                        email: '',
+                        full_name: '',
+                        job_title: '',
+                        department: '',
+                        phone: '',
+                        join_date: '',
+                        experience_years: 0,
+                        employment_type: 'Full-time',
+                      });
+                    }}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAddProfile} disabled={updateProfileMutation.isPending || !addForm.email}>
+                      {updateProfileMutation.isPending ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Profile
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            <Button onClick={() => refetchProfiles()} variant="outline" disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         )}
       </div>
 
@@ -930,116 +930,116 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
 
       {/* Search and Filters */}
       {!onlyCurrentUser && (
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Search */}
-            <div className="lg:col-span-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search by name, email, or skill... (Cmd+K)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onClick={() => setIsSearchOpen(true)}
-                  className="pl-10 cursor-pointer"
-                />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 hidden md:block">
-                  ⌘K
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Search */}
+              <div className="lg:col-span-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by name, email, or skill... (Cmd+K)"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onClick={() => setIsSearchOpen(true)}
+                    className="pl-10 cursor-pointer"
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 hidden md:block">
+                    ⌘K
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Department Filter */}
-            <div>
-              <select
-                value={filterDepartment}
-                onChange={(e) => setFilterDepartment(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Departments</option>
-                {departments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Role Filter */}
-            <div>
-              <select
-                value={filterRole}
-                onChange={(e) => setFilterRole(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Roles</option>
-                {roles.map(role => (
-                  <option key={role} value={role}>{role}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="onboarding">Onboarding</option>
-                <option value="ex-employee">Ex-Employee</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            {/* Experience Filter */}
-            <div>
-              <select
-                value={filterExperience}
-                onChange={(e) => setFilterExperience(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Experience</option>
-                <option value="0-2">0-2 years</option>
-                <option value="2-5">2-5 years</option>
-                <option value="5-10">5-10 years</option>
-                <option value="10+">10+ years</option>
-              </select>
-            </div>
-
-            {/* Sort By */}
-            <div>
-              <div className="flex items-center space-x-2">
-                <ArrowUpDown className="h-4 w-4 text-gray-400" />
+              {/* Department Filter */}
+              <div>
                 <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={filterDepartment}
+                  onChange={(e) => setFilterDepartment(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="name">Sort by Name</option>
-                  <option value="join_date">Sort by Join Date</option>
-                  <option value="experience">Sort by Experience</option>
-                  <option value="department">Sort by Department</option>
+                  <option value="all">All Departments</option>
+                  {departments.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
                 </select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              </div>
+
+              {/* Role Filter */}
+              <div>
+                <select
+                  value={filterRole}
+                  onChange={(e) => setFilterRole(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {sortOrder === 'asc' ? '↑' : '↓'}
-                </Button>
+                  <option value="all">All Roles</option>
+                  {roles.map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="onboarding">Onboarding</option>
+                  <option value="ex-employee">Ex-Employee</option>
+                </select>
               </div>
             </div>
 
-            {/* Results count */}
-            <div className="flex items-center text-sm text-gray-500">
-              Showing {filteredAndSortedProfiles.length} of {profiles.length} employees
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              {/* Experience Filter */}
+              <div>
+                <select
+                  value={filterExperience}
+                  onChange={(e) => setFilterExperience(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Experience</option>
+                  <option value="0-2">0-2 years</option>
+                  <option value="2-5">2-5 years</option>
+                  <option value="5-10">5-10 years</option>
+                  <option value="10+">10+ years</option>
+                </select>
+              </div>
+
+              {/* Sort By */}
+              <div>
+                <div className="flex items-center space-x-2">
+                  <ArrowUpDown className="h-4 w-4 text-gray-400" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="name">Sort by Name</option>
+                    <option value="join_date">Sort by Join Date</option>
+                    <option value="experience">Sort by Experience</option>
+                    <option value="department">Sort by Department</option>
+                  </select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  >
+                    {sortOrder === 'asc' ? '↑' : '↓'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Results count */}
+              <div className="flex items-center text-sm text-gray-500">
+                Showing {filteredAndSortedProfiles.length} of {profiles.length} employees
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
       )}
 
       {/* Error Display */}
@@ -1073,7 +1073,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
             <User className="h-12 w-12 mx-auto mb-4 text-gray-400" />
             <p className="text-gray-500">No employee profiles found</p>
             <p className="text-sm text-gray-400 mt-2">
-              {profiles.length === 0 
+              {profiles.length === 0
                 ? "The database appears to be empty. Use the '+ Add Profile' button to create profiles."
                 : "No profiles match your current filters."}
             </p>
@@ -1093,10 +1093,10 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
           {filteredAndSortedProfiles.map((profile) => {
             const yearsAtCompany = calculateYearsAtCompany(profile.join_date, profile.created_at);
             const completeness = calculateProfileCompleteness(profile);
-            
+
             return (
-              <Card 
-                key={profile.id} 
+              <Card
+                key={profile.id}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
                 onClick={() => handleViewProfile(profile.id)}
               >
@@ -1125,23 +1125,22 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                       </div>
                     </div>
                     <div className="flex flex-col items-end space-y-1">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        profile.role === 'ex-employee' 
-                          ? 'bg-red-100 text-red-800' 
+                      <span className={`px-2 py-1 text-xs rounded-full ${profile.role === 'ex-employee'
+                          ? 'bg-red-100 text-red-800'
                           : !profile.join_date || new Date(profile.join_date) > new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {profile.role === 'ex-employee' 
-                          ? 'Ex-Employee' 
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                        {profile.role === 'ex-employee'
+                          ? 'Ex-Employee'
                           : !profile.join_date || new Date(profile.join_date) > new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-                          ? 'Onboarding'
-                          : 'Active'}
+                            ? 'Onboarding'
+                            : 'Active'}
                       </span>
                       <div className="flex items-center space-x-1 text-xs text-gray-400">
                         <span>{completeness}%</span>
                         <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
+                          <div
                             className="h-full bg-blue-600 transition-all"
                             style={{ width: `${completeness}%` }}
                           />
@@ -1262,7 +1261,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                     const burnout = getBurnoutLevel(profile.burnout_score);
                     const status = getProfileStatus(profile);
                     return (
-                      <tr 
+                      <tr
                         key={profile.id}
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() => handleViewProfile(profile.id)}
@@ -1297,13 +1296,12 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                           <div className="text-sm text-gray-900">{profile.department || 'N/A'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            status === 'ex-employee' 
-                              ? 'bg-red-100 text-red-800' 
+                          <span className={`px-2 py-1 text-xs rounded-full ${status === 'ex-employee'
+                              ? 'bg-red-100 text-red-800'
                               : status === 'onboarding'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-green-100 text-green-800'
+                            }`}>
                             {status === 'ex-employee' ? 'Ex-Employee' : status === 'onboarding' ? 'Onboarding' : 'Active'}
                           </span>
                         </td>
@@ -1356,7 +1354,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                 </p>
               </div>
               <div className="bg-gray-50 rounded-b-lg p-4 space-y-3 min-h-[400px] max-h-[600px] overflow-y-auto">
-                  {kanbanColumns[status as keyof typeof kanbanColumns].map((profile) => {
+                {kanbanColumns[status as keyof typeof kanbanColumns].map((profile) => {
                   const completeness = calculateProfileCompleteness(profile);
                   const burnout = getBurnoutLevel(profile.burnout_score);
                   return (
@@ -1399,7 +1397,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                             <div className="flex items-center space-x-1 mt-2 text-xs text-gray-400">
                               <span>{completeness}%</span>
                               <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden max-w-[60px]">
-                                <div 
+                                <div
                                   className="h-full bg-blue-600 transition-all"
                                   style={{ width: `${completeness}%` }}
                                 />
@@ -1466,11 +1464,10 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === tab
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab
                         ? 'border-blue-600 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
+                      }`}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1).replace('_', ' ').replace('-', ' & ')}
                   </button>
@@ -1503,7 +1500,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                     <div>
                       <Label className="text-xs text-gray-500">Date of Joining</Label>
                       <p className="text-sm font-medium">
-                        {selectedProfile.join_date 
+                        {selectedProfile.join_date
                           ? format(new Date(selectedProfile.join_date), "MMMM dd, yyyy")
                           : 'N/A'}
                       </p>
@@ -1521,7 +1518,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                     <div>
                       <Label className="text-xs text-gray-500">Total Experience</Label>
                       <p className="text-sm font-medium">
-                        {selectedProfile.experience_years 
+                        {selectedProfile.experience_years
                           ? `${selectedProfile.experience_years} years`
                           : 'N/A'}
                       </p>
@@ -1563,9 +1560,9 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                     {selectedProfile.linkedin_url && (
                       <div>
                         <Label className="text-xs text-gray-500">LinkedIn</Label>
-                        <a 
-                          href={selectedProfile.linkedin_url} 
-                          target="_blank" 
+                        <a
+                          href={selectedProfile.linkedin_url}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-blue-600 hover:underline flex items-center space-x-1"
                         >
@@ -1577,9 +1574,9 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                     {selectedProfile.github_url && (
                       <div>
                         <Label className="text-xs text-gray-500">GitHub</Label>
-                        <a 
-                          href={selectedProfile.github_url} 
-                          target="_blank" 
+                        <a
+                          href={selectedProfile.github_url}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-gray-600 hover:underline flex items-center space-x-1"
                         >
@@ -1621,14 +1618,14 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                       <Label className="text-sm font-medium mb-2 block">Total Years of Experience</Label>
                       <p className="text-lg font-semibold">{selectedProfile.experience_years || 0} years</p>
                     </div>
-                    
+
                     {/* Experience Timeline */}
                     <div className="mt-6">
                       <Label className="text-sm font-medium mb-3 block">Experience Timeline</Label>
                       <div className="relative">
                         {/* Timeline line */}
                         <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                        
+
                         <div className="space-y-4">
                           {/* Current Company */}
                           {selectedProfile.join_date && (() => {
@@ -1660,7 +1657,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                               </div>
                             );
                           })()}
-                          
+
                           {/* Previous Experience */}
                           {selectedProfile.previous_projects && selectedProfile.previous_projects.length > 0 && (
                             <>
@@ -1696,7 +1693,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                         </div>
                       </div>
                     </div>
-                    
+
                     {(!selectedProfile.previous_projects || selectedProfile.previous_projects.length === 0) && !selectedProfile.join_date && (
                       <p className="text-sm text-gray-500">No experience listed</p>
                     )}
@@ -1858,12 +1855,11 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                             <span>Critical Risk</span>
                           </div>
                           <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full transition-all ${
-                                selectedProfile.burnout_score <= 30 ? 'bg-green-500' :
-                                selectedProfile.burnout_score <= 60 ? 'bg-yellow-500' :
-                                selectedProfile.burnout_score <= 80 ? 'bg-orange-500' : 'bg-red-500'
-                              }`}
+                            <div
+                              className={`h-full transition-all ${selectedProfile.burnout_score <= 30 ? 'bg-green-500' :
+                                  selectedProfile.burnout_score <= 60 ? 'bg-yellow-500' :
+                                    selectedProfile.burnout_score <= 80 ? 'bg-orange-500' : 'bg-red-500'
+                                }`}
                               style={{ width: `${selectedProfile.burnout_score}%` }}
                             />
                           </div>
@@ -1872,13 +1868,13 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                               <strong>Risk Level:</strong> {getBurnoutLevel(selectedProfile.burnout_score).level}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {selectedProfile.burnout_score <= 30 
+                              {selectedProfile.burnout_score <= 30
                                 ? 'Employee shows low signs of burnout. Continue monitoring and maintain healthy work-life balance.'
                                 : selectedProfile.burnout_score <= 60
-                                ? 'Employee shows moderate signs of burnout. Consider workload adjustments and check-in meetings.'
-                                : selectedProfile.burnout_score <= 80
-                                ? 'Employee shows high signs of burnout. Immediate intervention recommended - reduce workload and provide support.'
-                                : 'Employee shows critical signs of burnout. Urgent action required - consider time off and professional support.'}
+                                  ? 'Employee shows moderate signs of burnout. Consider workload adjustments and check-in meetings.'
+                                  : selectedProfile.burnout_score <= 80
+                                    ? 'Employee shows high signs of burnout. Immediate intervention recommended - reduce workload and provide support.'
+                                    : 'Employee shows critical signs of burnout. Urgent action required - consider time off and professional support.'}
                             </p>
                           </div>
                         </div>
@@ -1905,7 +1901,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                           <div>
                             <Label className="text-xs text-gray-500">Date of Joining</Label>
                             <p className="text-sm font-medium">
-                              {selectedProfile.join_date 
+                              {selectedProfile.join_date
                                 ? format(new Date(selectedProfile.join_date), "MMMM dd, yyyy")
                                 : 'N/A'}
                             </p>
@@ -1932,8 +1928,8 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                                     <p className="text-xs text-gray-400">Available for download</p>
                                   </div>
                                 </div>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => window.location.href = '/payslips'}
                                 >
@@ -1970,7 +1966,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                             </div>
                           )}
                         </div>
-                        
+
                         {/* PF Management Section */}
                         {(currentUser?.role === 'admin' || currentUser?.role === 'hr' || currentUser?.id === selectedProfile.id) && (
                           <PfManagementSection profileId={selectedProfile.id} isAdmin={isAdmin} />
@@ -1987,7 +1983,7 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                     {(currentUser?.role === 'admin' || currentUser?.role === 'hr' || currentUser?.id === selectedProfile.id) && (
                       <div className="p-4 border rounded-lg bg-gray-50 mb-2">
                         <h3 className="text-lg font-semibold mb-4">Upload Documents</h3>
-                        
+
                         {/* KYC Documents */}
                         <div className="mb-6">
                           <h4 className="text-md font-semibold text-gray-700 mb-3 pb-2 border-b">KYC Documents</h4>
@@ -2289,6 +2285,14 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                 />
               </div>
               <div>
+                <Label htmlFor="email">Official Email</Label>
+                <Input
+                  id="email"
+                  value={editForm.email || ''}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                />
+              </div>
+              <div>
                 <Label htmlFor="phone">Phone</Label>
                 <Input
                   id="phone"
@@ -2345,9 +2349,9 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
               <Label>Skills (comma-separated)</Label>
               <Input
                 value={editForm.skills?.join(', ') || ''}
-                onChange={(e) => setEditForm({ 
-                  ...editForm, 
-                  skills: e.target.value.split(',').map(s => s.trim()).filter(s => s) 
+                onChange={(e) => setEditForm({
+                  ...editForm,
+                  skills: e.target.value.split(',').map(s => s.trim()).filter(s => s)
                 })}
                 placeholder="e.g., React, Node.js, TypeScript"
               />
@@ -2360,9 +2364,9 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
                 min="0"
                 max="100"
                 value={editForm.burnout_score !== undefined && editForm.burnout_score !== null ? editForm.burnout_score : ''}
-                onChange={(e) => setEditForm({ 
-                  ...editForm, 
-                  burnout_score: e.target.value ? parseInt(e.target.value) : undefined 
+                onChange={(e) => setEditForm({
+                  ...editForm,
+                  burnout_score: e.target.value ? parseInt(e.target.value) : undefined
                 })}
                 placeholder="0-100"
               />
@@ -2375,19 +2379,19 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancel
             </Button>
-                  <Button onClick={handleSaveProfile} disabled={updateProfileMutation.isPending}>
-                    {updateProfileMutation.isPending ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
+            <Button onClick={handleSaveProfile} disabled={updateProfileMutation.isPending}>
+              {updateProfileMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2484,18 +2488,17 @@ const PfManagementSection = ({ profileId, isAdmin }: { profileId: string; isAdmi
             <div>
               <Label className="text-xs text-gray-500">Enrollment Date</Label>
               <p className="text-sm font-medium">
-                {pfDetails.enrollment_date 
+                {pfDetails.enrollment_date
                   ? format(new Date(pfDetails.enrollment_date), "MMMM dd, yyyy")
                   : 'N/A'}
               </p>
             </div>
             <div>
               <Label className="text-xs text-gray-500">Status</Label>
-              <span className={`inline-block px-2 py-1 text-xs rounded-full ${
-                pfDetails.status === 'active' ? 'bg-green-100 text-green-800' :
-                pfDetails.status === 'on_hold' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
+              <span className={`inline-block px-2 py-1 text-xs rounded-full ${pfDetails.status === 'active' ? 'bg-green-100 text-green-800' :
+                  pfDetails.status === 'on_hold' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                }`}>
                 {pfDetails.status.replace('_', ' ').toUpperCase()}
               </span>
             </div>

@@ -8,7 +8,8 @@ import puppeteer from 'puppeteer';
 
 const router = express.Router();
 
-const uploadsDir = path.resolve(process.cwd(), 'backend', 'uploads', 'hr-documents');
+const baseDir = process.env.K_SERVICE ? '/tmp' : path.join(process.cwd(), 'backend');
+const uploadsDir = path.resolve(baseDir, 'uploads', 'hr-documents');
 fs.ensureDirSync(uploadsDir);
 
 const storage = multer.diskStorage({
@@ -61,16 +62,18 @@ router.get('/templates/:id', async (req, res) => {
       meta = await fs.readJson(metaPath);
     }
 
-    return res.json({ success: true, template: {
-      id,
-      originalname: meta.originalname || id,
-      filename: id,
-      path: templatePath,
-      size: stat.size,
-      extractedFields: meta.extractedFields || [],
-      uploadedAt: meta.uploadedAt || null,
-      html,
-    }});
+    return res.json({
+      success: true, template: {
+        id,
+        originalname: meta.originalname || id,
+        filename: id,
+        path: templatePath,
+        size: stat.size,
+        extractedFields: meta.extractedFields || [],
+        uploadedAt: meta.uploadedAt || null,
+        html,
+      }
+    });
   } catch (err) {
     console.error('hr-documents: get template error', err);
     return res.status(500).json({ success: false, error: 'Could not read template' });
@@ -90,7 +93,7 @@ router.delete('/templates/:id', async (req, res) => {
 
     // Delete the template file
     await fs.remove(templatePath);
-    
+
     // Delete the metadata file if exists
     if (await fs.pathExists(metaPath)) {
       await fs.remove(metaPath);
@@ -178,12 +181,12 @@ router.post('/generate/preview', express.json(), async (req, res) => {
     const template = handlebars.compile(html);
     const merged = template(data || {});
 
-    res.json({ 
-      success: true, 
-      html: merged, 
-      hasPlaceholders, 
+    res.json({
+      success: true,
+      html: merged,
+      hasPlaceholders,
       placeholders,
-      message: hasPlaceholders 
+      message: hasPlaceholders
         ? `Template has ${placeholders.length} placeholder(s) that were replaced with employee data.`
         : 'This template has no placeholders. The document is displayed as-is. Employee data is shown for reference.'
     });
@@ -194,7 +197,8 @@ router.post('/generate/preview', express.json(), async (req, res) => {
 });
 
 // --- Template upload and fetch by type ---
-const templateTypeDir = path.join(process.cwd(), 'backend', 'uploads', 'hr-templates');
+const baseTemplateTypeDir = process.env.K_SERVICE ? '/tmp' : path.join(process.cwd(), 'backend');
+const templateTypeDir = path.join(baseTemplateTypeDir, 'uploads', 'hr-templates');
 fs.ensureDirSync(templateTypeDir);
 
 const typeStorage = multer.diskStorage({
@@ -226,11 +230,13 @@ router.get('/template/:type', (req, res) => {
 });
 
 router.get('/document-types', (req, res) => {
-  res.json({ success: true, documentTypes: [
-    { id: 'payslip', name: 'Employee Payslip' },
-    { id: 'experience_letter', name: 'Experience Letter' },
-    { id: 'offer_letter', name: 'Offer Letter' },
-  ] });
+  res.json({
+    success: true, documentTypes: [
+      { id: 'payslip', name: 'Employee Payslip' },
+      { id: 'experience_letter', name: 'Experience Letter' },
+      { id: 'offer_letter', name: 'Offer Letter' },
+    ]
+  });
 });
 
 router.get('/formats', (req, res) => {
@@ -372,7 +378,7 @@ ${merged}
     });
     const page = await browser.newPage();
     await page.setContent(fullHtml, { waitUntil: 'networkidle0', timeout: 30000 });
-    
+
     console.log('[hr-documents] Generating PDF buffer...');
     const pdfBuffer = await page.pdf({
       format: 'A4',
@@ -387,7 +393,7 @@ ${merged}
 
     await browser.close();
     browser = null;
-    
+
     console.log('[hr-documents] PDF generated successfully, size:', pdfBuffer.length, 'bytes');
 
     // Generate a meaningful filename using employee data from the merged content
@@ -415,14 +421,14 @@ ${merged}
   } catch (err) {
     console.error('hr-documents pdf error', err);
     if (browser) {
-      try { await browser.close(); } catch (e) {}
+      try { await browser.close(); } catch (e) { }
     }
     if (!res.headersSent) res.status(500).json({ success: false, error: 'PDF generation failed' });
   }
 });
 
 function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (s) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
+  return String(str).replace(/[&<>"']/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
 }
 
 // Generate DOCX from template and data (returns merged DOCX file)

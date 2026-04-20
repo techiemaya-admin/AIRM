@@ -8,7 +8,7 @@
  */
 
 // Services
-export * from './services/time-clockService';
+export * from '@sdk/time-clockService';
 
 // Hooks
 export * from './hooks/usetime-clock';

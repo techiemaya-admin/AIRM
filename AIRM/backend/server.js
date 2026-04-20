@@ -51,9 +51,9 @@ app.use((req, res, next) => {
    UPLOADS
 ===================== */
 
+const baseDir = process.env.K_SERVICE ? '/tmp' : path.join(process.cwd(), 'backend');
 const verificationUploadsDir = path.join(
-  process.cwd(),
-  'backend',
+  baseDir,
   'uploads',
   'verification'
 );
@@ -85,10 +85,10 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      // Allow Railway domains
+      // Allow Railway and Cloud Run domains
       try {
         const host = new URL(origin).host;
-        if (host.endsWith('.up.railway.app')) {
+        if (host.endsWith('.up.railway.app') || host.endsWith('.run.app')) {
           return callback(null, true);
         }
       } catch { }
@@ -119,7 +119,7 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'cache-control', 'Pragma', 'pragma', 'Expires', 'expires'],
     exposedHeaders: ['Content-Type'],
     maxAge: 86400, // 24 hours
   })
@@ -301,6 +301,14 @@ const loadRoutes = async () => {
 
 (async () => {
   await loadRoutes();
+
+  // Initialize auto-clock-out cron job
+  try {
+    const cronService = await import('./features/timesheet/services/time-clock-cron.service.js');
+    cronService.initAutoClockOutJob();
+  } catch (err) {
+    console.error('⚠️ Failed to load auto clock-out cron job:', err);
+  }
 
   // FRONTEND_URL: Where the React app is hosted (separate Cloud Run service)
   const frontendUrl = process.env.FRONTEND_URL || null;

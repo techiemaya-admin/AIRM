@@ -24,10 +24,10 @@ router.get('/', issuesController.getAllIssues);
 router.get('/:id', issuesController.getIssueById);
 
 /**
- * Create issue (Admin only)
+ * Create issue
  * POST /api/issues
  */
-router.post('/', requireAdmin, [
+router.post('/', [
   body('title').trim().notEmpty(),
   body('description').optional(),
   body('status').optional().isIn(['open', 'in_progress', 'closed']),

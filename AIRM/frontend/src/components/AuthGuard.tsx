@@ -1,52 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { NotificationPopup } from "./NotificationPopup";
-
-// Session-based cache to avoid redundant getMe() calls on every route change
-let lastVerifiedToken: string | null = null;
-let lastVerifiedTime: number = 0;
-const AUTH_VERIFY_TTL = 30000; // 30 seconds
 
 export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const { data: user, isLoading, isError } = useCurrentUser();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
+    if (!token || (isError && !isLoading)) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      navigate("/auth");
+    }
+  }, [user, isLoading, isError, navigate]);
 
-      if (!token) {
-        navigate("/auth");
-        return;
-      }
-
-      // Skip API call if we verified this token recently
-      if (token === lastVerifiedToken && (Date.now() - lastVerifiedTime) < AUTH_VERIFY_TTL) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        await api.auth.getMe();
-        lastVerifiedToken = token;
-        lastVerifiedTime = Date.now();
-        setLoading(false);
-      } catch (error) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user');
-        lastVerifiedToken = null;
-        navigate("/auth");
-      }
-    };
-
-    checkAuth();
-  }, [navigate]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-muted-foreground animate-pulse">Authenticating...</p>
+        </div>
       </div>
     );
   }

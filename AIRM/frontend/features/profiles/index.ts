@@ -4,7 +4,7 @@
  */
 
 // Services
-export * from './services/profilesService';
+export * from '@sdk/profilesService';
 
 // Hooks
 export {

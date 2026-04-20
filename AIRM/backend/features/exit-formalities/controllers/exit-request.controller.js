@@ -17,7 +17,7 @@ export async function getAllExitRequests(req, res) {
       department: req.query.department,
       manager_id: req.query.manager_id,
     };
-    
+
     const exitRequests = await exitService.getAllExitRequests(filters);
     res.json({ exit_requests: exitRequests });
   } catch (error) {
@@ -80,10 +80,18 @@ export async function getExitRequestById(req, res) {
  */
 export async function createExitRequest(req, res) {
   try {
-    const userId = req.userId;
+    const requesterId = req.userId;
+    const isAdmin = req.isAdmin;
+    const isHR = req.isHR;
+
+    // If admin/HR provides a user_id in body, use it. Otherwise, use requester's ID.
+    const targetUserId = (isAdmin || isHR) && req.body.user_id ? req.body.user_id : requesterId;
+
+    // Add initiated_by to track who created the request (if different)
     const exitData = {
       ...req.body,
-      user_id: userId
+      user_id: targetUserId,
+      initiated_by: requesterId !== targetUserId ? requesterId : null
     };
 
     const exitRequest = await exitService.createExitRequest(exitData);
@@ -94,7 +102,7 @@ export async function createExitRequest(req, res) {
     });
   } catch (error) {
     console.error('[exit-formalities] Create exit request error:', error);
-    
+
     if (error.message === 'User already has an active exit request') {
       return res.status(400).json({ error: error.message });
     }

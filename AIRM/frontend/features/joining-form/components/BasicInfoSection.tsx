@@ -36,7 +36,7 @@ export const BasicInfoSection = ({ employeeInfo, updateEmployeeInfo }: BasicInfo
                         <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">Date of Birth</Label>
                         <Input
                             type="date"
-                            value={employeeInfo.date_of_birth || ''}
+                            value={employeeInfo.date_of_birth?.split('T')[0] || ''}
                             onChange={(e) => updateEmployeeInfo('date_of_birth', e.target.value)}
                             className="h-11 border-gray-200 focus:ring-blue-500 text-gray-700"
                         />
@@ -98,12 +98,12 @@ export const BasicInfoSection = ({ employeeInfo, updateEmployeeInfo }: BasicInfo
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">Official Email</Label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
+                        <div className="relative flex items-center">
+                            <Mail className="absolute left-3 h-4 w-4 text-gray-400" />
                             <Input
                                 value={employeeInfo.email || ''}
-                                disabled
-                                className="h-11 pl-10 bg-gray-50/50 border-gray-200 text-gray-500 cursor-not-allowed"
+                                onChange={(e) => updateEmployeeInfo('email', e.target.value)}
+                                className="h-11 pl-10 border-gray-200 focus:ring-blue-500 text-gray-700"
                             />
                         </div>
                     </div>
@@ -118,8 +118,8 @@ export const BasicInfoSection = ({ employeeInfo, updateEmployeeInfo }: BasicInfo
                     </div>
                     <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">Phone Number</Label>
-                        <div className="relative">
-                            <Phone className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
+                        <div className="relative flex items-center">
+                            <Phone className="absolute left-3 h-4 w-4 text-gray-400" />
                             <Input
                                 placeholder="Mobile number"
                                 value={employeeInfo.phone || ''}

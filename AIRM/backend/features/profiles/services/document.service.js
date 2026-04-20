@@ -7,6 +7,7 @@ import * as documentModel from '../models/document.pg.js';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import { uploadFileToGCS, deleteFileFromGCS } from '../../../SDK/storage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,12 +42,18 @@ export async function getDocumentById(documentId) {
 }
 
 /**
- * Upload a new document
+ * Upload a new document — saves to GCP Cloud Storage bucket
  */
 export async function uploadDocument(employeeId, documentCategory, documentType, fileData, uploadedBy) {
   try {
     // Validate file type and size
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     if (!allowedTypes.includes(fileData.mimetype)) {
@@ -57,21 +64,8 @@ export async function uploadDocument(employeeId, documentCategory, documentType,
       throw new Error('File size exceeds 10MB limit.');
     }
 
-    // Generate unique filename
-    const fileExtension = path.extname(fileData.originalname);
-    const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2)}${fileExtension}`;
-
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(__dirname, '../../../uploads/documents');
-    try {
-      await fs.access(uploadsDir);
-    } catch {
-      await fs.mkdir(uploadsDir, { recursive: true });
-    }
-
-    // Move file to uploads directory
-    const filePath = path.join(uploadsDir, uniqueFilename);
-    await fs.writeFile(filePath, fileData.buffer);
+    // Upload to Google Cloud Storage
+    const publicUrl = await uploadFileToGCS(fileData.buffer, fileData.originalname, fileData.mimetype, 'documents');
 
     // Create document record in database
     const documentData = {
@@ -79,7 +73,7 @@ export async function uploadDocument(employeeId, documentCategory, documentType,
       document_category: documentCategory,
       document_type: documentType,
       file_name: fileData.originalname,
-      file_path: `/uploads/documents/${uniqueFilename}`,
+      file_path: publicUrl,
       file_type: fileData.mimetype,
       uploaded_by: uploadedBy
     };
@@ -97,7 +91,6 @@ export async function uploadDocument(employeeId, documentCategory, documentType,
  */
 export async function updateDocumentStatus(documentId, verificationStatus, remarks = null, updatedBy = null) {
   try {
-    // Validate verification status
     const validStatuses = ['pending', 'approved', 'rejected'];
     if (!validStatuses.includes(verificationStatus)) {
       throw new Error('Invalid verification status');
@@ -116,7 +109,7 @@ export async function updateDocumentStatus(documentId, verificationStatus, remar
 }
 
 /**
- * Delete document
+ * Delete document — removes from GCS if it's a GCS URL, otherwise from local disk
  */
 export async function deleteDocument(documentId) {
   try {
@@ -125,13 +118,18 @@ export async function deleteDocument(documentId) {
       throw new Error('Document not found');
     }
 
-    // Delete file from filesystem
+    // Delete file from GCS or local filesystem
     if (document.file_path) {
-      const fullPath = path.join(__dirname, '../../../', document.file_path);
-      try {
-        await fs.unlink(fullPath);
-      } catch (fileError) {
-        console.warn('[document.service] Could not delete file:', fileError);
+      if (document.file_path.startsWith('https://storage.googleapis.com')) {
+        await deleteFileFromGCS(document.file_path);
+      } else {
+        const baseDir = process.env.K_SERVICE ? '/tmp' : path.join(__dirname, '../../../');
+        const fullPath = path.join(baseDir, document.file_path);
+        try {
+          await fs.unlink(fullPath);
+        } catch (fileError) {
+          console.warn('[document.service] Could not delete local file:', fileError);
+        }
       }
     }
 

@@ -32,21 +32,28 @@ const { Pool } = pg;
 
 // Enhanced connection pool with retry logic
 const createPool = () => {
-  return new Pool({
-    host: process.env.POSTGRES_HOST || process.env.DB_HOST || '143.110.249.144',
-    port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432'),
-    database: process.env.POSTGRES_DB || process.env.DB_NAME || 'salesmaya_agent',
-    user: process.env.POSTGRES_USER || process.env.DB_USER || 'postgres',
-    password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'techiemaya',
-    ssl: {
-      rejectUnauthorized: false
-    },
+  const config = {
     max: 20, // Maximum number of clients in the pool
     idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
     connectionTimeoutMillis: 10000, // Reduced from 30s to 10s for faster failures
     statement_timeout: 30000, // Statement timeout of 30s
-    allowExitOnIdle: false // Keep connection alive
-  });
+    allowExitOnIdle: false, // Keep connection alive
+    ssl: {
+      rejectUnauthorized: false
+    }
+  };
+
+  if (process.env.DATABASE_URL) {
+    config.connectionString = process.env.DATABASE_URL;
+  } else {
+    config.host = process.env.POSTGRES_HOST || process.env.DB_HOST || '143.110.249.144';
+    config.port = parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432');
+    config.database = process.env.POSTGRES_DB || process.env.DB_NAME || 'salesmaya_agent';
+    config.user = process.env.POSTGRES_USER || process.env.DB_USER || 'postgres';
+    config.password = process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'techiemaya';
+  }
+
+  return new Pool(config);
 };
 
 const pool = createPool();

@@ -72,9 +72,21 @@ export async function clockOut(userId, comment) {
 
   console.log('✅ Found active entry:', activeEntry.id);
 
-  const clockOutTime = new Date();
+  let clockOutTime = new Date();
   const clockInTime = new Date(activeEntry.clock_in);
   const pausedDuration = activeEntry.paused_duration || 0;
+
+  // Auto clock-out at end of day logic:
+  // If the user forgot to clock out and is clocking out on a different day,
+  // we retroactively cap their clock-out time to 23:59:59 of the day they clocked in.
+  const clockInDateStr = clockInTime.toLocaleDateString('en-CA');
+  const clockOutDateStr = clockOutTime.toLocaleDateString('en-CA');
+
+  if (clockInDateStr !== clockOutDateStr) {
+    console.log('⚠️ Cross-day clock out detected. Auto clocking out at end of the clock-in day.');
+    const [year, month, day] = clockInDateStr.split('-').map(Number);
+    clockOutTime = new Date(year, month - 1, day, 23, 59, 59, 999);
+  }
 
   console.log('🕐 Clock times - In:', clockInTime, 'Out:', clockOutTime, 'Paused:', pausedDuration);
 

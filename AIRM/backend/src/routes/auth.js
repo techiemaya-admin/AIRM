@@ -19,7 +19,7 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
  * POST /api/auth/send-magic-link
  */
 router.post('/send-magic-link', [
-  body('email').isEmail().normalizeEmail(),
+  body('email').isEmail(),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -27,13 +27,14 @@ router.post('/send-magic-link', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email } = req.body;
+    // Normalize to lowercase manually (consistent with how createUser stores emails)
+    const email = (req.body.email || '').toLowerCase().trim();
 
-    // Check if user exists
+    // Check if user exists — case-insensitive lookup
     const userQuery = `
       SELECT u.id, u.email, u.full_name
       FROM users u
-      WHERE u.email = $1
+      WHERE LOWER(u.email) = $1
     `;
     const userResult = await pool.query(userQuery, [email]);
 
@@ -55,10 +56,9 @@ router.post('/send-magic-link', [
       { expiresIn: '15m' } // Magic links expire in 15 minutes
     );
 
-    // Create the magic link URL - use APP_BASE_URL with localhost fallback for local development
-    const PORT = process.env.PORT || 3001;
-    const frontendUrl = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
-    const magicLink = `${frontendUrl}/auth/verify?token=${magicToken}`;
+    // Create the magic link URL - use FRONTEND_URL instead of APP_BASE_URL
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const magicLink = `${frontendUrl}/auth?token=${magicToken}`;
 
     console.log('🔗 Magic link generated for:', email);
 
@@ -73,7 +73,7 @@ router.post('/send-magic-link', [
           message: 'Magic link generated (email service unavailable)',
           emailSent: false,
           magicLink: magicLink,
-          frontendUrl: `${frontendUrl}/auth/verify?token=${magicToken}`,
+          frontendUrl: magicLink,
           note: 'Email service is not configured. Use the link below to test.'
         });
       } else {
@@ -83,7 +83,7 @@ router.post('/send-magic-link', [
           emailSent: true,
           // Always include magic link for frontend to display (useful for testing)
           magicLink: magicLink,
-          frontendUrl: `${frontendUrl}/auth/verify?token=${magicToken}`,
+          frontendUrl: magicLink,
           ...(emailResult.previewUrl && { previewUrl: emailResult.previewUrl })
         });
       }
@@ -96,7 +96,7 @@ router.post('/send-magic-link', [
         message: 'Magic link generated (email service unavailable)',
         emailSent: false,
         magicLink: magicLink,
-        frontendUrl: `${frontendUrl}/auth/verify?token=${magicToken}`,
+        frontendUrl: magicLink,
         note: 'Email service is not configured. Use the link below to test.'
       });
     }

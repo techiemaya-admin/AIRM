@@ -2,14 +2,34 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
 import { format, startOfWeek, endOfWeek, addDays, addWeeks, isAfter } from "date-fns";
 import { Plus, Trash2, Save, Share2, ChevronLeft, ChevronRight, Download, RefreshCw, AlertTriangle } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { TimesheetSkeleton } from "@/components/PageSkeletons";
-// import logo from "@/assets/techiemaya-logo.png";
+
+const LiveTimeCell = ({ clockIn, initialHours = 0 }: { clockIn: string; initialHours?: number }) => {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const update = () => {
+      const ms = Date.now() - new Date(clockIn).getTime();
+      setElapsed(ms / (1000 * 60 * 60));
+    };
+    update();
+    const interval = setInterval(update, 60000);
+    return () => clearInterval(interval);
+  }, [clockIn]);
+
+  const totalHours = initialHours + elapsed;
+  const h = Math.floor(Math.abs(totalHours));
+  const m = Math.round((Math.abs(totalHours) - h) * 60);
+  const sign = totalHours < 0 ? "-" : "";
+
+  return <span className="animate-pulse font-bold">{`${sign}${h}:${m.toString().padStart(2, '0')}`}</span>;
+};
 
 interface TimesheetEntry {
   id?: string;
@@ -23,12 +43,27 @@ interface TimesheetEntry {
   sat_hours: number;
   sun_hours: number;
   source?: string; // 'manual' or 'time_clock'
+  activeClockIn?: string;
+  activeDayIndex?: number;
 }
 
 interface UserProfile {
   id: string;
   email: string;
 }
+
+const HOLIDAYS_LIST = [
+  { date: '2026-01-01', name: "New Year's Day" },
+  { date: '2026-01-12', name: "Makar Sankranti" },
+  { date: '2026-01-26', name: "Republic Day" },
+  { date: '2026-03-19', name: "Ugadi" },
+  { date: '2026-04-03', name: "Good Friday" },
+  { date: '2026-09-14', name: "Ganesh Chaturthi" },
+  { date: '2026-10-02', name: "Gandhi Jayanti" },
+  { date: '2026-10-20', name: "Dussehra" },
+  { date: '2026-11-09', name: "Diwali" },
+  { date: '2026-12-25', name: "Christmas Day" },
+];
 
 const Timesheet = () => {
   console.log('🎬 Timesheet component rendered');
@@ -228,7 +263,7 @@ const Timesheet = () => {
       }
 
       // Load all data in parallel
-      const [timesheetResult, leaveResult, issuesResult, clockInResult] = await Promise.allSettled([
+      const [timesheetResult, leaveResult, issuesResult, clockInResult, currentEntryResult] = await Promise.allSettled([
         api.timesheets.getTimesheets(apiParams),
         api.leave.getAll().catch(() => ({ leave_requests: [] })),
         api.issues.getAll().catch(() => ({ issues: [] })),
@@ -237,7 +272,8 @@ const Timesheet = () => {
           end_date: format(addDays(weekEnd, 1), "yyyy-MM-dd"), // inclusive
           // Only pass user_id if it's a non-empty string and we are admin
           ...(isAdmin && userId && userId !== "undefined" ? { user_id: userId } : {})
-        }).catch(() => ({ entries: [] }))
+        }).catch(() => ({ entries: [] })),
+        api.timesheets.getCurrent().catch(() => ({ entry: null }))
       ]);
 
       // Extract results
@@ -253,6 +289,9 @@ const Timesheet = () => {
       const clockInResponse = clockInResult.status === 'fulfilled'
         ? clockInResult.value as any
         : { entries: [] };
+      const currentEntryResponse = currentEntryResult.status === 'fulfilled'
+        ? currentEntryResult.value as any
+        : { entry: null };
 
       const clockEntries = clockInResponse?.entries || [];
       const timingsByDay: any = {};
@@ -578,22 +617,58 @@ const Timesheet = () => {
       );
 
       // Combine all entries
-      const finalEntries = [...regularEntries, ...leaveEntries, ...newAssignedEntries];
+      const finalEntries: any[] = [...regularEntries, ...leaveEntries, ...newAssignedEntries];
 
-      // Always add an empty row for manual entry
-      finalEntries.push({
-        id: `manual-empty-${Date.now()}`,
-        project: "",
-        task: "",
-        mon_hours: 0,
-        tue_hours: 0,
-        wed_hours: 0,
-        thu_hours: 0,
-        fri_hours: 0,
-        sat_hours: 0,
-        sun_hours: 0,
-        source: 'manual',
-      });
+      // Inject active time clock entry if running
+      const activeEntry = currentEntryResponse?.entry || clockEntries.find((e: any) => !e.clock_out && e.status !== 'clocked_out');
+      if (activeEntry) {
+        const clockInDate = new Date(activeEntry.clock_in);
+        const activeDayStr = format(clockInDate, 'yyyy-MM-dd');
+        let dayIdx = -1;
+        for (let i = 0; i < 7; i++) {
+          if (format(addDays(weekStart, i), 'yyyy-MM-dd') === activeDayStr) dayIdx = i;
+        }
+        if (dayIdx !== -1) {
+          const activeProject = activeEntry.project_name || (activeEntry.issue?.project_name) || '';
+          const activeTask = activeEntry.issue?.title ? `Issue #${activeEntry.issue_id}: ${activeEntry.issue.title}` : `Issue #${activeEntry.issue_id}`;
+
+          let existingRow = finalEntries.find(r => r.project === activeProject && (r.task === activeTask || r.task?.includes(`Issue #${activeEntry.issue_id}`)));
+
+          if (existingRow) {
+            existingRow.activeClockIn = activeEntry.clock_in;
+            existingRow.activeDayIndex = dayIdx;
+            existingRow.source = 'time_clock';
+          } else {
+            finalEntries.push({
+              id: `active-clock-${Date.now()}`,
+              project: activeProject,
+              task: activeTask,
+              mon_hours: 0, tue_hours: 0, wed_hours: 0, thu_hours: 0, fri_hours: 0, sat_hours: 0, sun_hours: 0,
+              source: 'time_clock',
+              activeClockIn: activeEntry.clock_in,
+              activeDayIndex: dayIdx
+            });
+          }
+        }
+      }
+
+      // Only add an empty row if the timesheet is completely empty
+      const isViewingOtherUserScope = isAdmin && selectedUserId && selectedUserId !== user?.id;
+      if (finalEntries.length === 0 && !isViewingOtherUserScope) {
+        finalEntries.push({
+          id: `manual-empty-${Date.now()}`,
+          project: "",
+          task: "",
+          mon_hours: 0,
+          tue_hours: 0,
+          wed_hours: 0,
+          thu_hours: 0,
+          fri_hours: 0,
+          sat_hours: 0,
+          sun_hours: 0,
+          source: 'manual',
+        });
+      }
 
       console.log('📊 Final entries summary:', {
         regular: regularEntries.length,
@@ -718,15 +793,14 @@ const Timesheet = () => {
   };
 
   const calculateTotal = (entry: TimesheetEntry) => {
-    return (
-      entry.mon_hours +
-      entry.tue_hours +
-      entry.wed_hours +
-      entry.thu_hours +
-      entry.fri_hours +
-      entry.sat_hours +
-      entry.sun_hours
-    );
+    let sum = (Number(entry.mon_hours) || 0) +
+      (Number(entry.tue_hours) || 0) +
+      (Number(entry.wed_hours) || 0) +
+      (Number(entry.thu_hours) || 0) +
+      (Number(entry.fri_hours) || 0) +
+      (Number(entry.sat_hours) || 0) +
+      (Number(entry.sun_hours) || 0);
+    return sum;
   };
 
   const calculateDayTotal = (day: keyof TimesheetEntry) => {
@@ -737,8 +811,13 @@ const Timesheet = () => {
     return entries.reduce((sum, entry) => sum + calculateTotal(entry), 0);
   };
 
-  const formatHours = (hours: number) => {
-    return hours % 1 === 0 ? hours.toString() : hours.toFixed(2);
+  const formatHours = (hours: any) => {
+    const num = Number(hours) || 0;
+    if (num === 0) return "0:00";
+    const h = Math.floor(Math.abs(num));
+    const m = Math.round((Math.abs(num) - h) * 60);
+    const sign = num < 0 ? "-" : "";
+    return `${sign}${h}:${m.toString().padStart(2, '0')}`;
   };
 
   const moveToNextWeek = () => {
@@ -1021,7 +1100,7 @@ const Timesheet = () => {
           const hasHours = entry.mon_hours > 0 || entry.tue_hours > 0 || entry.wed_hours > 0 ||
             entry.thu_hours > 0 || entry.fri_hours > 0 || entry.sat_hours > 0 ||
             entry.sun_hours > 0;
-          return hasProjectTask && hasHours;
+          return hasProjectTask || hasHours;
         });
 
       console.log('💾 Total entries to save:', entriesToSave.length);
@@ -1082,7 +1161,7 @@ const Timesheet = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
+        <div className="mb-6 mr-14 md:mr-24">
           <h1 className="text-2xl font-bold">Timesheet</h1>
         </div>
 
@@ -1178,44 +1257,31 @@ const Timesheet = () => {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b-2 border-border">
-                        <th className="border border-border bg-muted p-2 text-left font-semibold">
+                        <th className="border border-border bg-muted p-2 text-left font-semibold min-w-[150px]">
                           Project
                         </th>
-                        <th className="border border-border bg-muted p-2 text-left font-semibold">
+                        <th className="border border-border bg-muted p-2 text-left font-semibold min-w-[200px]">
                           Task
                         </th>
-                        <th className="border border-border bg-muted p-2 text-center font-semibold">
-                          <div>MON</div>
-                          <div className="text-xs font-normal">{getDayDate(0)}</div>
-                        </th>
-                        <th className="border border-border bg-muted p-2 text-center font-semibold">
-                          <div>TUE</div>
-                          <div className="text-xs font-normal">{getDayDate(1)}</div>
-                        </th>
-                        <th className="border border-border bg-muted p-2 text-center font-semibold">
-                          <div>WED</div>
-                          <div className="text-xs font-normal">{getDayDate(2)}</div>
-                        </th>
-                        <th className="border border-border bg-muted p-2 text-center font-semibold">
-                          <div>THU</div>
-                          <div className="text-xs font-normal">{getDayDate(3)}</div>
-                        </th>
-                        <th className="border border-border bg-muted p-2 text-center font-semibold">
-                          <div>FRI</div>
-                          <div className="text-xs font-normal">{getDayDate(4)}</div>
-                        </th>
-                        <th className="border border-border bg-gray-100/50 p-2 text-center font-semibold">
-                          <div>SAT</div>
-                          <div className="text-xs font-normal">{getDayDate(5)}</div>
-                        </th>
-                        <th className="border border-border bg-gray-100/50 p-2 text-center font-semibold">
-                          <div>SUN</div>
-                          <div className="text-xs font-normal">{getDayDate(6)}</div>
-                        </th>
-                        <th className="border border-border bg-muted p-2 text-center font-semibold">
+                        {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((day, i) => {
+                          const dateStr = format(addDays(weekStart, i), 'yyyy-MM-dd');
+                          const holiday = HOLIDAYS_LIST.find(h => h.date === dateStr);
+                          const isWeekend = i === 5 || i === 6;
+                          
+                          return (
+                            <th key={day} className={`border border-border p-2 text-center font-semibold min-w-[90px] ${holiday ? 'bg-green-50' : (isWeekend ? 'bg-gray-100/50' : 'bg-muted')}`}>
+                              <div>{day}</div>
+                              <div className="text-[10px] font-normal">{getDayDate(i)}</div>
+                              {holiday && (
+                                <div className="text-[9px] font-bold text-green-600 bg-green-100 rounded-full px-1 uppercase mt-0.5">Holiday</div>
+                              )}
+                            </th>
+                          );
+                        })}
+                        <th className="border border-border bg-muted p-2 text-center font-semibold min-w-[80px]">
                           TOTAL
                         </th>
-                        <th className="border border-border bg-muted p-2 text-center font-semibold">
+                        <th className="border border-border bg-muted p-2 text-center font-semibold min-w-[80px]">
                           Actions
                         </th>
                       </tr>
@@ -1265,14 +1331,17 @@ const Timesheet = () => {
                                 />
                               )}
                             </td>
-                            {["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => {
+                            {["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day, dIdx) => {
                               // Safely convert to number, handling all edge cases
-                              const rawValue = entry[`${day}_hours` as keyof TimesheetEntry];
+                              const rawValue = (entry as any)[`${day}_hours`];
                               const dayHours = rawValue === null || rawValue === undefined || rawValue === ''
                                 ? 0
                                 : typeof rawValue === 'string'
                                   ? parseFloat(rawValue) || 0
                                   : Number(rawValue) || 0;
+
+                              const dateStr = format(addDays(weekStart, dIdx), 'yyyy-MM-dd');
+                              const holiday = HOLIDAYS_LIST.find(h => h.date === dateStr);
 
                               // Always show the value, even if 0
                               const displayValue = isLeave && dayHours > 0
@@ -1282,30 +1351,48 @@ const Timesheet = () => {
                                   : '0';
 
                               const isWeekend = day === 'sat' || day === 'sun';
+                              const isActiveCell = (entry as any).activeClockIn && (entry as any).activeDayIndex === dIdx;
 
                               return (
-                                <td key={day} className={`border border-border p-1 ${isWeekend ? 'bg-gray-100/50' : ''}`}>
-                                  {isReadOnly ? (
-                                    <div className={`text-center text-sm py-1 font-semibold ${isWeekend ? 'text-gray-500' : ''}`}>
-                                      {displayValue === '0' && isWeekend ? '-' : displayValue}
+                                <td key={day} className={`border border-border p-1 ${holiday ? 'bg-green-50/30' : (isWeekend ? 'bg-gray-100/50' : '')}`}>
+                                  {isActiveCell ? (
+                                    <div className={`text-center text-sm py-1 font-semibold text-blue-600`}>
+                                      <LiveTimeCell clockIn={(entry as any).activeClockIn} initialHours={dayHours} />
+                                    </div>
+                                  ) : isReadOnly ? (
+                                    <div className={`text-center text-sm py-1 font-semibold ${holiday ? 'text-green-600' : (isWeekend ? 'text-gray-500' : '')}`}>
+                                      {holiday && dayHours === 0 ? 'Holiday' : (displayValue === '0' && isWeekend ? '-' : displayValue)}
                                     </div>
                                   ) : (
-                                    <Input
-                                      type="number"
-                                      step="0.5"
-                                      min="0"
-                                      value={dayHours}
-                                      onChange={(e) =>
-                                        updateEntry(
-                                          index,
-                                          `${day}_hours` as keyof TimesheetEntry,
-                                          parseFloat(e.target.value) || 0
-                                        )
-                                      }
-                                      className={`h-8 border-0 bg-transparent text-center ${isWeekend ? 'text-gray-500' : ''}`}
-                                      disabled={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
-                                      readOnly={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
-                                    />
+                                    <div className="relative">
+                                      <Input
+                                        type="number"
+                                        step="0.5"
+                                        min="0"
+                                        max="24"
+                                        value={dayHours === 0 ? "" : dayHours}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          let num = val === "" ? 0 : parseFloat(val) || 0;
+                                          if (num > 24) num = 24;
+                                          if (num < 0) num = 0;
+                                          updateEntry(
+                                            index,
+                                            `${day}_hours` as keyof TimesheetEntry,
+                                            num
+                                          );
+                                        }}
+                                        className={`h-8 border-0 bg-transparent text-center ${holiday ? 'text-green-600 placeholder:text-green-600/50' : (isWeekend ? 'text-gray-500' : '')}`}
+                                        placeholder={holiday && dayHours === 0 ? "Holiday" : ""}
+                                        disabled={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
+                                        readOnly={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
+                                      />
+                                      {holiday && dayHours === 0 && (
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-[9px] font-bold text-green-600/20 uppercase">
+                                          Holiday
+                                        </div>
+                                      )}
+                                    </div>
                                   )}
                                 </td>
                               );

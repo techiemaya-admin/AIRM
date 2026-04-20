@@ -49,7 +49,7 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
 
   const { data: settlement, isLoading, refetch } = useSettlement(exitRequest.id);
   const calculateMutation = useCalculateSettlement();
-  const settlementData = settlement as FinalSettlement | null;
+  const settlementData = settlement as unknown as FinalSettlement | null;
   const { data: pdfData, isLoading: pdfLoading } = useSettlementPDFData(
     settlementData ? exitRequest.id : null
   );
@@ -90,12 +90,12 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
     }
 
     const doc = new jsPDF('portrait');
-    
+
     // Header
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
     doc.text(pdfData.title, 105, 20, { align: 'center' });
-    
+
     // Company Details
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -103,13 +103,13 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
     if (pdfData.companyDetails.address) {
       doc.text(pdfData.companyDetails.address, 105, 35, { align: 'center' });
     }
-    
+
     // Employee Details
     let yPos = 50;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('Employee Information', 14, yPos);
-    
+
     yPos += 8;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -122,20 +122,20 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
     doc.text(`Date of Joining: ${new Date(pdfData.employeeDetails.dateOfJoining).toLocaleDateString()}`, 14, yPos);
     yPos += 6;
     doc.text(`Last Working Day: ${new Date(pdfData.employeeDetails.lastWorkingDay).toLocaleDateString()}`, 14, yPos);
-    
+
     // Earnings Table
     yPos += 12;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('Earnings', 14, yPos);
-    
+
     yPos += 8;
     const earningsData = pdfData.earnings.map(earning => [
       earning.component,
       formatCurrency(earning.amount)
     ]);
     earningsData.push(['Total Earnings', formatCurrency(pdfData.totalEarnings)]);
-    
+
     autoTable(doc, {
       startY: yPos,
       head: [['Component', 'Amount']],
@@ -148,21 +148,21 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
         1: { cellWidth: 60, halign: 'right' },
       },
     });
-    
+
     yPos = (doc as any).lastAutoTable.finalY + 10;
-    
+
     // Deductions Table
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('Deductions', 14, yPos);
-    
+
     yPos += 8;
     const deductionsData = pdfData.deductions.map(deduction => [
       deduction.component,
       formatCurrency(deduction.amount)
     ]);
     deductionsData.push(['Total Deductions', formatCurrency(pdfData.totalDeductions)]);
-    
+
     autoTable(doc, {
       startY: yPos,
       head: [['Component', 'Amount']],
@@ -175,19 +175,19 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
         1: { cellWidth: 60, halign: 'right' },
       },
     });
-    
+
     yPos = (doc as any).lastAutoTable.finalY + 15;
-    
+
     // Net Settlement
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     const netAmount = pdfData.netSettlement;
-    const statusText = netAmount > 0 
+    const statusText = netAmount > 0
       ? 'Amount Payable to Employee'
       : netAmount < 0
-      ? 'Amount Recoverable from Employee'
-      : 'Fully Settled (No Dues)';
-    
+        ? 'Amount Recoverable from Employee'
+        : 'Fully Settled (No Dues)';
+
     doc.text('Net Settlement', 14, yPos);
     yPos += 8;
     doc.setFontSize(16);
@@ -196,31 +196,31 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(statusText, 14, yPos);
-    
+
     // Declaration
     yPos += 15;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
     const splitText = doc.splitTextToSize(pdfData.declaration, 180);
     doc.text(splitText, 14, yPos);
-    
+
     // Signatures
     yPos = doc.internal.pageSize.height - 50;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(`Employee: ${pdfData.signatures.employee.name}`, 14, yPos);
     doc.text(`Date: ${pdfData.signatures.employee.date}`, 14, yPos + 6);
-    
+
     doc.text(`HR: ${pdfData.signatures.hr.name}`, 105, yPos);
     doc.text(`Date: ${pdfData.signatures.hr.date}`, 105, yPos + 6);
-    
+
     yPos += 20;
     doc.text(`Finance: ${pdfData.signatures.finance.name}`, 14, yPos);
     doc.text(`Date: ${pdfData.signatures.finance.date}`, 14, yPos + 6);
-    
+
     doc.text(`Authorized: ${pdfData.signatures.authorized.name}`, 105, yPos);
     doc.text(`Date: ${pdfData.signatures.authorized.date}`, 105, yPos + 6);
-    
+
     // Footer
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
@@ -230,9 +230,9 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
       doc.internal.pageSize.height - 10,
       { align: 'center' }
     );
-    
+
     doc.save(`settlement_${exitRequest.employee_id || exitRequest.id}_${new Date().toISOString().split('T')[0]}.pdf`);
-    
+
     toast({
       title: 'Downloaded',
       description: 'Settlement PDF downloaded successfully',
@@ -391,8 +391,8 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
                     {settlementData.settlementStatus === 'company_pays_employee'
                       ? 'Amount Payable to Employee'
                       : settlementData.settlementStatus === 'employee_pays_company'
-                      ? 'Amount Recoverable from Employee'
-                      : 'Fully Settled (No Dues)'}
+                        ? 'Amount Recoverable from Employee'
+                        : 'Fully Settled (No Dues)'}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">

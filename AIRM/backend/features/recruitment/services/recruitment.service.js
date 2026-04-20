@@ -82,6 +82,8 @@ function transformCandidate(candidate) {
       notice_period: candidate.notice_period,
       resume_url: candidate.resume_url,
       photo_url: candidate.photo_url,
+      location: candidate.location,
+      comments: candidate.comments,
     },
     current_stage: candidate.current_stage,
     interview_rounds: candidate.interview_rounds || [],
@@ -312,8 +314,8 @@ export async function completeOnboarding(candidateId, joiningDate, employeeData)
       INSERT INTO erp.users (id, email, full_name, created_at, updated_at)
       VALUES ($1, $2, $3, NOW(), NOW())
     `, [
-      userId, 
-      candidate.email, 
+      userId,
+      candidate.email,
       employeeData.full_name || candidate.full_name
     ]);
 

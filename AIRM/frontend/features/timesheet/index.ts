@@ -4,7 +4,7 @@
  */
 
 // Services
-export * from './services/timesheetService';
+export * from '@sdk/timesheetService';
 
 // Hooks
 export * from './hooks/usetimesheet';

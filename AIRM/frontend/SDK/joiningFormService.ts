@@ -1,26 +1,33 @@
-// Create a new joining form (profile) and return the created form (with id)
-export async function createJoiningForm(data: Partial<import("../types").JoiningForm>): Promise<import("../types").JoiningForm> {
-  // Step 1: Create new profile to get ID
-  // Extract email from the joining form data (employee_info)
-  const email = data?.employee_info?.email;
-  if (!email) throw new Error("Email is required to create a profile");
-  const createRes = await api.post("/joining-form/create", { email });
-  console.log('Create response:', createRes); // Debug log
-  const profileId = (createRes as any).profileId || ((createRes as any).data && (createRes as any).data.profileId);
-  if (!profileId) throw new Error("Failed to create profileId");
-  // Step 2: Save form data to the new profile
-  const saveRes = await api.post(`/joining-form/${profileId}`, data);
-  // Return the saved form with id
-  return { ...(data as any), id: profileId, ...((saveRes as any).form || {}) };
-}
 /**
  * Joining Form Services
  */
 
-import { api } from "@/lib/api";
-import type { JoiningForm, JoiningFormSummary } from "../types";
+import { api } from "@sdk/api";
+import type { JoiningForm, JoiningFormSummary } from "../features/joining-form/types";
 
 const API_BASE = "/joining-form";
+
+// Service for joining form onboarding API (from joiningFormService-1)
+export async function createJoiningProfile(email: string) {
+  if (!email) throw new Error("Email is required");
+  return api.post(`${API_BASE}/create`, { email });
+}
+
+// Create a new joining form (profile) and return the created form (with id)
+export async function createJoiningForm(data: Partial<JoiningForm>): Promise<JoiningForm> {
+  // Step 1: Create new profile to get ID
+  // Extract email from the joining form data (employee_info)
+  const email = data?.employee_info?.email;
+  if (!email) throw new Error("Email is required to create a profile");
+  const createRes = await api.post(`${API_BASE}/create`, { email });
+  console.log('Create response:', createRes); // Debug log
+  const profileId = (createRes as any).profileId || ((createRes as any).data && (createRes as any).data.profileId);
+  if (!profileId) throw new Error("Failed to create profileId");
+  // Step 2: Save form data to the new profile
+  const saveRes = await api.post(`${API_BASE}/${profileId}`, data);
+  // Return the saved form with id
+  return { ...(data as any), id: profileId, ...((saveRes as any).form || {}) };
+}
 
 export async function getAllJoiningForms(): Promise<JoiningFormSummary[]> {
   const response = await api.get(API_BASE);

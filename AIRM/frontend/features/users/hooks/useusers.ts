@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// import { ... } from '../services/usersService';
+// import { ... } from '@sdk/usersService';
 
 // Add Users-specific hooks here as needed
 
