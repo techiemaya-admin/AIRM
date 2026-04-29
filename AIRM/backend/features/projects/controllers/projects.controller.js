@@ -50,15 +50,23 @@ export async function createProject(req, res) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, description } = req.body;
+    const { name, description, createRepo, createGithubProject, repo_name, github_project_id, template } = req.body;
     const userId = req.userId;
 
-    const project = await projectService.createProject(name, description, userId);
+    const project = await projectService.createProject({
+      name, 
+      description, 
+      userId, 
+      createRepo, 
+      createGithubProject,
+      repo_name, 
+      github_project_id, 
+      template
+    });
     
     res.status(201).json({
       message: 'Project created successfully',
-      project: project,
-      note: 'This is a simplified project creation. Full GitLab integration pending database migration.'
+      project: project
     });
   } catch (error) {
     console.error('Create project error:', error);

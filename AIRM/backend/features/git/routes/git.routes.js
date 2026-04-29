@@ -9,6 +9,19 @@ import * as gitController from '../controllers/git.controller.js';
 
 const router = express.Router();
 
+router.use((req, res, next) => {
+  console.log(`🔍 Git Router: ${req.method} ${req.url}`);
+  next();
+});
+
+// Specific repo routes FIRST
+router.get('/repos/:owner/:repo/projects', authenticate, gitController.getRepoProjects);
+router.get('/repos/:owner/:repo/pulls', authenticate, gitController.getRepoPullRequests);
+router.get('/repos/:owner/:repo/branches', authenticate, gitController.getBranches);
+router.get('/repos/:owner/:repo/tree', authenticate, gitController.getRepoTree);
+router.get('/repos/:owner/:repo/file', authenticate, gitController.getFileContent);
+router.get('/repos/:owner/:repo/search', authenticate, gitController.searchRepoFiles);
+
 /**
  * Get all commits from GitLab
  * GET /api/git/commits
@@ -85,6 +98,10 @@ router.get('/repo/labels', authenticate, gitController.getRepoLabels);
  * Get repo assignees
  */
 router.get('/repo/assignees', authenticate, gitController.getRepoAssignees);
-
+router.get('/projects', authenticate, gitController.getProjects);
+router.post('/projects/items', authenticate, gitController.addProjectItem);
+router.get('/projects/:projectId/items', authenticate, gitController.getProjectItems);
+router.get('/projects/:projectId/fields', authenticate, gitController.getProjectFields);
+router.patch('/projects/items/:itemId/status', authenticate, gitController.updateProjectItemStatus);
 
 export default router;

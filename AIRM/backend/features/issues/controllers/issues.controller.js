@@ -174,6 +174,9 @@ export async function addComment(req, res) {
     const userId = req.userId;
     const { comment } = req.body;
 
+    console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+    console.log('!!! ADD COMMENT CONTROLLER TRIGGERED FOR ISSUE:', issueId);
+    console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     console.log('Add comment request:', { issueId, userId, commentLength: comment?.length });
 
     if (!comment || !comment.trim()) {

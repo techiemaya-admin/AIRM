@@ -45,6 +45,7 @@ export default function Issues() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [projectNames, setProjectNames] = useState<string[]>([]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newIssueTitle, setNewIssueTitle] = useState("");
@@ -69,6 +70,7 @@ export default function Issues() {
         setIsAdmin(currentUser?.user?.role === 'admin');
         await loadLabels();
         await loadUsers();
+        await loadProjectNames();
         await loadIssues();
       } catch (error) {
         console.error('Error initializing page:', error);
@@ -99,6 +101,16 @@ export default function Issues() {
     } catch (error) {
       console.error("Error loading users:", error);
       setUsers([]);
+    }
+  };
+
+  const loadProjectNames = async () => {
+    try {
+      const response = await api.projects.getNames() as any;
+      setProjectNames(response || []);
+    } catch (error) {
+      console.error("Error loading project names:", error);
+      setProjectNames([]);
     }
   };
 
@@ -379,12 +391,17 @@ export default function Issues() {
             </div>
             <div>
               <Label htmlFor="project">Project Name</Label>
-              <Input
+              <select
                 id="project"
                 value={newIssueProjectName}
                 onChange={(e) => setNewIssueProjectName(e.target.value)}
-                placeholder="e.g., Pulse"
-              />
+                className="w-full p-2 border rounded"
+              >
+                <option value="">Select Project (Optional)</option>
+                {projectNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <Label htmlFor="priority">Priority</Label>

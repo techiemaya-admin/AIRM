@@ -58,6 +58,7 @@ interface Issue {
   title: string;
   description: string;
   state: string;
+  repository?: string;
   created_at: string;
   updated_at: string;
   author: {
@@ -70,7 +71,7 @@ interface Issue {
   notes?: IssueNote[];
 }
 
-export default function Git() {
+export default function Git({ defaultRepo = null }: { defaultRepo?: string | null }) {
   const [commits, setCommits] = useState<Commit[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [repos, setRepos] = useState<Repo[]>([]);
@@ -80,6 +81,7 @@ export default function Git() {
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState<'commits' | 'issues' | 'repos' | 'sync'>('commits');
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'detail' | 'new'>('list');
+  const [filterRepo, setFilterRepo] = useState<string | null>(defaultRepo);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [newIssue, setNewIssue] = useState({ 
@@ -94,17 +96,21 @@ export default function Git() {
   const [repoLabels, setRepoLabels] = useState<GitLabel[]>([]);
   const [repoAssignees, setRepoAssignees] = useState<GitUser[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  
+  useEffect(() => {
+    fetchGitData(filterRepo);
+  }, [filterRepo]);
 
   useEffect(() => {
-    fetchGitData();
-  }, []);
+    if (defaultRepo) setFilterRepo(defaultRepo);
+  }, [defaultRepo]);
 
-  const fetchGitData = async () => {
+  const fetchGitData = async (repoName: string | null = null) => {
     try {
       setLoading(true);
       const [commitsData, issuesData, reposData, labelsData, assigneesData] = await Promise.all([
-        api.git.getCommits(),
-        api.git.getIssues(),
+        api.git.getCommits(repoName || undefined),
+        api.git.getIssues(repoName || undefined),
         api.git.getRepos(),
         api.git.getRepoLabels(),
         api.git.getRepoAssignees()
@@ -153,11 +159,11 @@ export default function Git() {
     }
   };
 
-  const showIssueDetail = async (iid: number) => {
+  const showIssueDetail = async (iid: number, repo?: string) => {
     try {
       setLoadingDetail(true);
       setActiveSubTab('detail');
-      const issueDetail = await api.git.getIssue(iid.toString());
+      const issueDetail = await api.git.getIssue(iid.toString(), repo);
       setSelectedIssue(issueDetail as any);
     } catch (error) {
       console.error('Error fetching issue detail:', error);
@@ -171,10 +177,10 @@ export default function Git() {
 
     try {
       setSubmittingComment(true);
-      await api.git.addComment(selectedIssue.iid.toString(), newComment);
+      await api.git.addComment(selectedIssue.iid.toString(), newComment, selectedIssue.repository);
       setNewComment('');
       // Refresh issue details to show new comment
-      await showIssueDetail(selectedIssue.iid);
+      await showIssueDetail(selectedIssue.iid, selectedIssue.repository);
     } catch (error) {
       console.error('Error adding comment:', error);
       alert('Failed to add comment to GitHub');
@@ -188,8 +194,8 @@ export default function Git() {
 
     try {
       setCreatingIssue(true);
-      const created: any = await api.git.createIssue(newIssue);
-      alert(`✅ Issue created: #${created.number || created.iid}`);
+      const created: any = await api.git.createIssue({...newIssue, repository: filterRepo || undefined});
+      alert(`✅ Issue created in ${filterRepo || 'default repo'}: #${created.number || created.iid}`);
       setNewIssue({ 
         title: '', 
         description: '', 
@@ -197,7 +203,7 @@ export default function Git() {
         assignees: []
       });
       setActiveSubTab('list');
-      fetchGitData(); // Refresh list
+      fetchGitData(filterRepo); // Refresh list with current filter
     } catch (error) {
       console.error('Error creating issue:', error);
       alert('Failed to create issue on GitHub');
@@ -209,8 +215,11 @@ export default function Git() {
   const handleUpdateIssue = async (updates: any) => {
     if (!selectedIssue) return;
     try {
-      await api.git.updateIssue(selectedIssue.iid.toString(), updates);
-      await showIssueDetail(selectedIssue.iid);
+      await api.git.updateIssue(selectedIssue.iid.toString(), {
+        ...updates,
+        repository: selectedIssue.repository
+      });
+      await showIssueDetail(selectedIssue.iid, selectedIssue.repository);
     } catch (error) {
       console.error('Error updating issue:', error);
       alert('Failed to update issue on GitHub');
@@ -218,12 +227,20 @@ export default function Git() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Git Activities</h1>
-        <p className="text-muted-foreground">
-          View recent commits and manage project issues
-        </p>
+    <div className="w-full px-6 py-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">GitHub Activities</h1>
+          <p className="text-sm text-muted-foreground">
+            Monitor real-time updates and manage GitHub issues
+          </p>
+        </div>
+        {syncing && (
+          <div className="flex items-center gap-2 text-blue-600 animate-pulse text-sm font-medium">
+            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+            Syncing...
+          </div>
+        )}
       </div>
 
       {/* Tab Navigation */}
@@ -340,20 +357,38 @@ export default function Git() {
             <div className="space-y-6">
               {activeSubTab === 'list' ? (
                 <Card>
+                  <CardHeader className="pb-3 border-b">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        Issues ({issues.length})
-                      </CardTitle>
+                      <div className="flex items-center gap-3">
+                        <CardTitle className="flex items-center gap-2">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          Issues ({issues.length})
+                        </CardTitle>
+                        {filterRepo && (
+                          <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-xs font-medium animate-in zoom-in-95 duration-200">
+                            <span>Repo: <strong>{filterRepo}</strong></span>
+                            <button 
+                              onClick={() => setFilterRepo(null)}
+                              className="p-0.5 hover:bg-blue-200 rounded-full transition-colors"
+                              title="Clear filter"
+                            >
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                       <button
                         onClick={() => setActiveSubTab('new')}
-                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md transition-colors"
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md transition-colors shadow-sm"
                       >
                         New Issue
                       </button>
                     </div>
+                  </CardHeader>
                   <CardContent>
                     {issues.length === 0 ? (
                       <div className="text-center py-8">
@@ -370,7 +405,7 @@ export default function Git() {
                         {issues.map((issue) => (
                           <div
                             key={issue.id}
-                            onClick={() => showIssueDetail(issue.iid)}
+                            onClick={() => showIssueDetail(issue.iid, issue.repository)}
                             className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
                           >
                             <div className="flex items-start justify-between">
@@ -440,8 +475,15 @@ export default function Git() {
                   </button>
 
                   <Card>
-                    <CardHeader>
-                      <CardTitle>Create New Issue on GitHub</CardTitle>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center justify-between">
+                        <span>Create New Issue on GitHub</span>
+                        {filterRepo && (
+                          <span className="text-xs font-normal text-muted-foreground bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                            Target: <strong className="text-blue-700">{filterRepo}</strong>
+                          </span>
+                        )}
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
@@ -833,24 +875,39 @@ export default function Git() {
                     </div>
                   ) : (
                     repos.map((repo) => (
-                      <a
+                      <div
                         key={repo.id}
-                        href={repo.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block group"
+                        onClick={() => {
+                          setFilterRepo(repo.name);
+                          setActiveTab('issues');
+                        }}
+                        className="block group cursor-pointer"
                       >
-                        <Card className="h-full hover:border-blue-500 transition-colors">
+                        <Card className="h-full hover:border-blue-500 hover:shadow-md transition-all">
                           <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
-                              <CardTitle className="text-lg group-hover:text-blue-600">
+                              <CardTitle className="text-lg group-hover:text-blue-600 transition-colors">
                                 {repo.name}
                               </CardTitle>
-                              {repo.private ? (
-                                <span className="text-[10px] bg-muted px-2 py-0.5 rounded border">Private</span>
-                              ) : (
-                                <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">Public</span>
-                              )}
+                              <div className="flex items-center gap-2">
+                                <a 
+                                  href={repo.html_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                                  title="View on GitHub"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                                {repo.private ? (
+                                  <span className="text-[10px] bg-muted px-2 py-0.5 rounded border">Private</span>
+                                ) : (
+                                  <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">Public</span>
+                                )}
+                              </div>
                             </div>
                           </CardHeader>
                           <CardContent>
@@ -876,7 +933,7 @@ export default function Git() {
                             </div>
                           </CardContent>
                         </Card>
-                      </a>
+                      </div>
                     ))
                   )}
                 </div>

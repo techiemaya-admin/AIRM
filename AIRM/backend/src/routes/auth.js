@@ -71,19 +71,13 @@ router.post('/send-magic-link', [
         console.log('⚠️ Email service not configured, returning magic link directly');
         res.json({
           message: 'Magic link generated (email service unavailable)',
-          emailSent: false,
-          magicLink: magicLink,
-          frontendUrl: magicLink,
-          note: 'Email service is not configured. Use the link below to test.'
+          emailSent: false
         });
       } else {
         console.log('📧 Magic link email sent successfully');
         res.json({
           message: 'Magic link sent to your email successfully! Please check your inbox.',
           emailSent: true,
-          // Always include magic link for frontend to display (useful for testing)
-          magicLink: magicLink,
-          frontendUrl: magicLink,
           ...(emailResult.previewUrl && { previewUrl: emailResult.previewUrl })
         });
       }
@@ -94,10 +88,7 @@ router.post('/send-magic-link', [
       // Fallback: return the link directly (for development)
       res.json({
         message: 'Magic link generated (email service unavailable)',
-        emailSent: false,
-        magicLink: magicLink,
-        frontendUrl: magicLink,
-        note: 'Email service is not configured. Use the link below to test.'
+        emailSent: false
       });
     }
 

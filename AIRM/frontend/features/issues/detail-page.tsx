@@ -12,9 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { AlertCircle, ArrowLeft, CheckCircle2, Clock, MessageSquare, Tag, User, X, Plus, Edit2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Clock, MessageSquare, Tag, User, X, Plus, Edit2, Github, ExternalLink, MoreHorizontal, Smile, Paperclip } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatDistanceToNow } from "date-fns";
 
 interface Issue {
   id: number;
@@ -400,11 +405,11 @@ export default function IssueDetail() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'open':
-        return <AlertCircle className="h-5 w-5 text-green-500" />;
+        return <AlertCircle className="h-4 w-4 text-white" />;
       case 'in_progress':
-        return <Clock className="h-5 w-5 text-blue-500" />;
+        return <Clock className="h-4 w-4 text-white" />;
       case 'closed':
-        return <CheckCircle2 className="h-5 w-5 text-purple-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-white" />;
       default:
         return null;
     }
@@ -513,466 +518,401 @@ export default function IssueDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-4 text-[#24292f]">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => navigate(-1)} className="h-9 px-3 text-sm font-semibold border-[#d0d7de] text-[#24292f] hover:bg-[#f6f8fa] shadow-sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Issues
-            </Button>
+    <div className="min-h-screen bg-white text-[#24292f] font-sans">
+      {/* Header - Fixed-like style */}
+      <div className="border-b border-[#d0d7de] bg-[#f6f8fa] py-6 px-6 sm:px-8 lg:px-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate(-1)} 
+                  className="h-8 px-3 text-xs font-semibold border-[#d0d7de] text-[#24292f] hover:bg-[#f6f8fa] shadow-sm bg-white"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                  Back to issues
+                </Button>
+                {issue.github_url && (
+                  <a 
+                    href={issue.github_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-medium text-[#0969da] hover:underline"
+                  >
+                    <Github className="h-3.5 w-3.5" />
+                    View on GitHub
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-xs font-semibold bg-[#2da44e] text-white border-[#1b1f2426] hover:bg-[#2c974b] shadow-sm"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Edit2 className="h-3.5 w-3.5 mr-1.5" />
+                    Edit Issue
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-xs font-semibold bg-white border-[#d0d7de] hover:bg-[#f6f8fa] shadow-sm"
+                    onClick={() => setShowLogTimeDialog(true)}
+                  >
+                    <Clock className="h-3.5 w-3.5 mr-1.5" />
+                    Log Time
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                {isEditing ? (
+                  <Input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="text-3xl font-medium h-12 border-[#0969da] ring-1 ring-[#0969da]"
+                    autoFocus
+                  />
+                ) : (
+                  <h1 className="text-3xl font-normal">
+                    {issue.title} <span className="text-[#656d76]">#{issue.id}</span>
+                  </h1>
+                )}
+              </div>
+
+              <div className="flex items-center flex-wrap gap-2 text-sm">
+                <Badge 
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-white font-semibold border-none ${
+                    issue.status === 'open' ? 'bg-[#1a7f37]' : 
+                    issue.status === 'in_progress' ? 'bg-[#9a6700]' : 
+                    'bg-[#8250df]'
+                  }`}
+                >
+                  {getStatusIcon(issue.status)}
+                  <span className="capitalize">{issue.status.replace('_', ' ')}</span>
+                </Badge>
+                <div className="flex items-center gap-1 text-[#656d76]">
+                  <span className="font-semibold text-[#24292f]">{issue.created_by || 'Unknown'}</span>
+                  <span>opened this issue {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}</span>
+                  <span>·</span>
+                  <span>{comments.length} comments</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Issue Header */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-start gap-3">
-                  {getStatusIcon(issue.status)}
-                  <div className="flex-1">
-                    {isEditing ? (
-                      <Input
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        className="text-2xl font-bold"
-                      />
-                    ) : (
-                      <div>
-                        <h1 className="text-2xl font-bold">{issue.title}</h1>
-                        <p className="text-gray-500 mt-1">#{issue.id}</p>
-                      </div>
-                    )}
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Content Area - GitHub Timeline Style */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* Initial Description Card */}
+            <div className="relative pl-12 before:absolute before:left-[1.25rem] before:top-8 before:bottom-0 before:w-[2px] before:bg-[#d0d7de]">
+              <div className="absolute left-0 top-0">
+                <Avatar className="h-10 w-10 border border-[#d0d7de]">
+                  <AvatarFallback className="bg-blue-100 text-blue-700 font-bold">
+                    {(issue.created_by || 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              <div className="border border-[#d0d7de] rounded-lg overflow-hidden bg-white shadow-sm">
+                <div className="bg-[#f6f8fa] border-b border-[#d0d7de] px-4 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-[#24292f]">{issue.created_by}</span>
+                    <span className="text-sm text-[#656d76]">commented {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] font-bold text-[#656d76] uppercase tracking-wider bg-white">Author</Badge>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#656d76] hover:bg-[#d0d7de]/30">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {isEditing ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Description</Label>
+                <div className="p-4 prose prose-sm max-w-none text-[#24292f]">
+                  {isEditing ? (
+                    <div className="space-y-4">
                       <Textarea
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
-                        rows={6}
+                        className="min-h-[200px] font-mono text-sm bg-[#f6f8fa] focus:bg-white"
+                        placeholder="Leave a description"
                       />
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>Cancel</Button>
+                        <Button size="sm" className="bg-[#2da44e] hover:bg-[#2c974b] text-white border-none" onClick={saveIssue}>Update Issue</Button>
+                      </div>
                     </div>
-                    <div>
-                      <Label>Project</Label>
-                      <select
-                        value={editProjectName}
-                        onChange={(e) => setEditProjectName(e.target.value)}
-                        className="w-full p-2 border rounded focus:ring-1 focus:ring-blue-500 outline-none"
-                      >
-                        <option value="">Select a project</option>
-                        {projects.map(project => (
-                          <option key={project.id} value={project.name}>
-                            {project.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 font-medium mb-1.5 block">Estimated Hours</Label>
-                      <Input
-                        type="number"
-                        step="1"
-                        min="0"
-                        value={editEstimatedHours}
-                        onChange={(e) => setEditEstimatedHours(e.target.value)}
-                        className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-100 transition-all rounded-lg"
-                        placeholder="e.g. 2"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={saveIssue}>Save</Button>
-                      <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-gray-700 whitespace-pre-wrap">{issue.description || "No description provided."}</p>
-                    {isAdmin && (
-                      <Button className="mt-4" variant="outline" onClick={() => setIsEditing(true)}>
-                        Edit
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  ) : (
+                    <p className="whitespace-pre-wrap leading-relaxed">{issue.description || <span className="italic text-[#656d76]">No description provided.</span>}</p>
+                  )}
+                </div>
+              </div>
+            </div>
 
-            {/* Comments */}
-            <Card id="comments-section">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Comments ({comments.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {comments.map((comment) => (
-                  <div key={comment.id} className="border-l-2 border-gray-300 pl-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-semibold">{comment.user_email}</span>
-                      <span className="text-sm text-gray-500">
-                        {new Date(comment.created_at).toLocaleString()}
+            {/* Timeline Events (Activity) */}
+            <div className="space-y-8 relative">
+              {activities.map((activity, idx) => {
+                const details = typeof activity.details === 'string' ? JSON.parse(activity.details) : activity.details;
+                const isTimeEntry = activity.action === 'work_recorded' || activity.action === 'work_completed';
+                
+                return (
+                  <div key={activity.id} className="relative pl-12 flex items-center group">
+                    {/* Timeline bar continues */}
+                    <div className="absolute left-[1.25rem] -top-8 bottom-0 w-[2px] bg-[#d0d7de]"></div>
+                    
+                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-[#f6f8fa] border-2 border-[#d0d7de] z-10 flex items-center justify-center">
+                      {isTimeEntry ? <Clock className="h-3 w-3 text-[#656d76]" /> : <Tag className="h-3 w-3 text-[#656d76]" />}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-sm text-[#656d76]">
+                      <span className="font-semibold text-[#24292f]">{activity.user_email}</span>
+                      <span>
+                        {activity.action === 'status_changed' ? (
+                          <>changed status from <Badge variant="secondary" className="px-1.5 py-0 h-4 text-[10px]">{details?.old_status}</Badge> to <Badge variant="secondary" className="px-1.5 py-0 h-4 text-[10px]">{details?.new_status}</Badge></>
+                        ) : activity.action === 'commented' ? (
+                          'added a comment'
+                        ) : isTimeEntry ? (
+                          <>logged <span className="font-bold text-[#0969da]">{parseFloat(details?.duration || 0).toFixed(2)}h</span> work</>
+                        ) : (
+                          activity.action.replace('_', ' ')
+                        )}
                       </span>
+                      <span>·</span>
+                      <span>{formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}</span>
                     </div>
-                    <p className="text-gray-700 whitespace-pre-wrap">{comment.comment}</p>
                   </div>
-                ))}
+                );
+              })}
+            </div>
 
-                <div className="mt-4 space-y-2">
-                  <Label>Add Comment</Label>
+            {/* Comments Section */}
+            <div className="space-y-8">
+              {comments.map((comment) => (
+                <div key={comment.id} className="relative pl-12 before:absolute before:left-[1.25rem] before:-top-8 before:bottom-0 before:w-[2px] before:bg-[#d0d7de]">
+                  <div className="absolute left-0 top-0">
+                    <Avatar className="h-10 w-10 border border-[#d0d7de] bg-[#f6f8fa]">
+                      <AvatarFallback className="text-xs text-[#656d76] uppercase">
+                        {comment.user_email.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+
+                  <div className="border border-[#d0d7de] rounded-lg overflow-hidden bg-white shadow-sm hover:border-[#afb8c1] transition-colors">
+                    <div className="bg-[#f6f8fa] border-b border-[#d0d7de] px-4 py-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[#24292f]">{comment.user_email}</span>
+                        <span className="text-sm text-[#656d76]">commented {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#656d76] hover:bg-[#d0d7de]/30">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="p-4 text-[#24292f] text-sm leading-relaxed whitespace-pre-wrap">
+                      {comment.comment}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* New Comment Box - GitHub Style */}
+            <div className="relative pl-12 before:absolute before:left-[1.25rem] before:-top-8 before:top-8 before:w-[2px] before:bg-[#d0d7de]">
+              <div className="absolute left-0 top-0">
+                <Avatar className="h-10 w-10 border border-[#d0d7de] bg-[#f6f8fa]">
+                  <AvatarFallback className="text-xs text-[#656d76] uppercase">
+                    {(currentUser?.email || 'U').charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              <div className="border border-[#d0d7de] rounded-lg overflow-hidden bg-white shadow-sm focus-within:border-[#0969da] focus-within:ring-1 focus-within:ring-[#0969da]/30 transition-all">
+                <div className="bg-[#f6f8fa] border-b border-[#d0d7de] flex items-center">
+                  <div className="px-4 py-2 border-b-2 border-[#fd8c73] bg-white text-sm font-medium">Write</div>
+                  <div className="px-4 py-2 text-sm text-[#656d76] hover:text-[#24292f] cursor-not-allowed">Preview</div>
+                  <div className="ml-auto flex items-center pr-2 gap-1">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-[#656d76]"><Smile className="h-4 w-4" /></Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Add emoji</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </div>
+                <div className="p-3">
                   <Textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Write a comment..."
-                    rows={3}
+                    placeholder="Leave a comment"
+                    className="min-h-[120px] border-none focus:ring-0 bg-[#f6f8fa]/50 focus:bg-white transition-colors text-sm resize-y"
                   />
-                  <Button onClick={addComment} disabled={!newComment.trim()}>
-                    Comment
-                  </Button>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-[#656d76] italic">
+                      <Paperclip className="h-3 w-3" />
+                      Attach files by dragging & dropping, selecting or pasting them.
+                    </div>
+                    <Button 
+                      onClick={addComment} 
+                      disabled={!newComment.trim()}
+                      className="bg-[#2da44e] hover:bg-[#2c974b] text-white border-none h-8 px-4 font-semibold shadow-sm disabled:opacity-50"
+                    >
+                      Comment
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Activity Timeline */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {activities.map((activity) => {
-                    const isTimeEntry = activity.action === 'work_recorded' || activity.action === 'work_completed';
-                    const details = typeof activity.details === 'string' ? JSON.parse(activity.details) : activity.details;
-
-                    return (
-                      <div key={activity.id} className="flex gap-2 text-sm items-start border-b border-gray-100 pb-2">
-                        <span className="text-gray-500 whitespace-nowrap">
-                          {new Date(activity.created_at).toLocaleString()}
-                        </span>
-                        <div className="flex-1">
-                          <span className="font-semibold mr-1">{activity.user_email}</span>
-                          <span className={`${isTimeEntry ? 'text-blue-600 font-medium' : ''}`}>
-                            {activity.action === 'work_completed' || activity.action === 'work_recorded' ? 'logged time' : activity.action}
-                          </span>
-                          {activity.details && (
-                            <div className="text-gray-600 mt-1 bg-gray-50 p-2 rounded">
-                              {isTimeEntry ? (
-                                <span>
-                                  <strong>{parseFloat(details?.duration || details?.hours_worked || 0).toFixed(2)}h</strong> - {details?.comment || details?.note || 'No comment'}
-                                </span>
-                              ) : (
-                                <span>{typeof activity.details === 'string' ? activity.details : JSON.stringify(activity.details)}</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Status */}
-            {isAdmin && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Status</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
+          {/* Sidebar - GitHub Style */}
+          <div className="space-y-6 lg:border-l lg:pl-8 lg:border-[#d0d7de]">
+            {/* Status Section */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-[#656d76] uppercase tracking-wider">Status</h4>
+              <div className="grid grid-cols-1 gap-2">
+                {['open', 'in_progress', 'closed'].map((status) => (
                   <Button
-                    className="w-full"
-                    variant={issue.status === 'open' ? 'default' : 'outline'}
-                    onClick={() => updateIssueStatus('open')}
+                    key={status}
+                    variant={issue.status === status ? 'default' : 'outline'}
+                    size="sm"
+                    className={`h-8 justify-start text-xs font-semibold ${
+                      issue.status === status 
+                        ? 'bg-[#0969da] text-white' 
+                        : 'bg-white text-[#24292f] border-[#d0d7de] hover:bg-[#f6f8fa]'
+                    }`}
+                    onClick={() => updateIssueStatus(status as any)}
                   >
-                    Open
+                    <div className={`w-2 h-2 rounded-full mr-2 ${
+                      status === 'open' ? 'bg-[#1a7f37]' : 
+                      status === 'in_progress' ? 'bg-[#9a6700]' : 
+                      'bg-[#8250df]'
+                    }`} />
+                    {status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1)}
                   </Button>
-                  <Button
-                    className="w-full"
-                    variant={issue.status === 'in_progress' ? 'default' : 'outline'}
-                    onClick={() => updateIssueStatus('in_progress')}
-                  >
-                    In Progress
-                  </Button>
-                  <Button
-                    className="w-full"
-                    variant={issue.status === 'closed' ? 'default' : 'outline'}
-                    onClick={() => updateIssueStatus('closed')}
-                  >
-                    Closed
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                ))}
+              </div>
+            </div>
 
-            {/* Assignees */}
-            <Card>
-              <CardHeader>
-                <CardTitle
-                  className={`flex items-center gap-2 ${isAdmin ? 'cursor-pointer hover:text-blue-600' : ''}`}
-                  onClick={() => isAdmin && setShowAssigneesDropdown(!showAssigneesDropdown)}
-                >
-                  <User className="h-4 w-4" />
-                  Assignees
-                  {isAdmin && (
-                    <span className="text-xs text-gray-500 ml-auto">
-                      {showAssigneesDropdown ? '▼' : '▶'}
-                    </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
+            <Separator className="bg-[#d0d7de]" />
+
+            {/* Assignees Section */}
+            <div className="space-y-3 relative group">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-[#656d76] uppercase tracking-wider">Assignees</h4>
+                {isAdmin && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-[#656d76]" onClick={() => setShowAssigneesDropdown(!showAssigneesDropdown)}>
+                    <Settings2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              
+              {showAssigneesDropdown && (
+                <div className="absolute right-0 top-8 w-64 bg-white border border-[#d0d7de] rounded-md shadow-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-2 border-b border-[#d0d7de] bg-[#f6f8fa] text-[10px] font-bold text-[#656d76]">Assign up to 10 people</div>
+                  <div className="max-h-60 overflow-y-auto p-1">
+                    {availableUsers
+                      .filter(u => !assignees.some(a => a.user_id === u.user_id))
+                      .map(user => (
+                        <div
+                          key={user.user_id}
+                          className="flex items-center gap-2 p-2 hover:bg-[#f6f8fa] rounded cursor-pointer transition-colors"
+                          onClick={() => toggleUserSelection(user.user_id)}
+                        >
+                          <input type="checkbox" checked={selectedUserIds.includes(user.user_id)} className="rounded border-[#d0d7de]" readOnly />
+                          <span className="text-sm text-[#24292f]">{user.email}</span>
+                        </div>
+                      ))}
+                    {selectedUserIds.length > 0 && (
+                      <Button size="sm" className="w-full mt-2 bg-[#0969da]" onClick={assignMultipleUsers}>Apply</Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
                 {assignees.map((assignee) => (
-                  <div key={assignee.user_id} className="flex items-center justify-between">
-                    <span className="text-sm">{assignee.email}</span>
+                  <div key={assignee.user_id} className="flex items-center justify-between group/user">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6 border border-[#d0d7de]">
+                        <AvatarFallback className="text-[10px]">{assignee.email.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium text-[#24292f]">{assignee.email}</span>
+                    </div>
                     {isAdmin && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => unassignUser(assignee.user_id)}
-                      >
-                        <X className="h-3 w-3" />
+                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/user:opacity-100 transition-opacity" onClick={() => unassignUser(assignee.user_id)}>
+                        <X className="h-3.5 w-3.5 text-[#cf222e]" />
                       </Button>
                     )}
                   </div>
                 ))}
-                {assignees.length === 0 && !showAssigneesDropdown && (
-                  <p className="text-sm text-gray-500 text-center py-2">No assignees</p>
-                )}
-                {/* Show Add Assignees button only for admins - always show when dropdown is closed */}
-                {isAdmin && !showAssigneesDropdown && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full mt-2"
-                    onClick={() => setShowAssigneesDropdown(true)}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Add Assignees
+                {assignees.length === 0 && <span className="text-sm text-[#656d76] italic">No assignees</span>}
+              </div>
+            </div>
+
+            <Separator className="bg-[#d0d7de]" />
+
+            {/* Labels Section */}
+            <div className="space-y-3 relative">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-[#656d76] uppercase tracking-wider">Labels</h4>
+                {isAdmin && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-[#656d76]" onClick={() => setShowLabelDialog(true)}>
+                    <Settings2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                {isAdmin && showAssigneesDropdown && (
-                  <div className="border rounded p-3 space-y-2 max-h-60 overflow-y-auto">
-                    {availableUsers
-                      .filter(u => !assignees.some(a => a.user_id === u.user_id))
-                      .map(user => (
-                        <label
-                          key={user.user_id}
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedUserIds.includes(user.user_id)}
-                            onChange={() => toggleUserSelection(user.user_id)}
-                            className="rounded border-gray-300"
-                          />
-                          <span className="text-sm">{user.email}</span>
-                        </label>
-                      ))}
-                    {availableUsers.filter(u => !assignees.some(a => a.user_id === u.user_id)).length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-2">No available users to assign</p>
-                    )}
-                    {selectedUserIds.length > 0 && (
-                      <div className="pt-2 border-t">
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          onClick={assignMultipleUsers}
-                        >
-                          Assign {selectedUserIds.length} User{selectedUserIds.length > 1 ? 's' : ''}
-                        </Button>
-                      </div>
-                    )}
-                    <div className="pt-2 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          setShowAssigneesDropdown(false);
-                          setSelectedUserIds([]);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Labels */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Tag className="h-4 w-4" />
-                    Labels
-                  </CardTitle>
-                  {isAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => setShowLabelDialog(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {issueLabels.map((label) => (
-                    <div
-                      key={label.id}
-                      className="flex items-center gap-1 px-2 py-1 rounded text-xs text-white"
-                      style={{ backgroundColor: label.color }}
-                    >
-                      <span>{label.name}</span>
-                      {isAdmin && (
-                        <button onClick={() => removeLabel(label.id)}>
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {isAdmin && (
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        addLabel(e.target.value);
-                        e.target.value = "";
-                      }
-                    }}
-                    className="w-full p-2 border rounded text-sm"
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {issueLabels.map((label) => (
+                  <Badge
+                    key={label.id}
+                    className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-white font-bold border-none"
+                    style={{ backgroundColor: label.color }}
                   >
-                    <option value="">Add label...</option>
-                    {availableLabels
-                      .filter(l => !issueLabels.some(il => il.id === l.id))
-                      .map(label => (
-                        <option key={label.id} value={label.id}>
-                          {label.name}
-                        </option>
-                      ))}
-                  </select>
-                )}
-              </CardContent>
-            </Card>
+                    {label.name}
+                    {isAdmin && <X className="h-3 w-3 cursor-pointer hover:text-white/80" onClick={() => removeLabel(label.id)} />}
+                  </Badge>
+                ))}
+                {issueLabels.length === 0 && <span className="text-sm text-[#656d76] italic">None yet</span>}
+              </div>
+            </div>
 
-            {/* Time Tracking Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Time Tracking
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Estimated</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-lg font-semibold">{parseFloat(issue.estimated_hours as any || 0).toFixed(2)}h</p>
-                      {isAdmin && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowEstimateDialog(true)}>
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Completed</p>
-                    <p className="text-lg font-semibold text-blue-600">
-                      {activities
-                        .filter(a => a.action === 'work_recorded' || a.action === 'work_completed')
-                        .reduce((sum, a) => {
-                          const details = typeof a.details === 'string' ? JSON.parse(a.details) : a.details;
-                          return sum + (parseFloat(details?.duration || details?.hours_worked || 0));
-                        }, 0).toFixed(2)}h
-                    </p>
-                  </div>
-                </div>
+            <Separator className="bg-[#d0d7de]" />
 
-                {/* Visual Progress Bar */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span>Progress</span>
-                    <span>
-                      {Math.round((activities
-                        .filter(a => a.action === 'work_recorded' || a.action === 'work_completed')
-                        .reduce((sum, a) => {
-                          const details = typeof a.details === 'string' ? JSON.parse(a.details) : a.details;
-                          return sum + (parseFloat(details?.duration || details?.hours_worked || 0));
-                        }, 0) / (parseFloat(issue.estimated_hours as any || 0) || 1)) * 100)}%
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
-                    <div
-                      className="h-full bg-blue-600 transition-all duration-500"
-                      style={{
-                        width: `${Math.min(100, (activities
-                          .filter(a => a.action === 'work_recorded' || a.action === 'work_completed')
-                          .reduce((sum, a) => {
-                            const details = typeof a.details === 'string' ? JSON.parse(a.details) : a.details;
-                            return sum + (parseFloat(details?.duration || details?.hours_worked || 0));
-                          }, 0) / (parseFloat(issue.estimated_hours as any || 0) || 1)) * 100)}%`
-                      }}
-                    />
-                  </div>
+            {/* Projects Section */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-[#656d76] uppercase tracking-wider">Project</h4>
+              {issue.project_name ? (
+                <div className="flex items-center gap-2 text-sm font-medium text-[#24292f]">
+                  <FolderKanban className="h-4 w-4 text-[#0969da]" />
+                  {issue.project_name}
                 </div>
-              </CardContent>
-            </Card>
+              ) : (
+                <span className="text-sm text-[#656d76] italic">None yet</span>
+              )}
+            </div>
 
-            {/* Details Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-500">Priority:</span>
-                  <span className="capitalize">{issue.priority}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-500">Project:</span>
-                  <span>{issue.project_name || "None"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-500">Estimate:</span>
-                  <div className="flex items-center gap-1">
-                    <span>{parseFloat(issue.estimated_hours as any || 0).toFixed(2)}h</span>
-                    {isAdmin && (
-                      <button onClick={() => setShowEstimateDialog(true)} className="text-blue-600 hover:text-blue-800">
-                        <Edit2 className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="pt-2 border-t mt-2">
-                  <div className="flex justify-between text-xs text-gray-400">
-                    <span>Created:</span>
-                    <span>{new Date(issue.created_at).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-400">
-                    <span>Updated:</span>
-                    <span>{new Date(issue.updated_at).toLocaleString()}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <Separator className="bg-[#d0d7de]" />
+
+            {/* Estimates Section */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-[#656d76] uppercase tracking-wider">Estimates</h4>
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4 text-[#656d76]" />
+                <span className="font-semibold text-[#24292f]">{issue.estimated_hours || 0}h</span>
+                <span className="text-[#656d76]">estimated</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

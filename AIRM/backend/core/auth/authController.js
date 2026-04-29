@@ -27,9 +27,6 @@ export async function sendMagicLink(req, res) {
         res.json({
           message: 'Magic link sent to your email successfully! Please check your inbox.',
           emailSent: true,
-          // Always include magic link in development, or when email service might have issues
-          magicLink: result.magicLink,
-          frontendUrl: result.magicLink,
           previewUrl: result.previewUrl
         });
       } else {
@@ -38,9 +35,7 @@ export async function sendMagicLink(req, res) {
         res.json({
           message: 'Magic link generated (email service unavailable)',
           emailSent: false,
-          magicLink: result.magicLink,
-          frontendUrl: result.magicLink,
-          note: 'Email service is not configured. Use the test link below to login.'
+          note: 'Email service is not configured. Please contact your administrator.'
         });
       }
     } catch (emailError) {
@@ -59,9 +54,7 @@ export async function sendMagicLink(req, res) {
         res.json({
           message: 'Magic link generated (email service unavailable)',
           emailSent: false,
-          magicLink: fallbackResult.magicLink,
-          frontendUrl: fallbackResult.magicLink,
-          note: 'Email service is not configured. Use the link below to test.'
+          note: 'Email service is not configured.'
         });
       } catch (fallbackError) {
         res.status(500).json({
@@ -93,8 +86,7 @@ export async function verifyMagicLink(req, res) {
       const result = await authService.verifyMagicLink(token);
       
       res.json({
-        message: 'Login successful',
-        ...result
+        message: 'Login successful'
       });
     } catch (error) {
       if (error.message === 'Invalid or expired magic link' || 

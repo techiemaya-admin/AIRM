@@ -134,6 +134,13 @@ export const api = {
       name: string;
       description?: string;
       visibility?: 'private' | 'internal' | 'public';
+      repo_name?: string;
+      createRepo?: boolean;
+      createGithubProject?: boolean;
+      github_project_id?: string;
+      template?: string;
+      import_items?: boolean;
+      import_type?: string;
     }) => apiRequest('/projects', { method: 'POST', body: JSON.stringify(data) }),
 
     update: (id: string, data: any) =>
@@ -416,19 +423,55 @@ export const api = {
 
     getCommit: (sha: string) => apiRequest(`/git/commits/${sha}`),
 
-    getIssue: (id: string) => apiRequest(`/git/issues/${id}`),
+    getIssue: (id: string, repo?: string) => apiRequest(`/git/issues/${id}${repo ? `?repo=${repo}` : ""}`),
     getRepos: () => apiRequest('/git/repos'),
-    createIssue: (data: any) => apiRequest('/git/issues', { method: 'POST', body: JSON.stringify(data) }),
-    addComment: (id: string, content: string) => apiRequest(`/git/issues/${id}/comments`, { method: 'POST', body: JSON.stringify({ content }) }),
+    createIssue: (data: any, repository?: string) => apiRequest('/git/issues', { method: 'POST', body: JSON.stringify({ ...data, repository }) }),
+    addComment: (id: string, content: string, repository?: string) => apiRequest(`/git/issues/${id}/comments`, { method: 'POST', body: JSON.stringify({ content, repository }) }),
     updateIssue: (id: string, data: any) => apiRequest(`/git/issues/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    getRepoLabels: () => apiRequest('/git/repo/labels'),
-    getRepoAssignees: () => apiRequest('/git/repo/assignees'),
+    getRepoLabels: (repo?: string) => apiRequest(`/git/repo/labels${repo ? `?repo=${repo}` : ''}`),
+    getRepoAssignees: (repo?: string) => apiRequest(`/git/repo/assignees${repo ? `?repo=${repo}` : ''}`),
 
     syncUsers: () => apiRequest('/git/sync-users', { method: 'POST' }),
 
     syncIssues: () => apiRequest('/git/sync-issues', { method: 'POST' }),
 
     getUsers: () => apiRequest('/git/users'),
+    getProjects: () => apiRequest('/git/projects'),
+
+    addProjectItem: (projectId: string, title: string) =>
+      apiRequest('/git/projects/items', {
+        method: 'POST',
+        body: JSON.stringify({ projectId, title }),
+      }),
+
+    getProjectItems: (projectId: string) =>
+      apiRequest(`/git/projects/${encodeURIComponent(projectId)}/items`),
+
+    getProjectFields: (projectId: string) =>
+      apiRequest(`/git/projects/${encodeURIComponent(projectId)}/fields`),
+
+    updateProjectItemStatus: (itemId: string, projectId: string, fieldId: string, optionId: string) =>
+      apiRequest(`/git/projects/items/${encodeURIComponent(itemId)}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ projectId, fieldId, optionId }),
+      }),
+
+    // Code browser
+    getBranches: (owner: string, repo: string) =>
+      apiRequest(`/git/repos/${owner}/${repo}/branches`),
+
+    getRepoTree: (owner: string, repo: string, branch = 'main') =>
+      apiRequest(`/git/repos/${owner}/${repo}/tree?branch=${encodeURIComponent(branch)}`),
+
+    getFileContent: (owner: string, repo: string, path: string, branch = 'main') =>
+      apiRequest(`/git/repos/${owner}/${repo}/file?path=${encodeURIComponent(path)}&branch=${encodeURIComponent(branch)}`),
+
+    searchRepoFiles: (owner: string, repo: string, q: string, branch = 'main') =>
+      apiRequest(`/git/repos/${owner}/${repo}/search?q=${encodeURIComponent(q)}&branch=${encodeURIComponent(branch)}`),
+
+    // Repo-linked GitHub Projects V2
+    getRepoProjects: (owner: string, repo: string) =>
+      apiRequest(`/git/repos/${owner}/${repo}/projects`),
   },
 
   // HR Documents

@@ -536,6 +536,22 @@ export async function updateIssue(issueId, updates) {
     updateFields.push(`estimated_hours = $${paramCount++}`);
     values.push(updates.estimated_hours);
   }
+  if (updates.github_id !== undefined) {
+    updateFields.push(`github_id = $${paramCount++}`);
+    values.push(updates.github_id);
+  }
+  if (updates.github_iid !== undefined) {
+    updateFields.push(`github_iid = $${paramCount++}`);
+    values.push(updates.github_iid);
+  }
+  if (updates.github_project_id !== undefined) {
+    updateFields.push(`github_project_id = $${paramCount++}`);
+    values.push(updates.github_project_id);
+  }
+  if (updates.repo_name !== undefined) {
+    updateFields.push(`repo_name = $${paramCount++}`);
+    values.push(updates.repo_name);
+  }
 
   if (updateFields.length === 0) {
     // No updates, just return the existing issue

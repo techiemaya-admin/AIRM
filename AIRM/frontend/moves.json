@@ -1,0 +1,146 @@
+[
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/api.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/exit-formalitiesApi.ts",
+    "newName": "exit-formalitiesApi.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/api.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-assetService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/exit-assetService.ts",
+    "newName": "exit-assetService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-assetService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-complianceService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/exit-complianceService.ts",
+    "newName": "exit-complianceService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-complianceService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-deprovisioningService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/exit-deprovisioningService.ts",
+    "newName": "exit-deprovisioningService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-deprovisioningService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-formalitiesService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/exit-formalitiesService.ts",
+    "newName": "exit-formalitiesService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-formalitiesService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-pdfService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/exit-pdfService.ts",
+    "newName": "exit-pdfService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-pdfService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-requestService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/exit-requestService.ts",
+    "newName": "exit-requestService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-requestService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-settlementService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/exit-settlementService.ts",
+    "newName": "exit-settlementService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-settlementService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-smartService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/exit-smartService.ts",
+    "newName": "exit-smartService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/exit-formalities/services/exit-smartService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/git/services/gitService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/gitService.ts",
+    "newName": "gitService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/git/services/gitService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/joining-form/services/joiningFormService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/joiningFormService.ts",
+    "newName": "joiningFormService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/joining-form/services/joiningFormService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/leave-calendar/services/leave-calendarService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/leave-calendarService.ts",
+    "newName": "leave-calendarService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/leave-calendar/services/leave-calendarService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/monitoring/services/monitoringService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/monitoringService.ts",
+    "newName": "monitoringService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/monitoring/services/monitoringService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/payroll-pf/services/payroll-pfService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/payroll-pfService.ts",
+    "newName": "payroll-pfService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/payroll-pf/services/payroll-pfService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/payslips/services/payslipsService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/payslipsService.ts",
+    "newName": "payslipsService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/payslips/services/payslipsService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/profiles/services/documentService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/documentService.ts",
+    "newName": "documentService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/profiles/services/documentService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/profiles/services/profilesService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/profilesService.ts",
+    "newName": "profilesService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/profiles/services/profilesService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/recruitment/services/recruitmentService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/recruitmentService.ts",
+    "newName": "recruitmentService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/recruitment/services/recruitmentService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/resource-management/services/resource-managementService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/resource-managementService.ts",
+    "newName": "resource-managementService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/resource-management/services/resource-managementService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/time-clock/services/time-clockService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/time-clockService.ts",
+    "newName": "time-clockService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/time-clock/services/time-clockService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/timesheet/services/timesheetService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/timesheetService.ts",
+    "newName": "timesheetService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/timesheet/services/timesheetService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/users/services/usersService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/usersService.ts",
+    "newName": "usersService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/features/users/services/usersService.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/src/lib/api.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/api.ts",
+    "newName": "api.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/src/lib/api.ts"
+  },
+  {
+    "src": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/src/lib/joiningFormService.ts",
+    "dest": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/SDK/joiningFormService.ts",
+    "newName": "joiningFormService.ts",
+    "norm": "C:/Users/prasanna/Downloads/my-test-repo/my-test-repo/my-test-repo-main/AIRM/frontend/src/lib/joiningFormService.ts"
+  }
+]

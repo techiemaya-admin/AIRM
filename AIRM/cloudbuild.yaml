@@ -70,7 +70,7 @@ steps:
       - '--memory=1Gi'
       - '--cpu=1'
       - '--timeout=60'
-      - '--set-env-vars=NODE_ENV=production,JWT_SECRET=your-super-secret-jwt-key-here,RESEND_API_KEY=${_RESEND_API_KEY},GITLAB_TOKEN=${_GITLAB_TOKEN},GITLAB_URL=http://165.22.208.99,GITLAB_PROJECT_ID=2,EMAIL_FROM=noreply@pulse.techiemaya.com,EMAIL_REPLY_TO=admin@techiemaya.com,CORS_ORIGIN=https://airm-frontend-160078175457.us-central1.run.app,APP_BASE_URL=https://airm-backend-160078175457.us-central1.run.app,FRONTEND_URL=https://airm-frontend-160078175457.us-central1.run.app,GITHUB_TOKEN=${_GITHUB_TOKEN},GITHUB_OWNER=techiemaya-admin,GITHUB_REPO=AIRM'
+      - '--set-env-vars=NODE_ENV=production,JWT_SECRET=your-super-secret-jwt-key-here,RESEND_API_KEY=${_RESEND_API_KEY},GITLAB_TOKEN=${_GITLAB_TOKEN},GITLAB_URL=http://165.22.208.99,GITLAB_PROJECT_ID=2,EMAIL_FROM=noreply@pulse.techiemaya.com,EMAIL_REPLY_TO=admin@techiemaya.com,CORS_ORIGIN=https://airm-frontend-kunfx3bnvq-uc.a.run.app,APP_BASE_URL=https://airm-backend-kunfx3bnvq-uc.a.run.app,FRONTEND_URL=https://airm-frontend-kunfx3bnvq-uc.a.run.app,GITHUB_TOKEN=${_GITHUB_TOKEN},GITHUB_OWNER=prasad758,GITHUB_REPO=my-test-repo'
       - '--update-secrets=DATABASE_URL=database-url:latest'
 
   # ─────────────────────────────────────────────

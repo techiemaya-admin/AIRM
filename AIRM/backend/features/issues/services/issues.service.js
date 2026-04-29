@@ -5,6 +5,8 @@
 
 import * as issueModel from '../models/issues.pg.js';
 import * as gitlabService from './gitlab.service.js';
+import * as gitService from '../../git/services/git.service.js';
+import * as projectModel from '../../projects/models/projects.pg.js';
 
 /**
  * Get all issues
@@ -77,55 +79,55 @@ export async function createIssue(issueData, userId) {
     created_by: userId
   });
 
-  // 2. Handle GitLab integration if project_id is provided
-  if (project_id) {
+  // 2. Handle GitHub integration if project_id or project_name is provided
+  if (project_id || project_name) {
     try {
-      // Get project info
-      const project = await issueModel.getGitLabProject(project_id);
-      if (project) {
-        // Get label names for GitLab
-        const labelNames = label_ids ? await issueModel.getLabelsByIds(label_ids) : [];
+      // Get project info by ID or Name
+      let githubProject = null;
+      if (project_id) {
+        console.log(`🔍 Finding GitHub project by ID: ${project_id}`);
+        githubProject = await projectModel.getGitHubProject(project_id);
+      } else if (project_name) {
+        console.log(`🔍 Finding GitHub project by Name: ${project_name}`);
+        const projects = await projectModel.getAllProjects();
+        const sanitize = (s) => (s || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const searchName = sanitize(project_name);
+        console.log(`🔍 Sanitized search name: ${searchName}`);
+        
+        githubProject = projects.find(p => {
+          const match = p.source === 'github' && 
+            (sanitize(p.name) === searchName || (p.repo_name && sanitize(p.repo_name) === searchName));
+          if (match) console.log(`✅ Found match: ${p.name} (repo: ${p.repo_name})`);
+          return match;
+        });
+      }
 
-        // Create issue in GitLab
-        const gitlabIssue = await gitlabService.createGitLabIssue(project.gitlab_project_id, {
+      if (githubProject) {
+        const targetRepoName = githubProject.repo_name || githubProject.name;
+        console.log(`🚀 Creating issue in GitHub for project: ${githubProject.name} (Repo: ${targetRepoName})`);
+        
+        const githubIssue = await gitService.createIssue({
           title,
           description,
-          labelNames,
-          assigneeIds: assignee_ids,
-          estimateHours: estimate_hours,
-          dueDate: due_date
-        });
+          labels: label_ids ? await issueModel.getLabelsByIds(label_ids) : []
+        }, targetRepoName);
+        
+        console.log(`✅ GitHub issue created: ${githubIssue.id} (#${githubIssue.number || githubIssue.iid})`);
 
-        // Link GitLab info back to local issue
+        // Link GitHub info back to local issue
         await issueModel.updateIssue(issue.id, {
-          gitlab_id: gitlabIssue.id,
-          gitlab_iid: gitlabIssue.iid
+          github_id: githubIssue.id,
+          github_iid: githubIssue.number,
+          github_project_id: githubProject.github_id, // Store the github_id (Project's GitHub ID)
+          repo_name: targetRepoName
         });
 
-        // Also create entry in gitlab_issues for backward compatibility/mapping
-        try {
-          await issueModel.createGitLabIssue({
-            gitlab_issue_id: gitlabIssue.id,
-            gitlab_iid: gitlabIssue.iid,
-            project_id: project.gitlab_project_id,
-            title,
-            description,
-            status: status || 'open',
-            priority: priority || 'medium',
-            created_by: userId,
-            estimate_hours,
-            start_date,
-            due_date
-          });
-        } catch (err) {
-          console.warn('Failed to insert into gitlab_issues mapping table:', err.message);
-        }
-
-        issue.gitlab_url = gitlabIssue.web_url;
+        issue.github_id = githubIssue.id;
+        issue.github_iid = githubIssue.number;
+        issue.github_url = githubIssue.html_url;
       }
-    } catch (gitlabError) {
-      console.error('GitLab issue creation failed, continuing with local issue:', gitlabError.message);
-      // We don't throw here so that the local issue still "exists" even if GitLab is down
+    } catch (gitError) {
+      console.error('GitHub issue creation failed, continuing with local issue:', gitError.message);
     }
   }
 
@@ -163,28 +165,24 @@ export async function updateIssue(issueId, updates, userId) {
     throw new Error('Issue not found');
   }
 
-  // Try to get GitLab issue info (optional)
-  const gitlabIssue = await issueModel.getGitLabIssue(issueId);
+  // Try to get GitHub issue info (optional)
+  const issueInfo = await issueModel.getIssueById(issueId);
 
-  // Update in GitLab if GitLab integration exists
-  if (gitlabIssue) {
+  // Update in GitHub if GitHub integration exists
+  if (issueInfo && (issueInfo.github_id || issueInfo.github_iid)) {
     try {
-      await gitlabService.updateGitLabIssue(
-        gitlabIssue.gitlab_project_id,
-        gitlabIssue.gitlab_iid,
-        updates
+      // We need project name for GitHub
+      const githubProject = issueInfo.github_project_id 
+        ? await projectModel.getGitHubProjectByGitHubId(issueInfo.github_project_id)
+        : null;
+        
+      await gitService.updateIssue(
+        issueInfo.github_iid,
+        updates,
+        githubProject ? (githubProject.repo_name || githubProject.name) : null
       );
-    } catch (gitlabError) {
-      console.error('GitLab update failed:', gitlabError.message);
-      // Continue with local update even if GitLab fails
-    }
-
-    // Update in GitLab issues table if it exists
-    try {
-      await issueModel.updateGitLabIssue(issueId, updates);
-    } catch (error) {
-      console.error('Failed to update GitLab issue table:', error.message);
-      // Continue with main issues table update
+    } catch (gitError) {
+      console.error('GitHub update failed:', gitError.message);
     }
   }
 
@@ -212,21 +210,28 @@ export async function addComment(issueId, userId, comment) {
     throw new Error('Issue not found');
   }
 
-  // Try to get GitLab issue info (optional - issue may not have GitLab association)
-  const issueInfo = await issueModel.getGitLabIssueInfo(issueId);
+  // Try to get GitHub issue info
+  const issueWithGit = await issueModel.getIssueById(issueId);
 
-  // Post comment to GitLab if issue has GitLab association
-  if (issueInfo) {
+  // Post comment to GitHub if issue has GitHub association
+  if (issueWithGit && (issueWithGit.github_id || issueWithGit.github_iid)) {
     try {
-      await gitlabService.postCommentToGitLab(
-        issueInfo.gitlab_project_id,
-        issueInfo.gitlab_iid,
-        comment
+      const githubProject = issueWithGit.github_project_id 
+        ? await projectModel.getGitHubProjectByGitHubId(issueWithGit.github_project_id)
+        : null;
+
+      const targetRepo = githubProject ? (githubProject.repo_name || githubProject.name) : issueWithGit.repo_name;
+
+      await gitService.addComment(
+        issueWithGit.github_iid,
+        comment,
+        targetRepo
       );
-    } catch (gitlabError) {
-      console.error('GitLab comment post failed:', gitlabError.response?.data || gitlabError.message);
-      // Continue with local save even if GitLab fails
+    } catch (gitError) {
+      console.error('GitHub comment post failed:', gitError.message);
     }
+  } else {
+    console.log(`ℹ️ Issue ${issueId} has no GitHub association (github_id: ${issueWithGit?.github_id})`);
   }
 
   // Add comment locally

@@ -71,7 +71,7 @@ const Projects = () => {
       
       toast({
         title: "Success",
-        description: "Project created successfully in GitLab!",
+        description: "Project created successfully with GitHub repository!",
       });
       
       setShowCreateDialog(false);
@@ -107,7 +107,7 @@ const Projects = () => {
         <div>
           <h1 className="text-3xl font-bold">Projects</h1>
           <p className="text-muted-foreground">
-            Manage your projects and sync with GitLab
+            Manage your projects and sync with GitHub
           </p>
         </div>
         
@@ -255,7 +255,7 @@ const Projects = () => {
                       className="text-xs text-primary hover:underline flex items-center space-x-1"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span>🔗 View in GitLab</span>
+                      <span>🔗 View in GitHub</span>
                     </a>
                   </div>
                 )}

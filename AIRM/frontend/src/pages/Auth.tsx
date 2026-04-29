@@ -159,6 +159,9 @@ const Auth = () => {
                       ⏰ The link expires in 15 minutes for security
                     </p>
                   </div>
+                  
+
+
                   <div className="space-y-2 text-sm text-muted-foreground mt-4">
                     <p>📬 Check your email inbox for the login link</p>
                     <p>🔍 Don't see it? Check your spam/junk folder</p>
@@ -166,7 +169,6 @@ const Auth = () => {
                   </div>
                 </div>
               )}
-
 
 
 
