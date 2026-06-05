@@ -1,0 +1,185 @@
+.gh-task-panel {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  background: #fff;
+  border-left: 1px solid #e6edf3;
+  gap: 20px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.gh-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.gh-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gh-status-pill {
+  background: #28a745;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gh-status-pill:empty { display:none }
+
+.gh-title {
+  font-size: 20px;
+  font-weight: 700;
+  border: none;
+  outline: none;
+  flex: 1 1 auto;
+}
+
+.gh-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.gh-subheader {
+  display: flex;
+  justify-content: space-between;
+  color: #6b7280;
+  font-size: 13px;
+  margin: 8px 0 16px 0;
+}
+
+.section-label {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.gh-description {
+  background: #fbfdff;
+  border: 1px solid #e6eef6;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.gh-markdown {
+  font-size: 14px;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.gh-edit-desc {
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+}
+
+.gh-comments {
+  margin-top: 18px;
+}
+
+.gh-comment-input {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.gh-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.gh-avatar.sm { width:32px; height:32px; font-size:13px }
+
+.gh-comment-input input {
+  flex: 1 1 auto;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+.gh-btn, .gh-bug-btn, .gh-save {
+  background: #2ea44f;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.gh-comment-list { margin-top: 12px }
+
+.gh-comment-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #eef2f7;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.gh-comment-meta { font-size: 12px; color: #6b7280 }
+.gh-comment-text { margin-top: 6px }
+
+.gh-bug-input { display:flex; gap:8px; margin-top:8px }
+.gh-bug-input input { flex:1; padding:8px; border:1px solid #f3caca }
+.gh-bug-btn { background:#d73a49 }
+.gh-bug-item { background:#ffeef0; color:#86181d; padding:8px; border-radius:6px; margin-top:8px }
+
+.gh-footer { margin-top: 18px; display:flex; justify-content:flex-end }
+
+.gh-sidebar {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gh-card { background:#f8fafc; border:1px solid #eef2f7; padding:10px; border-radius:6px }
+.gh-card-title { font-weight:600; margin-bottom:8px }
+.gh-card-body { font-size:13px }
+.assignee { background:#eef2ff; padding:6px; border-radius:6px }
+.muted { color:#6b7280 }
+
+/* Modal overlay + content sizing */
+.gh-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+}
+
+.gh-modal-content {
+  width: 75vw;
+  height: 75vh;
+  max-width: 1200px;
+  max-height: 90vh;
+  background: transparent;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.35);
+  overflow: hidden;
+}
+
+/* Ensure the panel's inner scrolling works */
+.gh-task-panel { overflow: auto }

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "test-admin-id",
+    "email": "admin@test.com",
+    "full_name": "Test Admin",
+    "role": "admin"
+  },
+  {
+    "id": "test-employee-id",
+    "email": "employee@test.com",
+    "full_name": "Test Employee",
+    "role": "employee"
+  },
+  {
+    "id": "test-manager-id",
+    "email": "manager@test.com",
+    "full_name": "Test Manager",
+    "role": "manager"
+  }
+]

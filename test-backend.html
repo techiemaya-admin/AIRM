@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backend Test</title>
+</head>
+<body>
+    <h1>Backend Connection Test</h1>
+    <button onclick="testHealth()">Test /health endpoint</button>
+    <button onclick="testAuth()">Test /api/auth/send-magic-link</button>
+    <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+
+    <script>
+        async function testHealth() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing /health...';
+            
+            try {
+                const response = await fetch('http://localhost:3001/health');
+                const data = await response.json();
+                resultDiv.innerHTML = `<strong>Success!</strong><br>Status: ${response.status}<br>Response: ${JSON.stringify(data, null, 2)}`;
+                resultDiv.style.backgroundColor = '#d4edda';
+            } catch (error) {
+                resultDiv.innerHTML = `<strong>Error!</strong><br>${error.message}`;
+                resultDiv.style.backgroundColor = '#f8d7da';
+            }
+        }
+
+        async function testAuth() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing /api/auth/send-magic-link...';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/auth/send-magic-link', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: 'test@example.com' })
+                });
+                const data = await response.json();
+                resultDiv.innerHTML = `<strong>Response received!</strong><br>Status: ${response.status}<br>Response: <pre>${JSON.stringify(data, null, 2)}</pre>`;
+                resultDiv.style.backgroundColor = response.ok ? '#d4edda' : '#fff3cd';
+            } catch (error) {
+                resultDiv.innerHTML = `<strong>Error!</strong><br>${error.message}`;
+                resultDiv.style.backgroundColor = '#f8d7da';
+                console.error('Full error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

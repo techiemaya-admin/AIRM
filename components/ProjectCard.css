@@ -1,0 +1,100 @@
+.project-card {
+  position: relative;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 16px;
+  padding: 22px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* LEFT COLOR STRIP */
+.project-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(180deg, #6366f1, #22c55e);
+}
+
+/* HOVER EFFECT */
+.project-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 45px rgba(99, 102, 241, 0.25);
+}
+
+/* TITLE */
+.project-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+  text-transform: capitalize;
+}
+
+/* DESCRIPTION */
+.project-card p {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 18px;
+}
+
+/* META INFO */
+.project-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 18px;
+}
+
+.project-meta span:first-child {
+  color: #4f46e5;
+}
+
+.project-meta span:last-child {
+  color: #16a34a;
+}
+
+/* ACTION BUTTONS */
+.project-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* EDIT */
+.project-actions .btn-outline {
+  flex: 1;
+  background: #eef2ff;
+  color: #4338ca;
+  border: none;
+  padding: 10px 0;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.project-actions .btn-outline:hover {
+  background: #e0e7ff;
+}
+
+/* DELETE */
+.project-actions .btn-danger {
+  flex: 1;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 10px 0;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.project-actions .btn-danger:hover {
+  background: #fecaca;
+}
