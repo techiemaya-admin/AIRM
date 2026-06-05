@@ -1,0 +1,6 @@
+
+--- USER_ROLES TABLE (erp schema) ---
+id: uuid (Nullable: NO, Default: null)
+user_id: uuid (Nullable: NO, Default: null)
+role: text (Nullable: NO, Default: null)
+created_at: timestamp with time zone (Nullable: YES, Default: now())

@@ -1,0 +1,12 @@
+{
+  "builds": [
+    {
+      "src": "AIRM/frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "AIRM/frontend/dist" }
+    }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "AIRM/frontend/dist/$1" }
+  ]
+}
