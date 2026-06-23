@@ -2,7 +2,7 @@ import pg from 'pg';
 const { Client } = pg;
 
 const client = new Client({
-  connectionString: 'postgresql://dbadmin:TechieMaya$0326@165.22.221.77:5432/salesmaya_agent',
+  connectionString: 'postgresql://<USERNAME>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>',
 });
 
 async function run() {
