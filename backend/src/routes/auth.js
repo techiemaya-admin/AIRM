@@ -1,25 +1,172 @@
 /**
  * Authentication Routes
- * Handles magic link login and user session management
+ * Handles direct email/password login and user session management
  */
 
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import { body, validationResult } from 'express-validator';
 import pool from '../db/connection.js';
 import { authenticate } from '../middleware/auth.js';
-import { sendMagicLinkEmail } from '../../shared/services/emailService.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 /**
- * Send magic link
- * POST /api/auth/send-magic-link
+ * Direct Login with email + password
+ * POST /api/auth/login
  */
-router.post('/send-magic-link', [
+router.post('/login', [
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('password').notEmpty().withMessage('Password is required'),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: errors.array()[0].msg
+      });
+    }
+
+    const email = (req.body.email || '').toLowerCase().trim();
+    const { password } = req.body;
+
+    // Only @techiemaya.com emails allowed
+    if (!email.endsWith('@techiemaya.com')) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'Only users with a @techiemaya.com email address can sign in.'
+      });
+    }
+
+    // Resilient lookup across schemas to avoid schema permission errors
+    let user = null;
+
+    // 1. Try lad_stage (production schema)
+    try {
+      const q = `
+        SELECT u.id, u.email, u.password_hash,
+               COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+        FROM lad_stage.users u
+        WHERE LOWER(u.email) = $1
+      `;
+      const res = await pool.query(q, [email]);
+      if (res.rows.length > 0) user = res.rows[0];
+    } catch (e) {
+      console.warn('lad_stage lookup skipped:', e.message);
+    }
+
+    // 2. Try erp schema
+    if (!user) {
+      try {
+        const q = `
+          SELECT u.id, u.email, u.password_hash, u.full_name, ur.role
+          FROM erp.users u
+          LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
+          WHERE LOWER(u.email) = $1
+        `;
+        const res = await pool.query(q, [email]);
+        if (res.rows.length > 0) user = res.rows[0];
+      } catch (e) {
+        console.warn('erp schema lookup skipped:', e.message);
+      }
+    }
+
+    // 3. Try lad_dev schema
+    if (!user) {
+      try {
+        const q = `
+          SELECT u.id, u.email, u.password_hash,
+                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+          FROM lad_dev.users u
+          WHERE LOWER(u.email) = $1
+        `;
+        const res = await pool.query(q, [email]);
+        if (res.rows.length > 0) user = res.rows[0];
+      } catch (e) {
+        console.warn('lad_dev schema lookup skipped:', e.message);
+      }
+    }
+
+    // 4. Try default search_path users table
+    if (!user) {
+      try {
+        const q = `
+          SELECT u.id, u.email, u.password_hash, u.full_name
+          FROM users u
+          WHERE LOWER(u.email) = $1
+        `;
+        const res = await pool.query(q, [email]);
+        if (res.rows.length > 0) user = res.rows[0];
+      } catch (e) {
+        console.warn('default search_path lookup skipped:', e.message);
+      }
+    }
+
+    if (!user) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: 'Invalid email or password'
+      });
+    }
+
+    // Check if password has been set
+    if (!user.password_hash) {
+      return res.status(401).json({
+        error: 'No password set',
+        message: 'No password has been set for this account. Please contact your administrator.'
+      });
+    }
+
+    // Verify password using bcrypt
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: 'Invalid email or password'
+      });
+    }
+
+    // Generate auth token
+    const authToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role || 'user'
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      message: 'Login successful',
+      token: authToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role || 'user'
+      }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * Set / reset password for a user (Admin use via script)
+ * POST /api/auth/set-password
+ * Body: { email, password, adminSecret }
+ */
+router.post('/set-password', [
   body('email').isEmail(),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('adminSecret').notEmpty(),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -27,77 +174,39 @@ router.post('/send-magic-link', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // Normalize to lowercase manually (consistent with how createUser stores emails)
-    const email = (req.body.email || '').toLowerCase().trim();
-
-    // Check if user exists — case-insensitive lookup
-    const userQuery = `
-      SELECT u.id, u.email, u.full_name
-      FROM users u
-      WHERE LOWER(u.email) = $1
-    `;
-    const userResult = await pool.query(userQuery, [email]);
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({
-        error: 'User not found',
-        message: 'No account found with this email address. Please contact your administrator.'
-      });
+    // Simple admin secret check
+    const ADMIN_SECRET = process.env.ADMIN_SECRET || 'pulse-admin-secret-2025';
+    if (req.body.adminSecret !== ADMIN_SECRET) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Invalid admin secret' });
     }
 
-    // Generate magic link token
-    const magicToken = jwt.sign(
-      {
-        userId: userResult.rows[0].id,
-        email: userResult.rows[0].email,
-        purpose: 'magic-login'
-      },
-      JWT_SECRET,
-      { expiresIn: '15m' } // Magic links expire in 15 minutes
+    const email = (req.body.email || '').toLowerCase().trim();
+    const { password } = req.body;
+
+    // Check user exists
+    const userCheck = await pool.query(
+      'SELECT id FROM users WHERE LOWER(email) = $1',
+      [email]
     );
 
-    // Create the magic link URL - use FRONTEND_URL instead of APP_BASE_URL
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const magicLink = `${frontendUrl}/auth?token=${magicToken}`;
-
-    console.log('🔗 Magic link generated for:', email);
-
-    try {
-      // Send email with magic link
-      const emailResult = await sendMagicLinkEmail(email, magicLink, userResult.rows[0].full_name);
-
-      // Check if email was actually sent or if it's fallback mode
-      if (emailResult.fallback || !emailResult.success) {
-        console.log('⚠️ Email service not configured, returning magic link directly');
-        res.json({
-          message: 'Magic link generated (email service unavailable)',
-          emailSent: false,
-          token: magicToken,
-          magicLink: magicLink
-        });
-      } else {
-        console.log('📧 Magic link email sent successfully');
-        res.json({
-          message: 'Magic link sent to your email successfully! Please check your inbox.',
-          emailSent: true,
-          ...(emailResult.previewUrl && { previewUrl: emailResult.previewUrl })
-        });
-      }
-
-    } catch (emailError) {
-      console.error('📧 Failed to send magic link email:', emailError);
-
-      // Fallback: return the link directly (for development)
-      res.json({
-        message: 'Magic link generated (email service unavailable)',
-        emailSent: false,
-        token: magicToken,
-        magicLink: magicLink
-      });
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
+    // Hash the new password
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    // Update password_hash (add column if not exists handled by migration)
+    await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE LOWER(email) = $2',
+      [password_hash, email]
+    );
+
+    res.json({ message: 'Password updated successfully', email });
+
   } catch (error) {
-    console.error('Magic link error:', error);
+    console.error('Set password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -244,26 +353,68 @@ router.post('/test-login', [
  */
 router.get('/me', authenticate, async (req, res) => {
   try {
-    // Get user with role
-    const userResult = await pool.query(`
-      SELECT u.id, u.email, u.full_name, ur.role
-      FROM users u
-      LEFT JOIN user_roles ur ON u.id = ur.user_id
-      WHERE u.id = $1
-    `, [req.userId]);
+    let user = null;
 
-    if (userResult.rows.length === 0) {
+    // 1. Try lad_stage
+    try {
+      const q = `
+        SELECT u.id, u.email,
+               COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+        FROM lad_stage.users u
+        WHERE u.id = $1
+      `;
+      const r = await pool.query(q, [req.userId]);
+      if (r.rows.length > 0) user = r.rows[0];
+    } catch (e) {}
+
+    // 2. Try erp schema
+    if (!user) {
+      try {
+        const q = `
+          SELECT u.id, u.email, u.full_name, ur.role
+          FROM erp.users u
+          LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
+          WHERE u.id = $1
+        `;
+        const r = await pool.query(q, [req.userId]);
+        if (r.rows.length > 0) user = r.rows[0];
+      } catch (e) {}
+    }
+
+    // 3. Try lad_dev
+    if (!user) {
+      try {
+        const q = `
+          SELECT u.id, u.email,
+                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+          FROM lad_dev.users u
+          WHERE u.id = $1
+        `;
+        const r = await pool.query(q, [req.userId]);
+        if (r.rows.length > 0) user = r.rows[0];
+      } catch (e) {}
+    }
+
+    // 4. Try default search path
+    if (!user) {
+      try {
+        const q = `SELECT u.id, u.email, u.full_name FROM users u WHERE u.id = $1`;
+        const r = await pool.query(q, [req.userId]);
+        if (r.rows.length > 0) user = r.rows[0];
+      } catch (e) {}
+    }
+
+    if (!user) {
       return res.status(404).json({
         error: 'User not found'
       });
     }
 
-    const user = userResult.rows[0];
     res.json({
       id: user.id,
       email: user.email,
       full_name: user.full_name,
-      role: user.role || 'employee'
+      role: user.role || 'user'
     });
 
   } catch (error) {

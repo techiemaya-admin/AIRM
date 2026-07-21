@@ -106,22 +106,10 @@ export const api = {
 
   // Auth
   auth: {
-    sendMagicLink: (email: string) =>
-      apiRequest('/auth/send-magic-link', {
+    login: (email: string, password: string) =>
+      apiRequest('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email })
-      }),
-
-    verifyMagicLink: (token: string) =>
-      apiRequest('/auth/verify-magic-link', {
-        method: 'POST',
-        body: JSON.stringify({ token })
-      }),
-
-    testLogin: (email: string) =>
-      apiRequest('/auth/test-login', {
-        method: 'POST',
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, password })
       }),
 
     getMe: () => apiRequest('/auth/me'),

@@ -1,273 +1,254 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
-import { logger } from "@/lib/logger";
+
 const logo = "/techiemaya-logo.png";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [lastResponse, setLastResponse] = useState<any>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem("auth_token");
     if (token) {
       navigate("/");
+    }
+    
+    const rememberedEmail = localStorage.getItem("remember_email");
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRemember(true);
+    }
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      toast({
+        title: "Missing fields",
+        description: "Please enter your email and password.",
+        variant: "destructive",
+      });
       return;
     }
 
-    // Check if there's a magic link token in URL
-    const magicToken = searchParams.get('token');
-    if (magicToken) {
-      verifyMagicLink(magicToken);
+    if (!email.trim().toLowerCase().endsWith("@techiemaya.com")) {
+      toast({
+        title: "Access Restricted",
+        description: "Only email addresses ending with @techiemaya.com are allowed.",
+        variant: "destructive",
+      });
+      return;
     }
-  }, [navigate, searchParams]);
 
-  const verifyMagicLink = async (token: string) => {
     setLoading(true);
     try {
-      const response = await api.auth.verifyMagicLink(token) as any;
+      const response = (await api.auth.login(
+        email.trim().toLowerCase(),
+        password
+      )) as any;
 
-      // Save token and user data
-      localStorage.setItem('auth_token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem("auth_token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+
+      if (remember) {
+        localStorage.setItem("remember_email", email.trim().toLowerCase());
+      } else {
+        localStorage.removeItem("remember_email");
+      }
 
       toast({
-        title: "Success",
-        description: "Login successful! Welcome back.",
+        title: "Welcome back! 👋",
+        description: `Signed in as ${response.user.full_name || response.user.email}`,
       });
 
       navigate("/");
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Invalid or expired magic link",
-        variant: "destructive",
-      });
-      // Clear the token from URL on error
-      navigate("/auth", { replace: true });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const response = await api.auth.sendMagicLink(email.trim().toLowerCase()) as any;
-
-      logger.log('🔍 Magic link response:', response);
-      setLastResponse(response);
-
-      setMagicLinkSent(true);
-
-
-
-      if (response.emailSent) {
-        toast({
-          title: "Magic Link Sent! ✉️",
-          description: "Check your email inbox for the secure login link. It expires in 15 minutes.",
-        });
-      } else {
-        // Fallback for development when email service is not configured
-        toast({
-          title: "Magic Link Generated! 🔗",
-          description: response.note || "Magic link generated successfully.",
-        });
+      let msg = error.message || "Sign in failed. Please try again.";
+      if (
+        msg.includes("Failed to fetch") ||
+        msg.includes("ERR_CONNECTION_REFUSED")
+      ) {
+        msg = "Cannot connect to server. Please check your network.";
       }
-
-    } catch (error: any) {
-      let errorMessage = error.message || "Failed to send magic link";
-
-      // Provide helpful message for connection errors
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_CONNECTION_REFUSED') || errorMessage.includes('Cannot connect to server')) {
-        errorMessage = "Backend server is not running. Please start the backend server first. See README.md for instructions.";
-      }
-
       toast({
-        title: "Error",
-        description: errorMessage,
+        title: "Sign in failed",
+        description: msg,
         variant: "destructive",
-        duration: 10000,
       });
     } finally {
       setLoading(false);
     }
   };
-
-
-  // If verifying magic link, show loading state
-  if (searchParams.get('token')) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-1">
-              <img src={logo} alt="TechieMaya Logo" className="h-52 w-auto" />
-            </div>
-            <CardTitle className="text-2xl">Verifying Magic Link</CardTitle>
-            <CardDescription>Please wait while we log you in...</CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <div className="flex justify-center items-center space-x-2">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              <span>Logging in...</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+      <Card className="w-full max-w-md shadow-lg">
+        {/* Logo */}
+        <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-1">
-            <img src={logo} alt="TechieMaya Logo" className="h-52 w-auto" />
+            <img src={logo} alt="TechieMaya Logo" className="h-52 w-auto object-contain" />
           </div>
-          <CardTitle className="text-2xl">Welcome to Pulse</CardTitle>
-          <CardDescription>
-            {magicLinkSent
-              ? "We've sent you a magic link!"
-              : "Enter your email to receive a secure login link"}
-          </CardDescription>
+          <p className="text-2xl font-bold mt-1">👋 Welcome Back!</p>
+          <p className="text-sm text-muted-foreground">
+            We're happy to see you again. Please sign in.
+          </p>
         </CardHeader>
+
         <CardContent>
-          {magicLinkSent ? (
-            <div className="space-y-4">
-              {/* Show email sent message if email was requested */}
-              {lastResponse && (
-                <div className="text-center mb-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                    <div className="text-6xl mb-4">📧</div>
-                    <h3 className="text-lg font-semibold text-green-800 mb-2">
-                      Magic Link Sent!
-                    </h3>
-                    <p className="text-sm text-green-700">
-                      We've sent a secure login link to <strong>{email}</strong>
-                    </p>
-                    <p className="text-xs text-green-600 mt-2">
-                      ⏰ The link expires in 15 minutes for security
-                    </p>
-                  </div>
-                  
+          <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+            {/* Email */}
+            <div className="space-y-1">
+              <label
+                htmlFor="auth-email"
+                className="text-sm font-medium text-foreground"
+              >
+                Email
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect width="20" height="16" x="2" y="4" rx="2" />
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                  </svg>
+                </span>
+                <Input
+                  id="auth-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9"
+                  required
+                  autoComplete="email"
+                />
+              </div>
+            </div>
 
-
-                  <div className="space-y-2 text-sm text-muted-foreground mt-4">
-                    <p>📬 Check your email inbox for the login link</p>
-                    <p>🔍 Don't see it? Check your spam/junk folder</p>
-                    <p>📱 The link works on mobile and desktop</p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Show test login if email was not sent (development fallback) */}
-              {/* {lastResponse && !lastResponse.emailSent && lastResponse.token && (
-                <div className="text-center mb-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-blue-800 mb-2">
-                      Test Mode Active
-                    </h3>
-                    <p className="text-sm text-blue-700 mb-4">
-                      Email service is not configured. You can log in directly using the generated test token.
-                    </p>
-                    <Button 
-                      onClick={() => verifyMagicLink(lastResponse.token)}
-                      className="w-full text-white"
-                    >
-                      Login Now (Test Mode)
-                    </Button>
-                  </div>
-                </div>
-              )} */}
-
-              <div className="text-center mt-4">
+            {/* Password */}
+            <div className="space-y-1">
+              <label
+                htmlFor="auth-password"
+                className="text-sm font-medium text-foreground"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </span>
+                <Input
+                  id="auth-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-9 pr-10"
+                  required
+                  autoComplete="current-password"
+                />
                 <button
                   type="button"
-                  onClick={() => {
-                    setMagicLinkSent(false);
-                    setEmail("");
-                    setLastResponse(null);
-                  }}
-                  className="text-primary hover:underline text-sm"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  <span role="img" aria-label="email" className="mr-1">📧</span> Send to different email
+                  {showPassword ? (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" x2="23" y1="1" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
-          ) : (
-            <form onSubmit={handleSendMagicLink} className="space-y-4">
-              <div>
-                <Input
-                  type="email"
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Sending Magic Link...</span>
-                  </div>
-                ) : (
-                  "🔗 Send Magic Link"
-                )}
-              </Button>
-              <div className="text-center text-sm text-muted-foreground">
-                <p>
-                  No account needed! Just enter your registered email address and we'll send you a secure login link.
-                </p>
-              </div>
 
-              {/* <div className="mt-8 pt-6 border-t border-dashed">
-                <p className="text-xs text-center text-muted-foreground mb-4">Development & Testing Options</p>
-                <div className="flex justify-center">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={async () => {
-                      const targetEmail = email.trim() || 'prasad.d@techiemaya.com';
-                      try {
-                        const response = await api.auth.testLogin(targetEmail) as any;
-                        localStorage.setItem('auth_token', response.token);
-                        localStorage.setItem('user', JSON.stringify(response.user));
-                        
-                        toast({
-                          title: "Success",
-                          description: `Logged in successfully as ${targetEmail}`,
-                        });
-                        
-                        navigate("/");
-                      } catch (e: any) {
-                        toast({ 
-                          title: "Error", 
-                          description: e.message || `User ${targetEmail} not found in database.`,
-                          variant: "destructive"
-                        });
-                      }
-                    }}
-                  >
-                    ⚡ Quick Login (Uses Entered Email)
-                  </Button>
+            {/* Remember me */}
+            <div className="flex items-center gap-2">
+              <input
+                id="auth-remember"
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="w-4 h-4 rounded border border-input accent-primary cursor-pointer"
+              />
+              <label
+                htmlFor="auth-remember"
+                className="text-sm text-muted-foreground cursor-pointer select-none"
+              >
+                Remember me
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              id="auth-submit"
+              type="submit"
+              className="w-full uppercase tracking-wide font-semibold mt-2"
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  <span>Signing in...</span>
                 </div>
-              </div> */}
-            </form>
-          )}
+              ) : (
+                "Sign In"
+              )}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>
@@ -275,4 +256,3 @@ const Auth = () => {
 };
 
 export default Auth;
-
