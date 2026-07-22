@@ -229,11 +229,11 @@ const LeaveCalendar = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-screen-xl mx-auto px-6 pt-4">
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 pt-4 pb-8">
 
         {/* Page Title */}
         <div className="mb-4">
-          <h1 className="text-3xl font-bold text-gray-900">Leave & Attendance</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Leave & Attendance</h1>
           {isAdmin && (
             <p className="text-sm text-blue-600 mt-1">Admin View - You can manage leave, balances, shifts, and attendance</p>
           )}
@@ -265,9 +265,9 @@ const LeaveCalendar = () => {
         </div>
 
 
-        <div className={`flex gap-6 ${activeTab === 'calendar' ? '' : ''}`}>
+        <div className={`flex flex-col lg:flex-row gap-4 lg:gap-6 ${activeTab === 'calendar' ? '' : ''}`}>
           {/* ─── MAIN CONTENT ─── */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 order-2 lg:order-1">
 
             {/* ══════════ CALENDAR TAB ══════════ */}
             {activeTab === 'calendar' && (
@@ -333,14 +333,14 @@ const LeaveCalendar = () => {
                   </div>
 
                   {/* Day headers */}
-                  <div className="grid grid-cols-7 px-4 mb-2">
+                  <div className="grid grid-cols-7 px-2 sm:px-4 mb-2 gap-0.5 sm:gap-1.5">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                      <div key={d} className="py-2 text-center text-sm font-medium text-gray-500">{d}</div>
+                      <div key={d} className="py-1 sm:py-2 text-center text-[10px] sm:text-sm font-medium text-gray-500 truncate">{d}</div>
                     ))}
                   </div>
 
                   {/* Calendar grid — individual rounded cards */}
-                  <div className="grid grid-cols-7 gap-1.5 px-4 pb-4">
+                  <div className="grid grid-cols-7 gap-0.5 sm:gap-1.5 px-2 sm:px-4 pb-4">
                     {calendarDays.map((day, idx) => {
                       const dayStr = format(day, 'yyyy-MM-dd');
                       const inMonth = isSameMonth(day, currentDate);
@@ -355,43 +355,39 @@ const LeaveCalendar = () => {
                       const hasLeave = dayLeaves.length > 0;
 
                       if (!inMonth) {
-                        return <div key={idx} className="rounded-xl border border-gray-100 min-h-[60px] bg-gray-50/40" />;
+                        return <div key={idx} className="rounded-lg sm:rounded-xl border border-gray-100 min-h-[40px] sm:min-h-[60px] bg-gray-50/40" />;
                       }
 
                       return (
                         <div
                           key={idx}
-                          className={`rounded-xl min-h-[60px] p-2 flex flex-col gap-0.5 transition
+                          className={`rounded-lg sm:rounded-xl min-h-[40px] sm:min-h-[60px] p-1 sm:p-2 flex flex-col gap-0.5 transition overflow-hidden
                             ${holiday ? 'bg-green-50 border border-green-200' :
                               todayDay ? 'bg-white border-2 border-[#1E3A8A]' :
                                 'bg-white border border-gray-200'}
                           `}
                         >
-                          {/* Date number */}
-                          <span className={`text-sm font-semibold leading-none ${isWeekend && !holiday ? 'text-gray-400' :
+                          <span className={`text-xs sm:text-sm font-semibold leading-none ${isWeekend && !holiday ? 'text-gray-400' :
                             holiday ? 'text-gray-700' :
                               'text-gray-800'
                             }`}>
                             {format(day, 'd')}
                           </span>
 
-                          {/* Holiday name */}
                           {holiday && (
-                            <span className="text-[11px] font-medium text-green-700 leading-tight">
+                            <span className="hidden sm:block text-[11px] font-medium text-green-700 leading-tight truncate">
                               {holiday.name}
                             </span>
                           )}
 
-                          {/* Leave badge */}
                           {hasLeave && !holiday && (
-                            <span className="text-[10px] font-medium text-orange-600 bg-orange-50 rounded px-1 py-0.5 leading-tight w-fit">
+                            <span className="hidden sm:inline text-[10px] font-medium text-orange-600 bg-orange-50 rounded px-1 py-0.5 leading-tight w-fit">
                               Leave
                             </span>
                           )}
 
-                          {/* Week Off */}
                           {isWeekend && !holiday && (
-                            <span className="text-[11px] text-gray-400 leading-tight">Week Off</span>
+                            <span className="hidden sm:block text-[11px] text-gray-400 leading-tight">Week Off</span>
                           )}
                         </div>
                       );
@@ -399,7 +395,7 @@ const LeaveCalendar = () => {
                   </div>
 
                   {/* Legend */}
-                  <div className="flex items-center gap-6 px-6 py-4 border-t border-gray-100">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-6 px-4 sm:px-6 py-4 border-t border-gray-100">
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                       <span className="w-4 h-4 rounded bg-green-100 border border-green-300 inline-block" />
                       Public Holiday
@@ -421,9 +417,9 @@ const LeaveCalendar = () => {
 
                 {/* My Leave Requests */}
                 <div className="border border-gray-200 dark:border-gray-800 rounded-xl bg-white dark:bg-gray-900 shadow-sm">
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-800">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">My Leave Requests</h3>
-                    <Button onClick={() => setShowRequestDialog(true)} className="bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white font-bold rounded-lg px-5 py-2 h-10">
+                    <Button onClick={() => setShowRequestDialog(true)} className="bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white font-bold rounded-lg px-5 py-2 h-10 w-full sm:w-auto">
                       <Plus className="h-4 w-4 mr-2" /> Request Leave
                     </Button>
                   </div>
@@ -902,7 +898,7 @@ const LeaveCalendar = () => {
 
           {/* ─── SIDEBAR (Calendar tab only) ─── */}
           {activeTab === 'calendar' && (
-            <div className="w-64 flex-shrink-0 space-y-4">
+            <div className="w-full lg:w-64 flex-shrink-0 space-y-4 order-1 lg:order-2">
 
               {/* Pending Approvals */}
               <div className="rounded-xl bg-white border border-gray-200 shadow-sm p-4">
@@ -1023,7 +1019,7 @@ const LeaveCalendar = () => {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Leave Type</Label>
                 <select value={balanceLeaveType} onChange={e => setBalanceLeaveType(e.target.value)} className="w-full p-2 border rounded-lg text-sm mt-1">
@@ -1040,7 +1036,7 @@ const LeaveCalendar = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Opening Balance</Label>
                 <Input type="number" step="0.5" min="0" value={balanceOpening} onChange={e => setBalanceOpening(e.target.value)} placeholder="0" className="mt-1" />
@@ -1051,7 +1047,7 @@ const LeaveCalendar = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Balance (Remaining)</Label>
                 <Input type="number" step="0.5" min="0" value={balanceAmount} onChange={e => setBalanceAmount(e.target.value)} placeholder="0" className="mt-1" />

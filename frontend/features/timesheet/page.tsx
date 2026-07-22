@@ -1167,14 +1167,14 @@ const Timesheet = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>Weekly Timesheet</CardTitle>
-              <div className="flex gap-4">
-                <Button variant="outline" onClick={handleDownload}>
+              <div className="flex flex-wrap gap-2 sm:gap-4">
+                <Button variant="outline" size="sm" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />
                   Download
                 </Button>
-                <Button variant="outline" onClick={handleShare}>
+                <Button variant="outline" size="sm" onClick={handleShare}>
                   <Share2 className="mr-2 h-4 w-4" />
                   Share
                 </Button>
@@ -1200,18 +1200,18 @@ const Timesheet = () => {
                 </div>
               </div>
             )}
-            <div className="flex items-center justify-between">
-              <div className="flex gap-4 text-sm">
-                <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col sm:flex-row sm:gap-4 gap-1 text-sm min-w-0">
+                <div className="min-w-0">
                   <span className="font-semibold">Beginning Monday: </span>
                   {format(weekStart, "dd MMMM yyyy")}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <span className="font-semibold">Ending Sunday: </span>
                   {format(weekEnd, "dd MMMM yyyy")}
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
@@ -1438,15 +1438,15 @@ const Timesheet = () => {
                   </table>
                 </div>
 
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-col sm:flex-row gap-2">
                   {!(isAdmin && selectedUserId && selectedUserId !== user?.id) && (
-                    <Button onClick={addEntry} variant="outline">
+                    <Button onClick={addEntry} variant="outline" className="w-full sm:w-auto">
                       <Plus className="mr-2 h-4 w-4" />
                       Add Row
                     </Button>
                   )}
                   {!(isAdmin && selectedUserId && selectedUserId !== user?.id) ? (
-                    <Button onClick={() => saveTimesheet(false)} disabled={loading}>
+                    <Button onClick={() => saveTimesheet(false)} disabled={loading} className="w-full sm:w-auto">
                       <Save className="mr-2 h-4 w-4" />
                       {loading ? "Saving..." : "Save Timesheet"}
                     </Button>
@@ -1460,23 +1460,25 @@ const Timesheet = () => {
                 <div className="mt-6 space-y-2 text-sm text-muted-foreground">
                   <p>*Record all time to the nearest 10th of an hour</p>
                   <p>*Overtime is not authorized without Customer Management Approval</p>
-                  <div className="mt-4 flex gap-4 items-center">
-                    <p className="font-semibold text-foreground">Entry Types:</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></div>
-                      <span className="text-xs">Time Clock (Auto) 🔒</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-100 border border-green-300 rounded"></div>
-                      <span className="text-xs">Approved Leave 🔒</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-white border border-gray-300 rounded"></div>
-                      <span className="text-xs">Manual Entry (Editable)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-gray-100/50 border border-gray-200 rounded"></div>
-                      <span className="text-xs">Week Off</span>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+                    <p className="font-semibold text-foreground flex-shrink-0">Entry Types:</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded flex-shrink-0"></div>
+                        <span className="text-xs whitespace-nowrap">Time Clock (Auto) 🔒</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-100 border border-green-300 rounded flex-shrink-0"></div>
+                        <span className="text-xs whitespace-nowrap">Approved Leave 🔒</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-white border border-gray-300 rounded flex-shrink-0"></div>
+                        <span className="text-xs whitespace-nowrap">Manual Entry (Editable)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-gray-100/50 border border-gray-200 rounded flex-shrink-0"></div>
+                        <span className="text-xs whitespace-nowrap">Week Off</span>
+                      </div>
                     </div>
                   </div>
                 </div>

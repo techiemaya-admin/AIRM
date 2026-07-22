@@ -26,30 +26,30 @@ export const ProfileCard = ({ profile, onClick, onChangePassword, showActions = 
       onClick={onClick}
     >
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-4 flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
             {profile.avatar_url ? (
               <img
                 src={profile.avatar_url}
                 alt={profile.full_name}
-                className="w-16 h-16 rounded-full object-cover flex-shrink-0"
+                className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0"
               />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-blue-900 flex items-center justify-center text-white text-xl font-semibold flex-shrink-0">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-900 flex items-center justify-center text-white text-lg sm:text-xl font-semibold flex-shrink-0">
                 {getInitials(profile.full_name || profile.email)}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-xl mb-1 truncate">
+              <CardTitle className="text-lg sm:text-xl mb-1 break-words">
                 {profile.full_name || profile.email}
               </CardTitle>
-              <p className="text-sm text-gray-500 capitalize">{profile.job_title || profile.role || 'employee'}</p>
+              <p className="text-sm text-gray-500 capitalize truncate">{profile.job_title || profile.role || 'employee'}</p>
               {profile.department && (
-                <p className="text-xs text-gray-400 mt-1">{profile.department}</p>
+                <p className="text-xs text-gray-400 mt-1 truncate">{profile.department}</p>
               )}
             </div>
           </div>
-          <div className="flex flex-col items-end space-y-1">
+          <div className="flex flex-col items-end space-y-1 flex-shrink-0">
             <span className={`px-2 py-1 text-xs rounded-full ${
               status === 'ex-employee' 
                 ? 'bg-red-100 text-red-800' 

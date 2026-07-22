@@ -128,35 +128,35 @@ export const ProfileDetailDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col gap-4 pr-2">
+            <div className="flex items-start gap-3 sm:gap-4 min-w-0">
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
                   alt={profile.full_name}
-                  className="w-20 h-20 rounded-full object-cover"
+                  className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover flex-shrink-0"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-blue-900 flex items-center justify-center text-white text-2xl font-semibold">
+                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-blue-900 flex items-center justify-center text-white text-xl sm:text-2xl font-semibold flex-shrink-0">
                   {getInitials(profile.full_name || profile.email)}
                 </div>
               )}
-              <div>
-                <DialogTitle className="text-2xl">
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-xl sm:text-2xl break-words">
                   {profile.full_name || profile.email}
                 </DialogTitle>
-                <p className="text-gray-500 mt-1">
+                <p className="text-gray-500 mt-1 text-sm break-words">
                   {profile.job_title || profile.role}
                   {profile.department && ` • ${profile.department}`}
                 </p>
-                <div className="flex items-center mt-2">
-                  <span className="text-xs text-gray-400 mr-2">User ID:</span>
-                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded select-all">{profile.id}</span>
+                <div className="flex flex-wrap items-center gap-1 mt-2">
+                  <span className="text-xs text-gray-400">User ID:</span>
+                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded select-all break-all max-w-full">{profile.id}</span>
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="ml-1 h-6 w-6"
+                    className="h-6 w-6 flex-shrink-0"
                     onClick={() => {
                       navigator.clipboard.writeText(profile.id);
                       setCopiedUuid(true);
@@ -168,7 +168,7 @@ export const ProfileDetailDialog = ({
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-2 pr-8">
+            <div className="flex flex-wrap items-center gap-2">
               {onChangePassword && (
                 <Button
                   onClick={onChangePassword}
@@ -196,12 +196,12 @@ export const ProfileDetailDialog = ({
         </DialogHeader>
 
         {/* Tabs */}
-        <div className="flex space-x-1 border-b mb-4 overflow-x-auto">
+        <div className="flex space-x-1 border-b mb-4 overflow-x-auto -mx-1 px-1 scrollbar-thin">
           {['basic', 'contact', 'family', 'education', 'experience', 'health', 'verification'].map(tab => (
             <button
               key={tab}
               onClick={() => handleTabClick(tab)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab
+              className={`px-3 sm:px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === tab
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
@@ -219,107 +219,107 @@ export const ProfileDetailDialog = ({
               <div>Loading joining form data...</div>
             ) : joiningForm ? (
               <>
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   <div>
                     <Label className="text-xs text-gray-500">Full Name</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.full_name || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.full_name || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Employee Code</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.employee_id || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.employee_id || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Date of Birth</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.date_of_birth?.split('T')[0] || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.date_of_birth?.split('T')[0] || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Gender</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.gender || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.gender || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Joining Date</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.join_date?.split('T')[0] || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.join_date?.split('T')[0] || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Designation</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.designation || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.designation || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Department</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.department || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.department || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Marital Status</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.marital_status || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.marital_status || 'N/A'}</p>
                   </div>
                 </div>
                 {/* Contact Information */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   <div>
                     <Label className="text-xs text-gray-500">Mobile Number</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.phone || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.phone || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Personal Email</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.personal_email || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.personal_email || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Official Email</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.email || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.email || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Current Address</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.current_address || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.current_address || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Permanent Address</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.permanent_address || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.permanent_address || 'N/A'}</p>
                   </div>
                 </div>
                 {/* Bank Details */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   <div>
                     <Label className="text-xs text-gray-500">Bank Name</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.bank_name || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.bank_name || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Bank IFSC</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.bank_ifsc || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.bank_ifsc || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Bank Branch</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.bank_branch || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.bank_branch || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Bank Account Number</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.bank_account_number || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.bank_account_number || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">UAN Number</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.uan_number || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.uan_number || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">PF Number</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.pf_number || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.pf_number || 'N/A'}</p>
                   </div>
                 </div>
                 {/* Health Information */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <div>
                     <Label className="text-xs text-gray-500">Blood Group</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.blood_group || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.blood_group || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Height (cm)</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.height || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.height || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Weight (kg)</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.weight || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.weight || 'N/A'}</p>
                   </div>
                   <div className="col-span-3">
                     <Label className="text-xs text-gray-500">Any Major Surgery/Illness in Past</Label>
-                    <p className="text-sm font-medium">{joiningForm.employee_info.medical_history || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{joiningForm.employee_info.medical_history || 'N/A'}</p>
                   </div>
                 </div>
               </>
@@ -330,27 +330,27 @@ export const ProfileDetailDialog = ({
 
           {/* Contact Information */}
           {activeTab === 'contact' && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs text-gray-500">Official Email</Label>
-                <p className="text-sm font-medium">{profile.email}</p>
+                <p className="text-sm font-medium break-words">{profile.email}</p>
               </div>
               {profile.personal_email && (
                 <div>
                   <Label className="text-xs text-gray-500">Personal Email</Label>
-                  <p className="text-sm font-medium">{profile.personal_email}</p>
+                  <p className="text-sm font-medium break-words">{profile.personal_email}</p>
                 </div>
               )}
               {profile.phone && (
                 <div>
                   <Label className="text-xs text-gray-500">Phone Number</Label>
-                  <p className="text-sm font-medium">{profile.phone}</p>
+                  <p className="text-sm font-medium break-words">{profile.phone}</p>
                 </div>
               )}
               {profile.emergency_contact && (
                 <div>
                   <Label className="text-xs text-gray-500">Emergency Contact</Label>
-                  <p className="text-sm font-medium">{profile.emergency_contact}</p>
+                  <p className="text-sm font-medium break-words">{profile.emergency_contact}</p>
                 </div>
               )}
               {profile.linkedin_url && (
@@ -577,15 +577,15 @@ export const ProfileDetailDialog = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label className="text-xs text-gray-500">Blood Group</Label>
-                    <p className="text-sm font-medium">{profile.blood_group || joiningForm?.employee_info?.blood_group || 'N/A'}</p>
+                    <p className="text-sm font-medium break-words">{profile.blood_group || joiningForm?.employee_info?.blood_group || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Height</Label>
-                    <p className="text-sm font-medium">{profile.height ? `${profile.height} cm` : (joiningForm?.employee_info?.height ? `${joiningForm.employee_info.height} cm` : 'N/A')}</p>
+                    <p className="text-sm font-medium break-words">{profile.height ? `${profile.height} cm` : (joiningForm?.employee_info?.height ? `${joiningForm.employee_info.height} cm` : 'N/A')}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Weight</Label>
-                    <p className="text-sm font-medium">{profile.weight ? `${profile.weight} kg` : (joiningForm?.employee_info?.weight ? `${joiningForm.employee_info.weight} kg` : 'N/A')}</p>
+                    <p className="text-sm font-medium break-words">{profile.weight ? `${profile.weight} kg` : (joiningForm?.employee_info?.weight ? `${joiningForm.employee_info.weight} kg` : 'N/A')}</p>
                   </div>
                   <div className="md:col-span-2">
                     <Label className="text-xs text-gray-500">Medical History / Major Illness</Label>
@@ -607,27 +607,27 @@ export const ProfileDetailDialog = ({
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                       <div>
                         <Label className="text-xs text-gray-500">Full Name</Label>
-                        <p className="text-sm font-medium">{joiningForm.verification_info.name || 'N/A'}</p>
+                        <p className="text-sm font-medium break-words">{joiningForm.verification_info.name || 'N/A'}</p>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">Father's Name</Label>
-                        <p className="text-sm font-medium">{joiningForm.verification_info.father_name || 'N/A'}</p>
+                        <p className="text-sm font-medium break-words">{joiningForm.verification_info.father_name || 'N/A'}</p>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">Date of Birth</Label>
-                        <p className="text-sm font-medium">{joiningForm.verification_info.date_of_birth?.split('T')[0] || 'N/A'}</p>
+                        <p className="text-sm font-medium break-words">{joiningForm.verification_info.date_of_birth?.split('T')[0] || 'N/A'}</p>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">Gender</Label>
-                        <p className="text-sm font-medium">{joiningForm.verification_info.gender || 'N/A'}</p>
+                        <p className="text-sm font-medium break-words">{joiningForm.verification_info.gender || 'N/A'}</p>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">PAN Number</Label>
-                        <p className="text-sm font-medium">{joiningForm.verification_info.pan_number || 'N/A'}</p>
+                        <p className="text-sm font-medium break-words">{joiningForm.verification_info.pan_number || 'N/A'}</p>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">Aadhaar Number</Label>
-                        <p className="text-sm font-medium">{joiningForm.verification_info.aadhar_number || 'N/A'}</p>
+                        <p className="text-sm font-medium break-words">{joiningForm.verification_info.aadhar_number || 'N/A'}</p>
                       </div>
                     </div>
                   </Card>
@@ -674,7 +674,7 @@ export const ProfileDetailDialog = ({
                                 <p>Period: {emp.period_of_working}</p>
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 mt-3 text-xs text-gray-600">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 text-xs text-gray-600">
                               <div>
                                 <span className="text-gray-400 block">Supervisor Contact</span>
                                 {emp.supervisor_contact || 'N/A'}
@@ -891,18 +891,18 @@ export const ProfileDetailDialog = ({
               <Card className="p-6">
                 <h3 className="text-lg font-semibold mb-4">HR & Payroll Information</h3>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-xs text-gray-500">Employee ID</Label>
-                      <p className="text-sm font-medium">{profile.employee_id || 'N/A'}</p>
+                      <p className="text-sm font-medium break-words">{profile.employee_id || 'N/A'}</p>
                     </div>
                     <div>
                       <Label className="text-xs text-gray-500">Employment Type</Label>
-                      <p className="text-sm font-medium">{profile.employment_type || 'Full-time'}</p>
+                      <p className="text-sm font-medium break-words">{profile.employment_type || 'Full-time'}</p>
                     </div>
                     <div>
                       <Label className="text-xs text-gray-500">Date of Joining</Label>
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-medium break-words">
                         {profile.join_date
                           ? format(new Date(profile.join_date), "MMMM dd, yyyy")
                           : 'N/A'}
@@ -910,7 +910,7 @@ export const ProfileDetailDialog = ({
                     </div>
                     <div>
                       <Label className="text-xs text-gray-500">Reporting Manager</Label>
-                      <p className="text-sm font-medium">{profile.reporting_manager || 'N/A'}</p>
+                      <p className="text-sm font-medium break-words">{profile.reporting_manager || 'N/A'}</p>
                     </div>
                     <div className="col-span-2">
                       <Label className="text-xs text-gray-500">Employee Background Verification Details</Label>
@@ -930,7 +930,7 @@ export const ProfileDetailDialog = ({
                           <div className="flex items-center space-x-3">
                             <FileText className="h-5 w-5 text-gray-400" />
                             <div>
-                              <p className="text-sm font-medium">Monthly Payslips</p>
+                              <p className="text-sm font-medium break-words">Monthly Payslips</p>
                               <p className="text-xs text-gray-400">Available for download</p>
                             </div>
                           </div>
@@ -947,7 +947,7 @@ export const ProfileDetailDialog = ({
                           <div className="flex items-center space-x-3">
                             <FileText className="h-5 w-5 text-gray-400" />
                             <div>
-                              <p className="text-sm font-medium">Form 16</p>
+                              <p className="text-sm font-medium break-words">Form 16</p>
                               <p className="text-xs text-gray-400">Tax document</p>
                             </div>
                           </div>
@@ -960,7 +960,7 @@ export const ProfileDetailDialog = ({
                           <div className="flex items-center space-x-3">
                             <FileText className="h-5 w-5 text-gray-400" />
                             <div>
-                              <p className="text-sm font-medium">PF / ESI Details</p>
+                              <p className="text-sm font-medium break-words">PF / ESI Details</p>
                               <p className="text-xs text-gray-400">Provident fund information</p>
                             </div>
                           </div>
@@ -1285,7 +1285,7 @@ export const ProfileDetailDialog = ({
                     <div className="flex items-start space-x-3 pb-3 border-b">
                       <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium">Profile Updated</p>
+                        <p className="text-sm font-medium break-words">Profile Updated</p>
                         <p className="text-xs text-gray-500">
                           {format(new Date(profile.updated_at), "MMMM dd, yyyy 'at' h:mm a")}
                         </p>
@@ -1296,7 +1296,7 @@ export const ProfileDetailDialog = ({
                     <div className="flex items-start space-x-3 pb-3 border-b">
                       <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium">Joined Company</p>
+                        <p className="text-sm font-medium break-words">Joined Company</p>
                         <p className="text-xs text-gray-500">
                           {format(new Date(profile.join_date), "MMMM dd, yyyy")}
                         </p>
@@ -1307,7 +1307,7 @@ export const ProfileDetailDialog = ({
                     <div className="flex items-start space-x-3">
                       <div className="w-2 h-2 rounded-full bg-gray-400 mt-2"></div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium">Profile Created</p>
+                        <p className="text-sm font-medium break-words">Profile Created</p>
                         <p className="text-xs text-gray-500">
                           {format(new Date(profile.created_at), "MMMM dd, yyyy 'at' h:mm a")}
                         </p>

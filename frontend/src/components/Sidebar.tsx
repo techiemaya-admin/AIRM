@@ -1,9 +1,7 @@
-import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import {
   Home,
-  Search,
   Users,
   Clock,
   Calendar,
@@ -12,27 +10,34 @@ import {
   LogOut,
   Menu,
   FolderKanban,
-  Briefcase
+  Briefcase,
+  X,
 } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface SidebarProps {
   onLogout: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-export function Sidebar({ onLogout }: SidebarProps) {
+export function Sidebar({
+  onLogout,
+  mobileOpen,
+  onMobileClose,
+  collapsed,
+  onToggleCollapse,
+}: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: user } = useCurrentUser();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
   const isAdmin = user?.role === 'admin';
 
   const menuItems = [
     { icon: Home, label: 'Timesheet', path: '/', adminOnly: false },
-  ];
-  // Project Management handled separately, then rest of menu
-  const otherMenuItems = [
+    { icon: FolderKanban, label: 'Project Management', path: '/project-management', adminOnly: false },
     { icon: Briefcase, label: 'Resource Management', path: '/resource-management', adminOnly: true },
     { icon: Users, label: 'Employees', path: '/users', adminOnly: true },
     { icon: BarChart3, label: 'Monitoring', path: '/monitoring', adminOnly: true },
@@ -41,126 +46,94 @@ export function Sidebar({ onLogout }: SidebarProps) {
     { icon: GitBranch, label: 'Git', path: '/git', adminOnly: false },
   ];
 
-  // Project Management tab (no sub-items)
-  const [projectMgmtOpen, setProjectMgmtOpen] = useState(true);
-
   const handleNavigation = (path: string) => {
     navigate(path);
+    onMobileClose();
   };
 
   const getUserInitial = () => {
-    if (user?.full_name) {
-      return user.full_name.charAt(0).toUpperCase();
-    }
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase();
-    }
+    if (user?.full_name) return user.full_name.charAt(0).toUpperCase();
+    if (user?.email) return user.email.charAt(0).toUpperCase();
     return 'U';
   };
 
-  const filteredMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin);
+  const isItemActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    if (path === '/resource-management') {
+      return (
+        location.pathname.startsWith('/resource-management') ||
+        location.pathname.startsWith('/profiles') ||
+        location.pathname.startsWith('/joining-form') ||
+        location.pathname.startsWith('/exit-formalities') ||
+        location.pathname.startsWith('/hr-documents') ||
+        location.pathname.startsWith('/payslips')
+      );
+    }
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
 
-  return (
-    <div className={`bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'
-      }`}>
-      {/* Header */}
+  const renderNav = (showLabels: boolean, isMobile: boolean) => (
+    <div className="bg-white border-r border-gray-200 h-full flex flex-col w-full">
       <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center">
+        <div className="flex items-center justify-between gap-2">
+          {showLabels && (
+            <div className="flex items-center space-x-2 min-w-0">
+              <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-sm font-bold">TM</span>
               </div>
-              <span className="font-semibold text-gray-900">TechieMaya</span>
+              <span className="font-semibold text-gray-900 truncate">TechieMaya</span>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
+          {isMobile ? (
+            <Button variant="ghost" size="sm" onClick={onMobileClose} className="p-2 ml-auto" aria-label="Close menu">
+              <X className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleCollapse}
+              className={`p-2 ${showLabels ? '' : 'mx-auto'}`}
+              aria-label="Toggle sidebar"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Navigation Menu */}
-      <nav className="flex-1 p-4 space-y-2">
-        {/* Timesheet */}
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <button
-              key={item.path}
-              onClick={() => handleNavigation(item.path)}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${isActive
-                ? 'bg-blue-900 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
-                } ${isCollapsed ? 'justify-center' : ''}`}
-              title={isCollapsed ? item.label : ''}
-            >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
-            </button>
-          );
-        })}
-        {/* Project Management as second item */}
-        <button
-          onClick={() => handleNavigation('/project-management')}
-          className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${location.pathname.startsWith('/project-management')
-            ? 'bg-blue-900 text-white'
-            : 'text-gray-700 hover:bg-gray-100'
-            } ${isCollapsed ? 'justify-center' : ''}`}
-          title={isCollapsed ? 'Project Management' : ''}
-        >
-          <FolderKanban className="h-5 w-5 flex-shrink-0" />
-          {!isCollapsed && <span className="text-sm font-medium">Project Management</span>}
-        </button>
-        {/* Other Menu Items */}
-        {otherMenuItems.filter(item => !item.adminOnly || isAdmin).map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path ||
-            (item.path === '/resource-management' &&
-              (location.pathname === '/profiles' ||
-                location.pathname === '/joining-form' ||
-                location.pathname === '/exit-formalities' ||
-                location.pathname === '/payslips' ||
-                location.pathname === '/hr-documents' ||
-                location.pathname.startsWith('/profiles/') ||
-                location.pathname.startsWith('/joining-form/') ||
-                location.pathname.startsWith('/exit-formalities/') ||
-                location.pathname.startsWith('/hr-documents/') ||
-                location.pathname.startsWith('/payslips/')));
-          return (
-            <button
-              key={item.path}
-              onClick={() => handleNavigation(item.path)}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${isActive
-                ? 'bg-blue-900 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
-                } ${isCollapsed ? 'justify-center' : ''}`}
-              title={isCollapsed ? item.label : ''}
-            >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
-            </button>
-          );
-        })}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {menuItems
+          .filter((item) => !item.adminOnly || isAdmin)
+          .map((item) => {
+            const Icon = item.icon;
+            const active = isItemActive(item.path);
+            return (
+              <button
+                key={item.path}
+                onClick={() => handleNavigation(item.path)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                  active ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100'
+                } ${showLabels ? '' : 'justify-center'}`}
+                title={!showLabels ? item.label : undefined}
+              >
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                {showLabels && <span className="text-sm font-medium text-left">{item.label}</span>}
+              </button>
+            );
+          })}
       </nav>
 
-      {/* User Profile & Logout */}
       <div className="border-t border-gray-200 p-4">
-        {!isCollapsed && (
+        {showLabels ? (
           <button
             onClick={() => handleNavigation('/employee')}
             className="w-full flex items-center space-x-3 mb-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-white text-sm font-bold">{getUserInitial()}</span>
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-left">
               <div className="text-sm font-medium text-gray-900 truncate">
                 {user?.full_name || user?.email || 'Employee'}
               </div>
@@ -169,15 +142,13 @@ export function Sidebar({ onLogout }: SidebarProps) {
               </div>
             </div>
           </button>
-        )}
-
-        {isCollapsed && (
+        ) : (
           <button
             onClick={() => handleNavigation('/employee')}
-            className="w-full flex items-center justify-center py-2 mb-3 hover:opacity-80 transition-opacity"
+            className="w-full flex items-center justify-center py-2 mb-3"
             title="Profile"
           >
-            <div className="w-9 h-9 bg-blue-900 rounded-full flex items-center justify-center ring-2 ring-blue-900/20">
+            <div className="w-9 h-9 bg-blue-900 rounded-full flex items-center justify-center">
               <span className="text-white text-sm font-bold">{getUserInitial()}</span>
             </div>
           </button>
@@ -186,14 +157,36 @@ export function Sidebar({ onLogout }: SidebarProps) {
         <Button
           variant="ghost"
           onClick={onLogout}
-          className={`w-full flex items-center space-x-3 text-gray-700 hover:bg-red-50 hover:text-red-600 ${isCollapsed ? 'justify-center px-3' : 'justify-start'
-            }`}
-          title={isCollapsed ? 'Logout' : ''}
+          className={`w-full flex items-center gap-3 text-gray-700 hover:bg-red-50 hover:text-red-600 ${
+            showLabels ? 'justify-start' : 'justify-center px-3'
+          }`}
+          title={!showLabels ? 'Logout' : undefined}
         >
           <LogOut className="h-4 w-4 flex-shrink-0" />
-          {!isCollapsed && <span className="text-sm">Logout</span>}
+          {showLabels && <span className="text-sm">Logout</span>}
         </Button>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <aside
+        className={`hidden md:block h-screen flex-shrink-0 transition-all duration-300 ${
+          collapsed ? 'w-16' : 'w-64'
+        }`}
+      >
+        {renderNav(!collapsed, false)}
+      </aside>
+
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={onMobileClose} aria-hidden />
+          <aside className="relative z-10 h-full w-64 max-w-[85vw] shadow-xl">
+            {renderNav(true, true)}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
