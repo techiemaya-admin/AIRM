@@ -818,10 +818,10 @@ const LeaveCalendar = () => {
                           variant="outline"
                           size="sm"
                           onClick={handleDownloadCSV}
-                          className="bg-green-600 hover:bg-green-700 text-white border-green-600 flex items-center gap-2"
+                          className="bg-green-600 hover:bg-green-700 text-white border-green-600 flex items-center gap-2 px-3 sm:px-4"
                         >
                           <Download className="h-4 w-4" />
-                          Download
+                          <span className="hidden sm:inline">Download Excel</span>
                         </Button>
                       </div>
                     </div>
