@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Phone, Calendar, Briefcase, Code, Flame } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Mail, Phone, Calendar, Briefcase, Code, Flame, Key, Eye } from "lucide-react";
 import { format } from "date-fns";
 import type { EmployeeProfile } from "@/sdk/features/profiles";
 import { getInitials, calculateYearsAtCompany, calculateProfileCompleteness, getBurnoutLevel, getProfileStatus } from "../utils";
@@ -7,12 +8,14 @@ import { getInitials, calculateYearsAtCompany, calculateProfileCompleteness, get
 interface ProfileCardProps {
   profile: EmployeeProfile;
   onClick: () => void;
+  onChangePassword?: (profile: EmployeeProfile) => void;
+  showActions?: boolean;
 }
 
 /**
  * Profile Card Component for Grid View
  */
-export const ProfileCard = ({ profile, onClick }: ProfileCardProps) => {
+export const ProfileCard = ({ profile, onClick, onChangePassword, showActions = true }: ProfileCardProps) => {
   const yearsAtCompany = calculateYearsAtCompany(profile.join_date, profile.created_at);
   const completeness = calculateProfileCompleteness(profile);
   const status = getProfileStatus(profile);
@@ -155,6 +158,27 @@ export const ProfileCard = ({ profile, onClick }: ProfileCardProps) => {
                 </span>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Action Buttons: Change Password & View Detailed Profile */}
+        {showActions && (
+          <div className="pt-3 border-t space-y-2" onClick={(e) => e.stopPropagation()}>
+            <Button
+              onClick={() => onChangePassword?.(profile)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg flex items-center justify-center space-x-2"
+            >
+              <Key className="h-4 w-4" />
+              <span>Change Password</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onClick}
+              className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium py-2 rounded-lg border border-gray-200 flex items-center justify-center space-x-2"
+            >
+              <Eye className="h-4 w-4" />
+              <span>View Detailed Profile</span>
+            </Button>
           </div>
         )}
       </CardContent>

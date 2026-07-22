@@ -116,6 +116,12 @@ export const api = {
 
     updateProfile: (data: { full_name?: string }) =>
       apiRequest('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
+
+    changePassword: (data: { password: string; email?: string; userId?: string }) =>
+      apiRequest('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
   },
 
   // Projects

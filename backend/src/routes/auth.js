@@ -6,6 +6,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { execSync } from 'child_process';
 import { body, validationResult } from 'express-validator';
 import pool from '../db/connection.js';
 import { authenticate } from '../middleware/auth.js';
@@ -187,6 +188,59 @@ router.post('/set-password', [
   } catch (error) {
     console.error('Set password error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * Change user password
+ * POST /api/auth/change-password
+ */
+router.post('/change-password', async (req, res) => {
+  try {
+    const { password, email } = req.body;
+    if (!password || !email) {
+      return res.status(400).json({ error: 'Missing password or email' });
+    }
+
+    const lowerEmail = email.toLowerCase().trim();
+
+    // Run the node command to generate password hash key
+    // Equivalent to: node -e "const bcrypt = require('bcryptjs'); console.log(bcrypt.hashSync('new_password', 10));"
+    let password_hash = '';
+    try {
+      const safePassword = password.replace(/'/g, "'\\''");
+      // Prefer bcryptjs (as specified); fall back to bcrypt if bcryptjs is unavailable
+      const cmd = `node -e "try { const bcrypt = require('bcryptjs'); console.log(bcrypt.hashSync('${safePassword}', 10)); } catch (e) { const bcrypt = require('bcrypt'); console.log(bcrypt.hashSync('${safePassword}', 10)); }"`;
+      console.log(`Executing password generation command: ${cmd}`);
+      password_hash = execSync(cmd).toString().trim();
+    } catch (cmdError) {
+      console.warn('Node command hashing fallback:', cmdError.message);
+      password_hash = bcrypt.hashSync(password, 10);
+    }
+
+    // Update erp.users
+    const result = await pool.query(
+      'UPDATE erp.users SET password_hash = $1, updated_at = NOW() WHERE LOWER(email) = $2 RETURNING id, email',
+      [password_hash, lowerEmail]
+    );
+
+    // Fallback update on public/default search path users if erp failed or updated 0 rows
+    if (result.rows.length === 0) {
+      await pool.query(
+        'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE LOWER(email) = $2',
+        [password_hash, lowerEmail]
+      );
+    }
+
+    return res.json({
+      success: true,
+      message: 'Password updated successfully',
+      email: lowerEmail
+    });
+
+  } catch (error) {
+    console.error('Change password error:', error);
+    return res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 });
 

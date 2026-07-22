@@ -44,7 +44,9 @@ import {
   ScrollText,
   BadgeCheck,
   Image as ImageIcon,
-  PenTool
+  PenTool,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { format } from "date-fns";
 import { PfManagementSection, ProfileCard, ProfileFilters, ProfileSearchModal, ProfileListView, ProfileKanbanView, ProfileDetailDialog } from "./components";
@@ -97,13 +99,19 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
   const { data: selectedProfile, isLoading: selectedProfileLoading } = useProfile(selectedProfileId);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // If onlyCurrentUser is true, show detail dialog by default
+  // Change password states
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [submittingPassword, setSubmittingPassword] = useState(false);
+  const [passwordProfile, setPasswordProfile] = useState<EmployeeProfile | null>(null);
+
+  // On My Profile, select current user card but do not auto-open detail dialog
   useEffect(() => {
     if (onlyCurrentUser && currentUser && profiles.length > 0) {
       const userProfile = profiles.find((p) => p.id === currentUser.id || p.email === currentUser.email);
       if (userProfile) {
         setSelectedProfileId(userProfile.id);
-        setIsDetailOpen(true);
       }
     }
   }, [onlyCurrentUser, currentUser, profiles]);
@@ -171,6 +179,62 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
     setSelectedProfileId(id);
     setIsDetailOpen(true);
     // Edit form will be initialized in a separate useEffect when selectedProfile loads
+  };
+
+  const handleOpenChangePassword = (profile: EmployeeProfile) => {
+    setPasswordProfile(profile);
+    setNewPassword("");
+    setShowNewPassword(false);
+    setIsChangePasswordOpen(true);
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!newPassword.trim()) {
+      toast({
+        title: "Error",
+        description: "Password cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!passwordProfile?.email) {
+      toast({
+        title: "Error",
+        description: "No profile selected for password change",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmittingPassword(true);
+    try {
+      const response = await api.auth.changePassword({
+        password: newPassword,
+        email: passwordProfile.email,
+      }) as any;
+
+      if (response.success || response.message) {
+        toast({
+          title: "Success",
+          description: "Password updated successfully!",
+        });
+        setIsChangePasswordOpen(false);
+        setNewPassword("");
+        setPasswordProfile(null);
+      } else {
+        throw new Error(response.message || "Failed to update password");
+      }
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to change password",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingPassword(false);
+    }
   };
 
   // Sync edit form when selectedProfile changes
@@ -875,6 +939,8 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
                 key={profile.id}
                 profile={profile}
                 onClick={() => handleViewProfile(profile.id)}
+                onChangePassword={handleOpenChangePassword}
+                showActions={onlyCurrentUser}
               />
             ))}
           </div>
@@ -905,6 +971,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
         onFetchAssets={() => { }} // Hook handles it automatically
         currentUser={currentUser}
         isAdmin={isAdmin}
+        onChangePassword={onlyCurrentUser ? () => selectedProfile && handleOpenChangePassword(selectedProfile) : undefined}
         onDeleteSuccess={async () => {
           setSelectedProfileId(null);
           setIsDetailOpen(false);
@@ -913,6 +980,69 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
           await refetchProfiles();
         }}
       />
+
+      {/* Change Password Dialog */}
+      <Dialog
+        open={isChangePasswordOpen}
+        onOpenChange={(open) => {
+          setIsChangePasswordOpen(open);
+          if (!open) {
+            setNewPassword("");
+            setShowNewPassword(false);
+            setPasswordProfile(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
+              Enter your new password below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="new-password">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pr-10"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !submittingPassword) {
+                      handleUpdatePassword();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsChangePasswordOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdatePassword}
+              disabled={submittingPassword}
+            >
+              {submittingPassword ? "Updating..." : "Update Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Profile Dialog */}
       <Dialog open={isEditOpen} onOpenChange={(open) => {

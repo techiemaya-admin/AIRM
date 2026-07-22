@@ -19,6 +19,7 @@ import {
   Copy,
   Check,
   Trash2,
+  Key,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -42,6 +43,7 @@ interface ProfileDetailDialogProps {
   onFetchAssets: (profileId: string) => void;
   currentUser: any;
   isAdmin: boolean;
+  onChangePassword?: () => void;
   onDeleteSuccess?: () => void;
 }
 
@@ -62,6 +64,7 @@ export const ProfileDetailDialog = ({
   onFetchAssets,
   currentUser,
   isAdmin,
+  onChangePassword,
   onDeleteSuccess,
 }: ProfileDetailDialogProps) => {
   const [copiedUuid, setCopiedUuid] = useState(false);
@@ -166,6 +169,16 @@ export const ProfileDetailDialog = ({
               </div>
             </div>
             <div className="flex items-center space-x-2 pr-8">
+              {onChangePassword && (
+                <Button
+                  onClick={onChangePassword}
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
+                  size="sm"
+                >
+                  <Key className="h-4 w-4" />
+                  <span>Change Password</span>
+                </Button>
+              )}
               {isAdmin && profile.role !== 'ex-employee' && (
                 <Button onClick={handleExitEmployee} variant="destructive" size="sm">
                   Exit Employee
