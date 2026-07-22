@@ -1,8 +1,10 @@
 import pg from 'pg';
+import dotenv from 'dotenv';
+dotenv.config();
 const { Client } = pg;
 
 const client = new Client({
-  connectionString: 'postgresql://dbadmin:TechieMaya$0326@165.22.221.77:5432/salesmaya_agent',
+  connectionString: process.env.DATABASE_URL
 });
 
 async function run() {

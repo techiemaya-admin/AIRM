@@ -38,24 +38,54 @@ export const authenticate = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    // Get user and roles in ONE query
-    const result = await pool.query(
-      `SELECT u.id, u.email, u.full_name, array_agg(ur.role) as roles
-       FROM users u
-       LEFT JOIN user_roles ur ON u.id = ur.user_id
-       WHERE u.id = $1
-       GROUP BY u.id`,
-      [decoded.userId]
-    );
+    // Get user and roles prioritizing erp schema first
+    let userRow = null;
 
-    if (result.rows.length === 0) {
+    // 1. Prioritize erp schema
+    try {
+      const q = `
+        SELECT u.id, u.email, u.full_name, array_agg(ur.role) as roles
+        FROM erp.users u
+        LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
+        WHERE u.id = $1
+        GROUP BY u.id, u.email, u.full_name
+      `;
+      const r = await pool.query(q, [decoded.userId]);
+      if (r.rows.length > 0) userRow = r.rows[0];
+    } catch (e) {}
+
+    // 2. Fallback to lad_stage schema
+    if (!userRow) {
+      try {
+        const q = `
+          SELECT u.id, u.email,
+                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+          FROM lad_stage.users u WHERE u.id = $1
+        `;
+        const r = await pool.query(q, [decoded.userId]);
+        if (r.rows.length > 0) userRow = { ...r.rows[0], roles: ['user'] };
+      } catch (e) {}
+    }
+
+    // 3. Fallback to lad_dev schema
+    if (!userRow) {
+      try {
+        const q = `
+          SELECT u.id, u.email,
+                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+          FROM lad_dev.users u WHERE u.id = $1
+        `;
+        const r = await pool.query(q, [decoded.userId]);
+        if (r.rows.length > 0) userRow = { ...r.rows[0], roles: ['user'] };
+      } catch (e) {}
+    }
+
+    if (!userRow) {
       return res.status(401).json({
         error: 'Invalid token',
         message: 'User not found'
       });
     }
-
-    const userRow = result.rows[0];
     const roles = userRow.roles || [];
     const isAdmin = roles.includes('admin');
     const isHR = roles.includes('hr') || isAdmin;
@@ -118,13 +148,22 @@ export const requireAdmin = async (req, res, next) => {
       });
     }
 
-    // Check if user is admin
-    const result = await pool.query(
-      'SELECT role FROM user_roles WHERE user_id = $1 AND role = $2',
-      [req.userId, 'admin']
-    );
+    if (req.isAdmin) {
+      return next();
+    }
 
-    if (result.rows.length === 0) {
+    let isAdmin = false;
+    try {
+      const result = await pool.query(
+        'SELECT role FROM erp.user_roles WHERE user_id = $1 AND role = $2',
+        [req.userId, 'admin']
+      );
+      if (result.rows.length > 0) isAdmin = true;
+    } catch (e) {
+      console.error('ERP requireAdmin lookup error:', e.message);
+    }
+
+    if (!isAdmin) {
       return res.status(403).json({
         error: 'Forbidden',
         message: 'Admin access required'

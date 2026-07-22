@@ -43,14 +43,16 @@ const createPool = () => {
     }
   };
 
-  if (process.env.DATABASE_URL) {
+  const dbUser = process.env.DB_USER || process.env.POSTGRES_USER;
+  const dbPassword = process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD;
+  const dbHost = process.env.DB_HOST || process.env.POSTGRES_HOST;
+  const dbPort = process.env.DB_PORT || process.env.POSTGRES_PORT || '5432';
+  const dbName = process.env.DB_NAME || process.env.POSTGRES_DB;
+
+  if (dbUser && dbPassword && dbHost && dbName) {
+    config.connectionString = `postgresql://${encodeURIComponent(dbUser)}:${encodeURIComponent(dbPassword)}@${dbHost}:${dbPort}/${dbName}`;
+  } else if (process.env.DATABASE_URL) {
     config.connectionString = process.env.DATABASE_URL;
-  } else {
-    config.host = process.env.POSTGRES_HOST || process.env.DB_HOST || '143.110.249.144';
-    config.port = parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432');
-    config.database = process.env.POSTGRES_DB || process.env.DB_NAME || 'salesmaya_agent';
-    config.user = process.env.POSTGRES_USER || process.env.DB_USER || 'postgres';
-    config.password = process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'techiemaya';
   }
 
   return new Pool(config);

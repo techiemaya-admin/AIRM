@@ -42,40 +42,36 @@ router.post('/login', [
       });
     }
 
-    // Resilient lookup across schemas to avoid schema permission errors
+    // Query user prioritizing erp schema first
     let user = null;
 
-    // 1. Try lad_stage (production schema)
+    // 1. Prioritize erp schema
     try {
       const q = `
-        SELECT u.id, u.email, u.password_hash,
-               COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
-        FROM lad_stage.users u
+        SELECT u.id, u.email, u.password_hash, u.full_name, ur.role
+        FROM erp.users u
+        LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
         WHERE LOWER(u.email) = $1
       `;
       const res = await pool.query(q, [email]);
       if (res.rows.length > 0) user = res.rows[0];
-    } catch (e) {
-      console.warn('lad_stage lookup skipped:', e.message);
-    }
+    } catch (e) {}
 
-    // 2. Try erp schema
+    // 2. Fallback to lad_stage schema if erp permissions are not granted
     if (!user) {
       try {
         const q = `
-          SELECT u.id, u.email, u.password_hash, u.full_name, ur.role
-          FROM erp.users u
-          LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
+          SELECT u.id, u.email, u.password_hash,
+                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+          FROM lad_stage.users u
           WHERE LOWER(u.email) = $1
         `;
         const res = await pool.query(q, [email]);
         if (res.rows.length > 0) user = res.rows[0];
-      } catch (e) {
-        console.warn('erp schema lookup skipped:', e.message);
-      }
+      } catch (e) {}
     }
 
-    // 3. Try lad_dev schema
+    // 3. Fallback to lad_dev schema
     if (!user) {
       try {
         const q = `
@@ -86,24 +82,7 @@ router.post('/login', [
         `;
         const res = await pool.query(q, [email]);
         if (res.rows.length > 0) user = res.rows[0];
-      } catch (e) {
-        console.warn('lad_dev schema lookup skipped:', e.message);
-      }
-    }
-
-    // 4. Try default search_path users table
-    if (!user) {
-      try {
-        const q = `
-          SELECT u.id, u.email, u.password_hash, u.full_name
-          FROM users u
-          WHERE LOWER(u.email) = $1
-        `;
-        const res = await pool.query(q, [email]);
-        if (res.rows.length > 0) user = res.rows[0];
-      } catch (e) {
-        console.warn('default search_path lookup skipped:', e.message);
-      }
+      } catch (e) {}
     }
 
     if (!user) {
@@ -355,25 +334,25 @@ router.get('/me', authenticate, async (req, res) => {
   try {
     let user = null;
 
-    // 1. Try lad_stage
+    // 1. Prioritize erp schema
     try {
       const q = `
-        SELECT u.id, u.email,
-               COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
-        FROM lad_stage.users u
+        SELECT u.id, u.email, u.full_name, ur.role
+        FROM erp.users u
+        LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
         WHERE u.id = $1
       `;
       const r = await pool.query(q, [req.userId]);
       if (r.rows.length > 0) user = r.rows[0];
     } catch (e) {}
 
-    // 2. Try erp schema
+    // 2. Fallback to lad_stage
     if (!user) {
       try {
         const q = `
-          SELECT u.id, u.email, u.full_name, ur.role
-          FROM erp.users u
-          LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
+          SELECT u.id, u.email,
+                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+          FROM lad_stage.users u
           WHERE u.id = $1
         `;
         const r = await pool.query(q, [req.userId]);
@@ -381,7 +360,7 @@ router.get('/me', authenticate, async (req, res) => {
       } catch (e) {}
     }
 
-    // 3. Try lad_dev
+    // 3. Fallback to lad_dev
     if (!user) {
       try {
         const q = `
@@ -390,15 +369,6 @@ router.get('/me', authenticate, async (req, res) => {
           FROM lad_dev.users u
           WHERE u.id = $1
         `;
-        const r = await pool.query(q, [req.userId]);
-        if (r.rows.length > 0) user = r.rows[0];
-      } catch (e) {}
-    }
-
-    // 4. Try default search path
-    if (!user) {
-      try {
-        const q = `SELECT u.id, u.email, u.full_name FROM users u WHERE u.id = $1`;
         const r = await pool.query(q, [req.userId]);
         if (r.rows.length > 0) user = r.rows[0];
       } catch (e) {}
