@@ -821,7 +821,7 @@ const LeaveCalendar = () => {
                           className="bg-green-600 hover:bg-green-700 text-white border-green-600 flex items-center gap-2"
                         >
                           <Download className="h-4 w-4" />
-                          Download Excel
+                          Download
                         </Button>
                       </div>
                     </div>
