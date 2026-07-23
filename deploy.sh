@@ -90,7 +90,7 @@ ENV_VARS="NODE_ENV=production"
 # Add them like: --update-secrets=DATABASE_URL=airm-database-url:latest
 SECRET_FLAGS=""
 if gcloud secrets describe airm-database-url &>/dev/null; then
-  SECRET_FLAGS="--update-secrets=DATABASE_URL=airm-database-url:latest,JWT_SECRET=airm-jwt-secret:latest,GITLAB_TOKEN=airm-gitlab-token:latest,GITHUB_TOKEN=airm-github-token:latest"
+  SECRET_FLAGS="--update-secrets=DATABASE_URL=airm-database-url:latest,JWT_SECRET=airm-jwt-secret:latest"
 fi
 
 gcloud run deploy "${BACKEND_SERVICE}" \
