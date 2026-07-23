@@ -12,7 +12,10 @@ import pool from '../db/connection.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 /**
@@ -155,8 +158,8 @@ router.post('/set-password', [
     }
 
     // Simple admin secret check
-    const ADMIN_SECRET = process.env.ADMIN_SECRET || 'pulse-admin-secret-2025';
-    if (req.body.adminSecret !== ADMIN_SECRET) {
+    const ADMIN_SECRET = process.env.ADMIN_SECRET;
+    if (!ADMIN_SECRET || req.body.adminSecret !== ADMIN_SECRET) {
       return res.status(403).json({ error: 'Forbidden', message: 'Invalid admin secret' });
     }
 

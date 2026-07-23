@@ -87,10 +87,9 @@ echo -e "\n${YELLOW}[5/7] Deploying backend to Cloud Run...${NC}"
 ENV_VARS="NODE_ENV=production"
 
 # NOTE: Sensitive secrets should be in Secret Manager, not env vars.
-# Add them like: --update-secrets=DATABASE_URL=airm-database-url:latest
 SECRET_FLAGS=""
-if gcloud secrets describe airm-database-url &>/dev/null; then
-  SECRET_FLAGS="--update-secrets=DATABASE_URL=airm-database-url:latest,JWT_SECRET=airm-jwt-secret:latest"
+if gcloud secrets describe database-url &>/dev/null; then
+  SECRET_FLAGS="--update-secrets=DATABASE_URL=database-url:latest,JWT_SECRET=jwt-secret:latest,GITLAB_TOKEN=gitlab-token:latest,GITHUB_TOKEN=github-token:latest"
 fi
 
 gcloud run deploy "${BACKEND_SERVICE}" \

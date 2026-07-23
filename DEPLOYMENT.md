@@ -85,24 +85,26 @@ echo -n "postgresql://USER:PASS@HOST:5432/airm" | \
 
 # JWT Secret
 echo -n "your-strong-random-jwt-secret" | \
-  gcloud secrets create airm-jwt-secret --data-file=-
+  gcloud secrets create jwt-secret --data-file=-
 
-# Resend API Key (for email)
-echo -n "re_xxxxxxxxxxxx" | \
-  gcloud secrets create airm-resend-api-key --data-file=-
-
-# GitLab Token
+# GitLab Token (optional)
 echo -n "glpat-xxxxxxxxxxxx" | \
-  gcloud secrets create airm-gitlab-token --data-file=-
+  gcloud secrets create gitlab-token --data-file=-
+
+# GitHub Token (optional)
+echo -n "ghp_xxxxxxxxxxxx" | \
+  gcloud secrets create github-token --data-file=-
 
 # Grant the default compute SA access to secrets
 PROJECT_NUMBER=$(gcloud projects describe YOUR_PROJECT_ID --format='value(projectNumber)')
-for SECRET in airm-database-url airm-jwt-secret airm-resend-api-key airm-gitlab-token; do
-  gcloud secrets add-iam-policy-binding $SECRET \
+for SECRET in database-url jwt-secret gitlab-token github-token; do
+  gcloud secrets add-iam-policy-binding "${SECRET}" \
     --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor"
 done
 ```
+
+> **Note:** Login uses **email + password** (JWT). Magic-link email login is not used.
 
 ### 5. Deploy (manual — one-shot)
 
@@ -183,12 +185,15 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
 |---|---|---|
 | `NODE_ENV` | Env var | Set to `production` |
 | `PORT` | Auto (Cloud Run injects) | Listening port (8080) |
-| `APP_BASE_URL` | Env var | Backend's own Cloud Run URL |
-| `CORS_ORIGIN` | Env var | Frontend Cloud Run URL |
-| `DATABASE_URL` | **Secret Manager** | PostgreSQL connection string |
-| `JWT_SECRET` | **Secret Manager** | JWT signing secret |
-| `RESEND_API_KEY` | **Secret Manager** | Resend email API key |
-| `GITLAB_TOKEN` | **Secret Manager** | GitLab personal access token |
+| `APP_BASE_URL` | Env var (Cloud Build sub `_APP_BASE_URL`) | Backend Cloud Run URL |
+| `CORS_ORIGIN` | Env var (Cloud Build sub `_CORS_ORIGIN`) | Frontend Cloud Run URL |
+| `FRONTEND_URL` | Env var (Cloud Build sub `_FRONTEND_URL`) | Frontend URL |
+| `DATABASE_URL` | **Secret Manager** (`database-url`) | PostgreSQL connection string |
+| `JWT_SECRET` | **Secret Manager** (`jwt-secret`) | JWT signing secret |
+| `GITLAB_TOKEN` | **Secret Manager** (`gitlab-token`) | Optional GitLab token |
+| `GITHUB_TOKEN` | **Secret Manager** (`github-token`) | Optional GitHub token |
+
+Auth is **email + password**. Magic-link email login providers are not used.
 
 ### Frontend (baked in at build time)
 
