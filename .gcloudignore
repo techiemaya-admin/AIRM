@@ -8,8 +8,16 @@ backend/dist/
 uploads/
 *.log
 .env
-.env.local
+.env.*
+!.env.example
 *.md
 prisma/
 # Note: root-level components/ folder only (NOT frontend/src/components/)
 /components/
+# Secret-bearing exports — never upload to Cloud Build
+airm_backend_desc.yaml
+*_desc.yaml
+backend/airm-env.json
+backend/lad-env.json
+backend/lad.json
+**/*-env.json

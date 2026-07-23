@@ -5,14 +5,14 @@
 # Run this ONCE before your first deployment.
 # Usage: ./setup-secrets.sh
 #
-# This stores sensitive values securely so they never appear
-# in environment variables baked into Docker images.
+# Never put real secret values in git. This script prompts interactively.
+# Auth uses email + password (JWT). Resend is not used.
 # ============================================================
 
 set -euo pipefail
 
 PROJECT_ID="your-gcp-project-id"   # ← CHANGE THIS
-REGION="asia-south1"               # ← CHANGE if needed
+REGION="us-central1"               # ← CHANGE if needed
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 
@@ -35,46 +35,40 @@ create_or_update_secret() {
     echo -e "${GREEN}+  Creating secret: ${NAME}${NC}"
     echo -n "${VALUE}" | gcloud secrets create "${NAME}" \
       --data-file=- \
-      --replication-policy=user-managed \
-      --locations="${REGION}"
+      --replication-policy=automatic
   fi
 }
 
 echo "Enter the values for each secret (press Enter to skip if already set):"
 echo ""
 
-# ── Database ─────────────────────────────────────────────────
-read -rsp "DATABASE_URL (full postgres connection string): " DB_URL; echo
+read -rsp "DATABASE_URL (postgres connection string): " DB_URL; echo
 if [[ -n "${DB_URL}" ]]; then
-  create_or_update_secret "airm-database-url" "${DB_URL}"
+  create_or_update_secret "database-url" "${DB_URL}"
 fi
 
-# ── JWT ──────────────────────────────────────────────────────
 read -rsp "JWT_SECRET: " JWT_SECRET; echo
 if [[ -n "${JWT_SECRET}" ]]; then
-  create_or_update_secret "airm-jwt-secret" "${JWT_SECRET}"
+  create_or_update_secret "jwt-secret" "${JWT_SECRET}"
 fi
 
-# ── Resend Email ─────────────────────────────────────────────
-read -rsp "RESEND_API_KEY: " RESEND_KEY; echo
-if [[ -n "${RESEND_KEY}" ]]; then
-  create_or_update_secret "airm-resend-api-key" "${RESEND_KEY}"
-fi
-
-# ── GitLab ───────────────────────────────────────────────────
-read -rsp "GITLAB_TOKEN: " GITLAB_TOKEN; echo
+read -rsp "GITLAB_TOKEN (optional): " GITLAB_TOKEN; echo
 if [[ -n "${GITLAB_TOKEN}" ]]; then
-  create_or_update_secret "airm-gitlab-token" "${GITLAB_TOKEN}"
+  create_or_update_secret "gitlab-token" "${GITLAB_TOKEN}"
 fi
 
-# ── Grant Cloud Run access to secrets ────────────────────────
+read -rsp "GITHUB_TOKEN (optional): " GITHUB_TOKEN; echo
+if [[ -n "${GITHUB_TOKEN}" ]]; then
+  create_or_update_secret "github-token" "${GITHUB_TOKEN}"
+fi
+
 echo ""
 echo -e "${YELLOW}Granting Cloud Run service account access to secrets...${NC}"
 
 PROJECT_NUMBER=$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')
 SA="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
-for SECRET in airm-database-url airm-jwt-secret airm-resend-api-key airm-gitlab-token; do
+for SECRET in database-url jwt-secret gitlab-token github-token; do
   if gcloud secrets describe "${SECRET}" &>/dev/null; then
     gcloud secrets add-iam-policy-binding "${SECRET}" \
       --member="${SA}" \
@@ -88,4 +82,5 @@ echo ""
 echo -e "${GREEN}════════════════════════════════════════${NC}"
 echo -e "${GREEN}  ✅ Secrets configured!${NC}"
 echo -e "${GREEN}════════════════════════════════════════${NC}"
-echo -e "Now run: ${YELLOW}./deploy.sh${NC}"
+echo -e "Set Cloud Build substitutions for URLs (_CORS_ORIGIN, _APP_BASE_URL, etc.)."
+echo -e "Then run your Cloud Build trigger / deploy script."

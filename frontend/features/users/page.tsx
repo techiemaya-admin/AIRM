@@ -193,7 +193,7 @@ const Users = () => {
                     <DialogHeader>
                       <DialogTitle>Add New Employee</DialogTitle>
                       <DialogDescription>
-                        Create a new employee account. They will receive a magic link to login.
+                        Create a new employee account. They can sign in with their email and password.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
