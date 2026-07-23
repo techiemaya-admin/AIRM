@@ -79,8 +79,8 @@ steps:
       - '--memory=1Gi'
       - '--cpu=1'
       - '--timeout=60'
-      - '--set-env-vars=NODE_ENV=production,GITLAB_URL=${_GITLAB_URL},GITLAB_PROJECT_ID=${_GITLAB_PROJECT_ID},EMAIL_FROM=${_EMAIL_FROM},EMAIL_REPLY_TO=${_EMAIL_REPLY_TO},CORS_ORIGIN=${_CORS_ORIGIN},APP_BASE_URL=${_APP_BASE_URL},FRONTEND_URL=${_FRONTEND_URL},GITHUB_OWNER=${_GITHUB_OWNER},GITHUB_REPO=${_GITHUB_REPO}'
-      - '--update-secrets=DATABASE_URL=database-url:latest,JWT_SECRET=jwt-secret:latest,GITLAB_TOKEN=gitlab-token:latest,GITHUB_TOKEN=github-token:latest'
+      - '--set-env-vars=NODE_ENV=production,JWT_SECRET=your-super-secret-jwt-key-here,GITLAB_TOKEN=${_GITLAB_TOKEN},GITLAB_URL=http://165.22.208.99,GITLAB_PROJECT_ID=2,EMAIL_FROM=noreply@pulse.techiemaya.com,EMAIL_REPLY_TO=admin@techiemaya.com,CORS_ORIGIN=https://airm-frontend-kunfx3bnvq-uc.a.run.app,APP_BASE_URL=https://airm-backend-kunfx3bnvq-uc.a.run.app,FRONTEND_URL=https://airm-frontend-kunfx3bnvq-uc.a.run.app,GITHUB_TOKEN=${_GITHUB_TOKEN},GITHUB_OWNER=techiemaya-admin,GITHUB_REPO=LAD-Frontend'
+      - '--update-secrets=DATABASE_URL=database-url:latest'
 
   # ─────────────────────────────────────────────
   # STEP 4: Get backend URL for frontend build
