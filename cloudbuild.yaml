@@ -4,15 +4,16 @@
 #
 # Builds & deploys both the backend and frontend to Cloud Run.
 #
-# Required substitution variables (set in Cloud Build trigger / UI):
-#   _REGION, _BACKEND_SERVICE, _FRONTEND_SERVICE
-#   _BACKEND_IMAGE, _FRONTEND_IMAGE
-#   _CORS_ORIGIN, _APP_BASE_URL, _FRONTEND_URL
-#   _GITLAB_URL, _GITLAB_PROJECT_ID, _EMAIL_FROM, _EMAIL_REPLY_TO
-#   _GITHUB_OWNER, _GITHUB_REPO
+# Required substitution variables (set in Cloud Build trigger):
+#   _REGION             — GCP region, e.g. asia-south1
+#   _PROJECT_ID         — GCP project ID
+#   _BACKEND_SERVICE    — Cloud Run service name for backend, e.g. airm-backend
+#   _FRONTEND_SERVICE   — Cloud Run service name for frontend, e.g. airm-frontend
+#   _BACKEND_IMAGE      — Artifact Registry image, e.g. asia-south1-docker.pkg.dev/PROJECT/airm/backend
+#   _FRONTEND_IMAGE     — Artifact Registry image, e.g. asia-south1-docker.pkg.dev/PROJECT/airm/frontend
 #
-# Secrets (Secret Manager — never put real values in this file):
-#   database-url, jwt-secret, gitlab-token, github-token
+# Secret env vars passed to the backend Cloud Run service at deploy time
+# are stored in Secret Manager and referenced in the deploy step.
 #
 # ============================================================
 
@@ -22,16 +23,6 @@ substitutions:
   _FRONTEND_SERVICE: airm-frontend
   _BACKEND_IMAGE: us-central1-docker.pkg.dev/lad-develop/cloud-run-source-deploy/airm-backend
   _FRONTEND_IMAGE: us-central1-docker.pkg.dev/lad-develop/cloud-run-source-deploy/airm-frontend
-  # Non-secret config — override in Cloud Build trigger for each environment
-  _CORS_ORIGIN: ''
-  _APP_BASE_URL: ''
-  _FRONTEND_URL: ''
-  _GITLAB_URL: ''
-  _GITLAB_PROJECT_ID: ''
-  _EMAIL_FROM: ''
-  _EMAIL_REPLY_TO: ''
-  _GITHUB_OWNER: ''
-  _GITHUB_REPO: ''
 
 steps:
   # ─────────────────────────────────────────────
@@ -79,8 +70,8 @@ steps:
       - '--memory=1Gi'
       - '--cpu=1'
       - '--timeout=60'
-      - '--set-env-vars=NODE_ENV=production,GITLAB_URL=http://165.22.208.99,GITLAB_PROJECT_ID=2,EMAIL_FROM=noreply@pulse.techiemaya.com,EMAIL_REPLY_TO=admin@techiemaya.com,CORS_ORIGIN=https://airm-frontend-kunfx3bnvq-uc.a.run.app,APP_BASE_URL=https://airm-backend-kunfx3bnvq-uc.a.run.app,FRONTEND_URL=https://airm-frontend-kunfx3bnvq-uc.a.run.app,GITHUB_OWNER=techiemaya-admin,GITHUB_REPO=LAD-Frontend'
-      - '--update-secrets=DATABASE_URL=airm-database-url:latest,JWT_SECRET=airm-jwt-secret:latest,GITLAB_TOKEN=airm-gitlab-token:latest,GITHUB_TOKEN=airm-github-token:latest'
+      - '--set-env-vars=NODE_ENV=production,JWT_SECRET=your-super-secret-jwt-key-here,RESEND_API_KEY=${_RESEND_API_KEY},GITLAB_TOKEN=${_GITLAB_TOKEN},GITLAB_URL=http://165.22.208.99,GITLAB_PROJECT_ID=2,EMAIL_FROM=noreply@pulse.techiemaya.com,EMAIL_REPLY_TO=admin@techiemaya.com,CORS_ORIGIN=https://airm-frontend-kunfx3bnvq-uc.a.run.app,APP_BASE_URL=https://airm-backend-kunfx3bnvq-uc.a.run.app,FRONTEND_URL=https://airm-frontend-kunfx3bnvq-uc.a.run.app,GITHUB_TOKEN=${_GITHUB_TOKEN},GITHUB_OWNER=techiemaya-admin,GITHUB_REPO=LAD-Frontend'
+      - '--update-secrets=DATABASE_URL=database-url:latest'
 
   # ─────────────────────────────────────────────
   # STEP 4: Get backend URL for frontend build
