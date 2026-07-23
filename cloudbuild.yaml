@@ -80,7 +80,7 @@ steps:
       - '--cpu=1'
       - '--timeout=60'
       - '--set-env-vars=NODE_ENV=production,GITLAB_URL=http://165.22.208.99,GITLAB_PROJECT_ID=2,EMAIL_FROM=noreply@pulse.techiemaya.com,EMAIL_REPLY_TO=admin@techiemaya.com,CORS_ORIGIN=https://airm-frontend-kunfx3bnvq-uc.a.run.app,APP_BASE_URL=https://airm-backend-kunfx3bnvq-uc.a.run.app,FRONTEND_URL=https://airm-frontend-kunfx3bnvq-uc.a.run.app,GITHUB_OWNER=techiemaya-admin,GITHUB_REPO=LAD-Frontend'
-      - '--update-secrets=DATABASE_URL=database-url:latest,JWT_SECRET=jwt-secret:latest,GITLAB_TOKEN=gitlab-token:latest,GITHUB_TOKEN=github-token:latest'
+      - '--update-secrets=DATABASE_URL=airm-database-url:latest,JWT_SECRET=airm-jwt-secret:latest,GITLAB_TOKEN=airm-gitlab-token:latest,GITHUB_TOKEN=airm-github-token:latest'
 
   # ─────────────────────────────────────────────
   # STEP 4: Get backend URL for frontend build
