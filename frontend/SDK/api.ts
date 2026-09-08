@@ -3,13 +3,8 @@
  * Uses PostgreSQL database via Express.js backend
  */
 
-// Get API base URL from environment variable, with localhost fallback for local development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-
-// Warn in production if VITE_API_BASE_URL is not set
-if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
-  console.warn('⚠️  WARNING: VITE_API_BASE_URL not set in production build. Using localhost fallback.');
-}
+// Get API base URL from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Get auth token from localStorage
 const getToken = () => {

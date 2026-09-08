@@ -86,7 +86,7 @@ export const deleteDocument = async (documentId: string): Promise<void> => {
  */
 export const downloadDocument = async (documentId: string): Promise<Blob> => {
   try {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const apiBase = import.meta.env.VITE_API_BASE_URL;
     const token = localStorage.getItem('auth_token');
 
     const res = await fetch(`${apiBase}/api/profiles/documents/${documentId}/download`, {
@@ -109,6 +109,5 @@ export const downloadDocument = async (documentId: string): Promise<Blob> => {
  */
 export const getDocumentPreviewUrl = (documentId: string): string => {
   const apiBase = import.meta.env.VITE_API_BASE_URL;
-  if (!apiBase) throw new Error('VITE_API_BASE_URL is not set!');
   return `${apiBase}/api/profiles/documents/${documentId}/preview`;
 };

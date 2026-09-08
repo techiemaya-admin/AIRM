@@ -1,12 +1,18 @@
+/**
+ * Recruitment Service
+ * API calls for recruitment/onboarding process
+ */
+
+import { api } from "@sdk/api";
+import type { Candidate, CandidateSummary, InterviewRound, BackgroundVerification, CandidateInfo } from "../features/recruitment/types";
+
+const API_BASE = "/recruitment";
+
 export async function uploadVerificationDocuments(candidateId: string, verificationId: string, files: File[]): Promise<any> {
   const formData = new FormData();
   files.forEach(file => formData.append('documents', file));
 
-  // Use API_BASE_URL from environment variable
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-  if (!API_BASE_URL) {
-    throw new Error('VITE_API_BASE_URL environment variable is required');
-  }
 
   const token = localStorage.getItem('auth_token');
   const res = await fetch(`${API_BASE_URL}/api/recruitment/${candidateId}/verification/${verificationId}/upload`, {
@@ -19,6 +25,7 @@ export async function uploadVerificationDocuments(candidateId: string, verificat
   if (!res.ok) throw new Error('Failed to upload documents');
   return res.json();
 }
+
 // Send verification mail (document upload link)
 export async function sendVerificationMail(candidateId: string, verificationId: string): Promise<any> {
   try {
@@ -29,6 +36,7 @@ export async function sendVerificationMail(candidateId: string, verificationId: 
     throw error;
   }
 }
+
 // Send interview round mail manually
 export async function sendInterviewRoundMail(candidateId: string, roundId: string): Promise<any> {
   try {
@@ -39,15 +47,6 @@ export async function sendInterviewRoundMail(candidateId: string, roundId: strin
     throw error;
   }
 }
-/**
- * Recruitment Service
- * API calls for recruitment/onboarding process
- */
-
-import { api } from "@sdk/api";
-import type { Candidate, CandidateSummary, InterviewRound, BackgroundVerification, CandidateInfo } from "../features/recruitment/types";
-
-const API_BASE = "/recruitment";
 
 // Get all candidates
 export async function getAllCandidates(): Promise<CandidateSummary[]> {
