@@ -7,11 +7,11 @@ const Index = () => {
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (token) {
-      // Redirect to timesheet (home page)
-        navigate("/");
-      } else {
-        navigate("/auth");
-      }
+      // Redirect to Time Clock by default
+      navigate("/time-clock");
+    } else {
+      navigate("/auth");
+    }
   }, [navigate]);
 
   return (

@@ -6,11 +6,12 @@ import { useMonitoring } from "@/hooks/useMonitoring";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Clock, MapPin, Pause, MessageSquare } from "lucide-react";
+import { Clock, MapPin, Pause, MessageSquare, FolderKanban } from "lucide-react";
 import { format } from "date-fns";
 import { TableSkeleton } from "@/components/PageSkeletons";
 import { formatHours } from "@/lib/utils";
 import { logger } from "@/lib/logger";
+import { formatTaskBugDisplay } from "@/lib/timeTrackingData";
 
 interface Issue {
   id: number;
@@ -270,18 +271,21 @@ const Monitoring = () => {
                         <h3 className="font-semibold text-lg mb-2">{entry.user_email}</h3>
 
                         <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            <span className="font-medium">Issue:</span>
-                            <span>{entry.issue?.title || "N/A"}</span>
-                          </div>
-
                           {entry.project_name && (
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">Project:</span>
-                              <span>{entry.project_name}</span>
+                              <FolderKanban className="h-4 w-4 text-blue-600" />
+                              <span className="font-medium text-gray-700 dark:text-gray-300">Story:</span>
+                              <span className="font-semibold text-blue-700 dark:text-blue-400">{entry.project_name}</span>
                             </div>
                           )}
+
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium text-gray-700 dark:text-gray-300">Task / Bug:</span>
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {formatTaskBugDisplay(entry.issue?.id || (entry as any).issue_id, entry.issue?.title).fullTitle}
+                            </span>
+                          </div>
 
                           <div className="flex items-center gap-2">
                             <span className="font-medium">Clock In:</span>

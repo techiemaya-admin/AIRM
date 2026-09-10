@@ -192,6 +192,7 @@ const loadRoutes = async () => {
     joiningForm: await safeImport('./features/joining-form/routes/joining-form.routes.js'),
     git: await safeImport('./features/git/routes/git.routes.js'),
     monitoring: await safeImport('./features/monitoring/routes/monitoring.routes.js'),
+    fjtBoard: await safeImport('./features/fjt-board/routes/fjtRoutes.js'),
   };
 
   console.log('🔍 Feature routes loaded:', Object.keys(featureRoutes).filter(k => featureRoutes[k]));
@@ -291,8 +292,14 @@ const loadRoutes = async () => {
     app.use('/api/monitoring', featureRoutes.monitoring);
     console.log('✅ Registered: /api/monitoring (feature)');
   }
+  if (featureRoutes.fjtBoard) {
+    app.use('/api/fjt-board', featureRoutes.fjtBoard);
+    app.use('/api/fjt', featureRoutes.fjtBoard);
+    console.log('✅ Registered: /api/fjt-board and /api/fjt (feature)');
+  }
 
   console.log('✅ Routes loaded successfully');
+  // Reload trigger: 2026-09-10T14:20:00Z
 };
 
 /* =====================

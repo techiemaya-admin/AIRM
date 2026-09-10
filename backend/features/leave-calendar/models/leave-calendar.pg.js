@@ -119,7 +119,13 @@ export async function getAttendance(startDate, endDate) {
        DATE(tc.clock_in) as date,
        MIN(tc.clock_in) as clock_in,
        MAX(tc.clock_out) as clock_out,
-       COALESCE(SUM(tc.total_hours), 0) as total_hours,
+       COUNT(tc.id) as punch_count,
+       COALESCE(SUM(
+         CASE 
+           WHEN tc.clock_out IS NOT NULL THEN GREATEST(EXTRACT(EPOCH FROM (tc.clock_out - tc.clock_in - (COALESCE(tc.paused_duration, 0) * INTERVAL '1 hour'))) / 3600.0, COALESCE(tc.total_hours, 0))
+           ELSE COALESCE(tc.total_hours, 0)
+         END
+       ), 0) as total_hours,
        sr.shift_type,
        CASE 
          WHEN (MIN(tc.clock_in) AT TIME ZONE 'Asia/Kolkata')::time > '11:00:00' THEN 'half_day'

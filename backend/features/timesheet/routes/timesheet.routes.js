@@ -17,11 +17,11 @@ router.use(authenticate);
  * POST /api/timesheets/clock-in
  */
 router.post('/clock-in', [
-  body('issue_id').optional().isInt(),
-  body('project_name').optional().trim(),
-  body('latitude').optional().isFloat(),
-  body('longitude').optional().isFloat(),
-  body('location_address').optional().trim(),
+  body('issue_id').optional({ nullable: true, checkFalsy: true }),
+  body('project_name').optional({ nullable: true, checkFalsy: true }).trim(),
+  body('latitude').optional({ nullable: true, checkFalsy: true }).isFloat(),
+  body('longitude').optional({ nullable: true, checkFalsy: true }).isFloat(),
+  body('location_address').optional({ nullable: true, checkFalsy: true }).trim(),
 ], timeClockController.clockIn);
 
 /**
@@ -29,7 +29,7 @@ router.post('/clock-in', [
  * POST /api/timesheets/clock-out
  */
 router.post('/clock-out', [
-  body('comment').optional().trim(),
+  body('comment').optional({ nullable: true, checkFalsy: true }).trim(),
 ], timeClockController.clockOut);
 
 /**
@@ -37,7 +37,7 @@ router.post('/clock-out', [
  * POST /api/timesheets/pause
  */
 router.post('/pause', [
-  body('reason').optional().trim(),
+  body('reason').optional({ nullable: true, checkFalsy: true }).trim(),
 ], timeClockController.pause);
 
 /**

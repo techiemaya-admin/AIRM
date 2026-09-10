@@ -12,6 +12,7 @@ import {
   FolderKanban,
   Briefcase,
   X,
+  Kanban,
 } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -36,8 +37,9 @@ export function Sidebar({
   const isAdmin = user?.role === 'admin';
 
   const menuItems = [
-    { icon: Home, label: 'Timesheet', path: '/', adminOnly: false },
+    { icon: Home, label: 'Timesheet', path: '/timesheet', adminOnly: false },
     { icon: FolderKanban, label: 'Project Management', path: '/project-management', adminOnly: false },
+    { icon: Kanban, label: 'FJT Board', path: '/fjt-board', adminOnly: false },
     { icon: Briefcase, label: 'Resource Management', path: '/resource-management', adminOnly: true },
     { icon: Users, label: 'Employees', path: '/users', adminOnly: true },
     { icon: BarChart3, label: 'Monitoring', path: '/monitoring', adminOnly: true },
@@ -58,7 +60,8 @@ export function Sidebar({
   };
 
   const isItemActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
+    if (path === '/timesheet') return location.pathname === '/timesheet';
+    if (path === '/fjt-board') return location.pathname.startsWith('/fjt-board');
     if (path === '/resource-management') {
       return (
         location.pathname.startsWith('/resource-management') ||
@@ -78,7 +81,7 @@ export function Sidebar({
         <div className="flex items-center justify-between gap-2">
           {showLabels && (
             <div className="flex items-center space-x-2 min-w-0">
-              <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 bg-[#0B1957] rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-sm font-bold">TM</span>
               </div>
               <span className="font-semibold text-gray-900 truncate">TechieMaya</span>
@@ -108,17 +111,18 @@ export function Sidebar({
           .map((item) => {
             const Icon = item.icon;
             const active = isItemActive(item.path);
+
             return (
               <button
                 key={item.path}
                 onClick={() => handleNavigation(item.path)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                  active ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100'
+                  active ? 'bg-blue-50 text-[#0B1957] font-semibold' : 'text-gray-700 hover:bg-gray-100'
                 } ${showLabels ? '' : 'justify-center'}`}
                 title={!showLabels ? item.label : undefined}
               >
                 <Icon className="h-5 w-5 flex-shrink-0" />
-                {showLabels && <span className="text-sm font-medium text-left">{item.label}</span>}
+                {showLabels && <span className="text-sm text-left">{item.label}</span>}
               </button>
             );
           })}
@@ -130,7 +134,7 @@ export function Sidebar({
             onClick={() => handleNavigation('/employee')}
             className="w-full flex items-center space-x-3 mb-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 bg-[#0B1957] rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-white text-sm font-bold">{getUserInitial()}</span>
             </div>
             <div className="flex-1 min-w-0 text-left">
@@ -148,7 +152,7 @@ export function Sidebar({
             className="w-full flex items-center justify-center py-2 mb-3"
             title="Profile"
           >
-            <div className="w-9 h-9 bg-blue-900 rounded-full flex items-center justify-center">
+            <div className="w-9 h-9 bg-[#0B1957] rounded-full flex items-center justify-center">
               <span className="text-white text-sm font-bold">{getUserInitial()}</span>
             </div>
           </button>

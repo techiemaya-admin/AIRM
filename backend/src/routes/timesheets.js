@@ -16,11 +16,11 @@ router.use(authenticate);
  * POST /api/timesheets/clock-in
  */
 router.post('/clock-in', [
-  body('issue_id').optional().isInt(),
-  body('project_name').optional().trim(),
-  body('latitude').optional().isFloat(),
-  body('longitude').optional().isFloat(),
-  body('location_address').optional().trim(),
+  body('issue_id').optional({ nullable: true, checkFalsy: true }),
+  body('project_name').optional({ nullable: true, checkFalsy: true }).trim(),
+  body('latitude').optional({ nullable: true, checkFalsy: true }).isFloat(),
+  body('longitude').optional({ nullable: true, checkFalsy: true }).isFloat(),
+  body('location_address').optional({ nullable: true, checkFalsy: true }).trim(),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -46,6 +46,18 @@ router.post('/clock-in', [
       });
     }
 
+    let validIssueId = null;
+    if (issue_id) {
+      try {
+        const checkIssue = await pool.query('SELECT id FROM issues WHERE id = $1', [issue_id]);
+        if (checkIssue.rows.length > 0) {
+          validIssueId = checkIssue.rows[0].id;
+        }
+      } catch {
+        validIssueId = null;
+      }
+    }
+
     // Create new clock-in entry
     const result = await pool.query(
       `INSERT INTO time_clock (
@@ -56,7 +68,7 @@ router.post('/clock-in', [
       RETURNING *`,
       [
         userId,
-        issue_id || null,
+        validIssueId,
         project_name || null,
         'clocked_in',
         latitude || null,
@@ -124,7 +136,7 @@ function getWeekEnd(weekStartStr) {
  * POST /api/timesheets/clock-out
  */
 router.post('/clock-out', [
-  body('comment').optional().trim(),
+  body('comment').optional({ nullable: true, checkFalsy: true }).trim(),
 ], async (req, res) => {
   try {
     const userId = req.userId;
@@ -312,9 +324,19 @@ router.post('/clock-out', [
             task = `Issue #${entry.issue_id}`;
           }
         } else {
-          // No issue_id - use project_name if available
+          // No issue_id - check project_name and notes
           project = entry.project_name || 'General';
-          task = 'General Work';
+          task = entry.notes || 'General Work';
+
+          if (project && (project.includes(' - [Task') || project.includes(' - [Bug') || project.includes(' - Task') || project.includes(' - Bug'))) {
+            const splitIndex = project.search(/\s*-\s*\[?(?:Task|Bug)\]?/i);
+            if (splitIndex !== -1) {
+              const storyPart = project.substring(0, splitIndex).trim();
+              const taskPart = project.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+              project = storyPart || project;
+              task = taskPart || task;
+            }
+          }
         }
 
         // Normalize project and task (trim whitespace)
@@ -500,7 +522,7 @@ router.post('/clock-out', [
  * POST /api/timesheets/pause
  */
 router.post('/pause', [
-  body('reason').optional().trim(),
+  body('reason').optional({ nullable: true, checkFalsy: true }).trim(),
 ], async (req, res) => {
   try {
     const userId = req.userId;
@@ -671,13 +693,14 @@ router.get('/entries', async (req, res) => {
     const params = [];
     let paramCount = 1;
 
-    // Only filter by user_id if not admin, or if user_id is explicitly requested
-    if (!isAdmin) {
+    // Default to current user unless admin specifies another user_id or all_users
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isValidUserId = user_id && uuidRegex.test(user_id);
+    const targetUserId = (isAdmin && isValidUserId) ? user_id : userId;
+
+    if (!(isAdmin && req.query.all_users === 'true')) {
       query += ` AND tc.user_id = $${paramCount++}`;
-      params.push(userId);
-    } else if (user_id) {
-      query += ` AND tc.user_id = $${paramCount++}`;
-      params.push(user_id);
+      params.push(targetUserId);
     }
 
     if (start_date) {

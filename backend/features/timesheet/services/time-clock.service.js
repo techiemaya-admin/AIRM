@@ -152,16 +152,25 @@ export async function clockOut(userId, comment) {
 
       // Determine project and task
       let project = activeEntry.project_name || 'General';
-      let task = 'General Work';
+      let task = activeEntry.notes || 'General Work';
 
-      if (activeEntry.issue_id) {
+      // Check if project_name contains combined "[Story] ... - [Task/Bug] ..."
+      if (project && (project.includes(' - [Task') || project.includes(' - [Bug') || project.includes(' - Task') || project.includes(' - Bug'))) {
+        const splitIndex = project.search(/\s*-\s*\[?(?:Task|Bug)\]?/i);
+        if (splitIndex !== -1) {
+          const storyPart = project.substring(0, splitIndex).trim();
+          const taskPart = project.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+          project = storyPart || project;
+          task = taskPart || task;
+        }
+      } else if (activeEntry.issue_id) {
         const issue = await timesheetModel.getIssueDetails(activeEntry.issue_id);
         if (issue) {
           project = issue.project_name || activeEntry.project_name || 'General';
-          task = `Issue #${activeEntry.issue_id}: ${issue.title || 'Untitled'}`;
+          task = `#${activeEntry.issue_id} - ${issue.title || 'Untitled'}`;
         } else {
           project = activeEntry.project_name || 'General';
-          task = `Issue #${activeEntry.issue_id}`;
+          task = `#${activeEntry.issue_id}`;
         }
       }
 

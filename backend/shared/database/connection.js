@@ -33,11 +33,11 @@ const { Pool } = pg;
 // Enhanced connection pool with retry logic
 const createPool = () => {
   const config = {
-    max: 20, // Maximum number of clients in the pool
-    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+    max: 5, // Keep low to prevent hitting database role connection limits
+    idleTimeoutMillis: 5000, // Close idle clients after 5 seconds
     connectionTimeoutMillis: 10000, // Reduced from 30s to 10s for faster failures
     statement_timeout: 30000, // Statement timeout of 30s
-    allowExitOnIdle: false, // Keep connection alive
+    allowExitOnIdle: true, // Allow exiting idle
     ssl: {
       rejectUnauthorized: false
     }
@@ -50,9 +50,9 @@ const createPool = () => {
   const dbName = process.env.DB_NAME || process.env.POSTGRES_DB;
 
   if (dbUser && dbPassword && dbHost && dbName) {
-    config.connectionString = `postgresql://${encodeURIComponent(dbUser)}:${encodeURIComponent(dbPassword)}@${dbHost}:${dbPort}/${dbName}`;
+    config.connectionString = `postgresql://${encodeURIComponent(dbUser)}:${encodeURIComponent(dbPassword)}@${dbHost}:${dbPort}/${dbName}?sslmode=no-verify`;
   } else if (process.env.DATABASE_URL) {
-    config.connectionString = process.env.DATABASE_URL;
+    config.connectionString = process.env.DATABASE_URL.includes('sslmode') ? process.env.DATABASE_URL : `${process.env.DATABASE_URL}?sslmode=no-verify`;
   }
 
   return new Pool(config);

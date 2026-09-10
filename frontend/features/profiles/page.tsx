@@ -918,7 +918,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
               <p className="text-gray-500">No employee profiles found</p>
               <p className="text-sm text-gray-400 mt-2">
                 {profiles.length === 0
-                  ? "The database appears to be empty. Use the '+ Add Employee' button to create profiles."
+                  ? "No profiles created yet. Use the '+ Add Employee' button to create profiles."
                   : "No profiles match your current filters."}
               </p>
               {searchQuery && (

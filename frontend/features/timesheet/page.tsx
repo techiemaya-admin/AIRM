@@ -9,6 +9,7 @@ import { Plus, Trash2, Save, Share2, ChevronLeft, ChevronRight, Download, Refres
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { TimesheetSkeleton } from "@/components/PageSkeletons";
+import { formatTaskBugDisplay } from "@/lib/timeTrackingData";
 
 const LiveTimeCell = ({ clockIn, initialHours = 0 }: { clockIn: string; initialHours?: number }) => {
   const [elapsed, setElapsed] = useState(0);
@@ -253,13 +254,12 @@ const Timesheet = () => {
       setLoading(true);
       const weekStartStr = format(weekStart, "yyyy-MM-dd");
       const weekEndStr = format(weekEnd, "yyyy-MM-dd");
-      console.log('🚀 loadTimesheet called for:', userId, 'Week:', weekStartStr);
+      const targetUserId = userId || user?.id;
 
       const apiParams: any = { week_start: weekStartStr };
 
-      if (isAdmin && user && userId && userId !== user.id && userId !== "undefined") {
-        apiParams.user_id = userId;
-        console.log('👑 Admin viewing timesheet for:', userId);
+      if (targetUserId) {
+        apiParams.user_id = targetUserId;
       }
 
       // Load all data in parallel
@@ -270,8 +270,7 @@ const Timesheet = () => {
         api.timesheets.getEntries({
           start_date: weekStartStr,
           end_date: format(addDays(weekEnd, 1), "yyyy-MM-dd"), // inclusive
-          // Only pass user_id if it's a non-empty string and we are admin
-          ...(isAdmin && userId && userId !== "undefined" ? { user_id: userId } : {})
+          user_id: targetUserId,
         }).catch(() => ({ entries: [] })),
         api.timesheets.getCurrent().catch(() => ({ entry: null }))
       ]);
@@ -293,7 +292,8 @@ const Timesheet = () => {
         ? currentEntryResult.value as any
         : { entry: null };
 
-      const clockEntries = clockInResponse?.entries || [];
+      const rawClockEntries = clockInResponse?.entries || [];
+      const clockEntries = rawClockEntries.filter((ce: any) => !ce.user_id || ce.user_id === targetUserId);
       const timingsByDay: any = {};
 
       clockEntries.forEach((entry: any) => {
@@ -577,12 +577,30 @@ const Timesheet = () => {
       };
 
       // Process all entries - convert hours to numbers
-      console.log(`🔄 Processing ${allEntries.length} entries for display...`);
+      // Process all entries - convert hours to numbers and clean project/task names
       const regularEntries: TimesheetEntry[] = allEntries.map((entry: any, idx: number) => {
-        const processed = {
+        let cleanProject = (entry.project || '').trim();
+        let cleanTask = (entry.task || '').trim();
+
+        // Clean combined project/task names
+        if (cleanProject.includes(' - [Task') || cleanProject.includes(' - [Bug') || cleanProject.includes(' - Task') || cleanProject.includes(' - Bug')) {
+          const splitIndex = cleanProject.search(/\s*-\s*\[?(?:Task|Bug)\]?/i);
+          if (splitIndex !== -1) {
+            const storyPart = cleanProject.substring(0, splitIndex).trim();
+            const taskPart = cleanProject.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+            cleanProject = storyPart;
+            if (cleanTask === 'General Work' || cleanTask === 'Task' || !cleanTask) {
+              cleanTask = taskPart;
+            }
+          }
+        }
+        cleanProject = cleanProject.replace(/:\s*undefined/g, '').trim();
+        cleanTask = cleanTask.replace(/:\s*undefined/g, '').trim();
+
+        return {
           id: entry.id || `entry-${firstTimesheetId || 'new'}-${idx}-${Date.now()}`,
-          project: entry.project || '',
-          task: entry.task || '',
+          project: cleanProject,
+          task: cleanTask,
           mon_hours: toNumber(entry.mon_hours),
           tue_hours: toNumber(entry.tue_hours),
           wed_hours: toNumber(entry.wed_hours),
@@ -592,35 +610,42 @@ const Timesheet = () => {
           sun_hours: toNumber(entry.sun_hours),
           source: entry.source || 'manual',
         };
-
-        const total = processed.mon_hours + processed.tue_hours + processed.wed_hours +
-          processed.thu_hours + processed.fri_hours + processed.sat_hours + processed.sun_hours;
-        if (total > 0) {
-          console.log(`  ✅ Processed entry ${idx + 1}: ${processed.project}/${processed.task} - Total: ${total}`, {
-            thu: processed.thu_hours,
-            fri: processed.fri_hours,
-            source: processed.source
-          });
-        }
-
-        return processed;
       });
 
-      console.log(`✅ Processed ${regularEntries.length} regular entries`);
+      // Merge entries with matching project and task
+      const regularMap = new Map<string, TimesheetEntry>();
+      regularEntries.forEach((entry) => {
+        const key = `${entry.project.toLowerCase()}|${entry.task.toLowerCase()}`;
+        const existing = regularMap.get(key);
+        if (existing) {
+          existing.mon_hours = Math.round((existing.mon_hours + entry.mon_hours) * 100) / 100;
+          existing.tue_hours = Math.round((existing.tue_hours + entry.tue_hours) * 100) / 100;
+          existing.wed_hours = Math.round((existing.wed_hours + entry.wed_hours) * 100) / 100;
+          existing.thu_hours = Math.round((existing.thu_hours + entry.thu_hours) * 100) / 100;
+          existing.fri_hours = Math.round((existing.fri_hours + entry.fri_hours) * 100) / 100;
+          existing.sat_hours = Math.round((existing.sat_hours + entry.sat_hours) * 100) / 100;
+          existing.sun_hours = Math.round((existing.sun_hours + entry.sun_hours) * 100) / 100;
+        } else {
+          regularMap.set(key, { ...entry });
+        }
+      });
+      const finalRegularEntries = Array.from(regularMap.values());
 
       // Check which assigned issues are already in the timesheet
       const existingProjectsTasks = new Set(
-        regularEntries.map((e: TimesheetEntry) => `${e.project}|${e.task}`)
+        finalRegularEntries.map((e: TimesheetEntry) => `${e.project.toLowerCase()}|${e.task.toLowerCase()}`)
       );
       const newAssignedEntries = assignedIssueEntries.filter(
-        (entry: TimesheetEntry) => !existingProjectsTasks.has(`${entry.project}|${entry.task}`)
+        (entry: TimesheetEntry) => !existingProjectsTasks.has(`${entry.project.toLowerCase()}|${entry.task.toLowerCase()}`)
       );
 
       // Combine all entries
-      const finalEntries: any[] = [...regularEntries, ...leaveEntries, ...newAssignedEntries];
+      const finalEntries: any[] = [...finalRegularEntries, ...leaveEntries, ...newAssignedEntries];
 
-      // Inject active time clock entry if running
-      const activeEntry = currentEntryResponse?.entry || clockEntries.find((e: any) => !e.clock_out && e.status !== 'clocked_out');
+      // Inject active time clock entry if running for the target user
+      const activeEntry = (currentEntryResponse?.entry && (!currentEntryResponse.entry.user_id || currentEntryResponse.entry.user_id === targetUserIdForData))
+        ? currentEntryResponse.entry
+        : clockEntries.find((e: any) => (!e.user_id || e.user_id === targetUserIdForData) && !e.clock_out && e.status !== 'clocked_out');
       if (activeEntry) {
         const clockInDate = new Date(activeEntry.clock_in);
         const activeDayStr = format(clockInDate, 'yyyy-MM-dd');
@@ -629,25 +654,36 @@ const Timesheet = () => {
           if (format(addDays(weekStart, i), 'yyyy-MM-dd') === activeDayStr) dayIdx = i;
         }
         if (dayIdx !== -1) {
-          const activeProject = activeEntry.project_name || (activeEntry.issue?.project_name) || '';
-          const activeTask = activeEntry.issue?.title ? `Issue #${activeEntry.issue_id}: ${activeEntry.issue.title}` : `Issue #${activeEntry.issue_id}`;
+          let activeProject = activeEntry.project_name || (activeEntry.issue?.project_name) || 'Story';
+          let activeTask = activeEntry.notes || (activeEntry.issue?.title) || 'Task';
+          if (activeProject.includes(' - [Task') || activeProject.includes(' - [Bug')) {
+            const splitIndex = activeProject.search(/\s*-\s*\[?(?:Task|Bug)\]?/i);
+            if (splitIndex !== -1) {
+              const storyPart = activeProject.substring(0, splitIndex).trim();
+              const taskPart = activeProject.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+              activeProject = storyPart;
+              activeTask = taskPart;
+            }
+          }
+          activeProject = activeProject.replace(/:\s*undefined/g, '').trim();
+          activeTask = activeTask.replace(/:\s*undefined/g, '').trim();
 
-          let existingRow = finalEntries.find(r => r.project === activeProject && (r.task === activeTask || r.task?.includes(`Issue #${activeEntry.issue_id}`)));
+          let existingRow = finalEntries.find(r => r.project.toLowerCase() === activeProject.toLowerCase() && (r.task.toLowerCase() === activeTask.toLowerCase() || (activeEntry.issue_id && r.task?.includes(`#${activeEntry.issue_id}`))));
 
           if (existingRow) {
             existingRow.activeClockIn = activeEntry.clock_in;
             existingRow.activeDayIndex = dayIdx;
-            existingRow.source = 'time_clock';
           } else {
-            finalEntries.push({
-              id: `active-clock-${Date.now()}`,
+            const newActiveRow: any = {
+              id: `active-${activeEntry.id || Date.now()}`,
               project: activeProject,
               task: activeTask,
               mon_hours: 0, tue_hours: 0, wed_hours: 0, thu_hours: 0, fri_hours: 0, sat_hours: 0, sun_hours: 0,
               source: 'time_clock',
               activeClockIn: activeEntry.clock_in,
-              activeDayIndex: dayIdx
-            });
+              activeDayIndex: dayIdx,
+            };
+            finalEntries.unshift(newActiveRow);
           }
         }
       }

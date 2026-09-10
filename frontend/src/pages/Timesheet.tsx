@@ -232,15 +232,11 @@ const Timesheet = () => {
       const weekStartStr = format(weekStart, "yyyy-MM-dd");
       const weekEndStr = format(weekEnd, "yyyy-MM-dd");
 
-      // Build API parameters - for admin viewing another user, always pass user_id
+      const targetUserId = userId || user?.id;
       const apiParams: any = { week_start: weekStartStr };
 
-      // If admin and viewing another user, pass user_id to backend
-      if (isAdmin && user && userId !== user.id) {
-        apiParams.user_id = userId;
-        console.log('👑 Admin viewing timesheet for user:', userId);
-      } else {
-        console.log('👤 User viewing own timesheet:', userId);
+      if (targetUserId) {
+        apiParams.user_id = targetUserId;
       }
 
       console.log('📞 API params:', apiParams);

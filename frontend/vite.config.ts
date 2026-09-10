@@ -12,6 +12,14 @@ export default defineConfig(({ mode }) => {
         '@features': path.resolve(__dirname, './features'),
       },
     },
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
+      },
+    },
     build: {
       outDir: 'dist',
       emptyOutDir: true,

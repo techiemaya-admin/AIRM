@@ -22,16 +22,28 @@ export async function getActiveEntry(userId) {
  * Create clock-in entry
  */
 export async function createClockIn(userId, issueId, projectName, latitude, longitude, locationAddress) {
+  let validIssueId = null;
+  if (issueId) {
+    try {
+      const checkIssue = await pool.query('SELECT id FROM issues WHERE id = $1', [issueId]);
+      if (checkIssue.rows.length > 0) {
+        validIssueId = checkIssue.rows[0].id;
+      }
+    } catch {
+      validIssueId = null;
+    }
+  }
+
   const result = await pool.query(
     `INSERT INTO time_clock (
       id, user_id, issue_id, project_name, status,
       latitude, longitude, location_address, location_timestamp
     )
-    VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6, $7, NOW())
+    VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, NOW())
     RETURNING *`,
     [
       userId,
-      issueId || null,
+      validIssueId,
       projectName || null,
       'clocked_in',
       latitude || null,
@@ -135,13 +147,11 @@ export async function getTimeClockEntries(userId, isAdmin, filters) {
 
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const isValidUserId = filters.user_id && uuidRegex.test(filters.user_id);
+  const targetUserId = (isAdmin && isValidUserId) ? filters.user_id : userId;
 
-  if (isAdmin && isValidUserId) {
+  if (!(isAdmin && filters.all_users === true)) {
     query += ` AND tc.user_id = $${paramCount++}`;
-    params.push(filters.user_id);
-  } else if (!isAdmin) {
-    query += ` AND tc.user_id = $${paramCount++}`;
-    params.push(userId);
+    params.push(targetUserId);
   }
 
   if (start_date) {
