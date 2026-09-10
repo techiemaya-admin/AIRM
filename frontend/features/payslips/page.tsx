@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import {
   usePayslips,
@@ -49,7 +50,7 @@ const Payslips = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingSalary, setEditingSalary] = useState<string | null>(null);
-  const [salaryForm, setSalaryForm] = useState<number>(0);
+  const [salaryForm, setSalaryForm] = useState<number | string>(0);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSalaryInfo | null>(null);
   const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
@@ -88,14 +89,15 @@ const Payslips = () => {
 
   const handleEditSalary = (employee: EmployeeSalaryInfo) => {
     setEditingSalary(employee.id);
-    setSalaryForm(employee.pf_base_salary || 0);
+    setSalaryForm(employee.pf_base_salary !== undefined && employee.pf_base_salary !== null ? employee.pf_base_salary : 0);
   };
 
   const handleSaveSalary = async (employeeId: string) => {
     try {
+      const numericSalary = typeof salaryForm === 'string' ? (parseFloat(salaryForm) || 0) : (salaryForm || 0);
       await mutations.updateEmployeeSalary.mutateAsync({
         userId: employeeId,
-        pf_base_salary: salaryForm,
+        pf_base_salary: Math.max(0, numericSalary),
       });
       toast({ title: 'Success', description: 'Salary updated successfully' });
       setEditingSalary(null);
@@ -220,7 +222,7 @@ const Payslips = () => {
                   {/* Employee Info - 3 cols */}
                   <div className="lg:col-span-3">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-[#0B1957] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                         {employee.full_name?.charAt(0)?.toUpperCase() || 'E'}
                       </div>
                       <div className="min-w-0">
@@ -271,25 +273,32 @@ const Payslips = () => {
                           <Label className="text-xs text-gray-500">Gross Salary (CTC)</Label>
                           <Input
                             type="number"
+                            min="0"
+                            step="any"
                             value={salaryForm}
-                            onChange={(e) => setSalaryForm(parseFloat(e.target.value) || 0)}
+                            onChange={(e) => setSalaryForm(e.target.value === '' ? '' : e.target.value)}
                             className="mt-1 h-8 text-sm"
                           />
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div className="bg-gray-50 rounded p-1.5">
-                            <span className="text-gray-500">Basic (50%)</span>
-                            <p className="font-semibold">₹{Math.round(salaryForm * 0.5).toLocaleString()}</p>
-                          </div>
-                          <div className="bg-gray-50 rounded p-1.5">
-                            <span className="text-gray-500">HRA (45%)</span>
-                            <p className="font-semibold">₹{Math.round(salaryForm * 0.45).toLocaleString()}</p>
-                          </div>
-                          <div className="bg-gray-50 rounded p-1.5">
-                            <span className="text-gray-500">Other (5%)</span>
-                            <p className="font-semibold">₹{Math.round(salaryForm * 0.05).toLocaleString()}</p>
-                          </div>
-                        </div>
+                        {(() => {
+                          const previewSalary = typeof salaryForm === 'number' ? salaryForm : (parseFloat(salaryForm) || 0);
+                          return (
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="bg-gray-50 rounded p-1.5">
+                                <span className="text-gray-500">Basic (50%)</span>
+                                <p className="font-semibold">₹{Math.round(previewSalary * 0.5).toLocaleString()}</p>
+                              </div>
+                              <div className="bg-gray-50 rounded p-1.5">
+                                <span className="text-gray-500">HRA (45%)</span>
+                                <p className="font-semibold">₹{Math.round(previewSalary * 0.45).toLocaleString()}</p>
+                              </div>
+                              <div className="bg-gray-50 rounded p-1.5">
+                                <span className="text-gray-500">Other (5%)</span>
+                                <p className="font-semibold">₹{Math.round(previewSalary * 0.05).toLocaleString()}</p>
+                              </div>
+                            </div>
+                          );
+                        })()}
                         <div className="flex gap-2">
                           <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveSalary(employee.id)}
                             disabled={mutations.updateEmployeeSalary.isPending}>
@@ -427,15 +436,21 @@ const Payslips = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Month</Label>
-                <select
-                  value={month}
-                  onChange={(e) => setMonth(parseInt(e.target.value))}
-                  className="w-full p-2 border rounded mt-1 text-sm"
-                >
-                  {monthNames.map((m, i) => (
-                    <option key={i} value={i + 1}>{m}</option>
-                  ))}
-                </select>
+                <div className="mt-1">
+                  <Select
+                    value={month.toString()}
+                    onValueChange={(val) => setMonth(parseInt(val))}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {monthNames.map((m, i) => (
+                        <SelectItem key={i} value={(i + 1).toString()}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div>
                 <Label>Year</Label>

@@ -34,7 +34,7 @@ const Payslips = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingSalary, setEditingSalary] = useState<string | null>(null);
-  const [salaryForm, setSalaryForm] = useState<number>(0);
+  const [salaryForm, setSalaryForm] = useState<number | string>(0);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSalaryInfo | null>(null);
   const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
@@ -63,14 +63,15 @@ const Payslips = () => {
 
   const handleEditSalary = (employee: EmployeeSalaryInfo) => {
     setEditingSalary(employee.id);
-    setSalaryForm(employee.pf_base_salary || 0);
+    setSalaryForm(employee.pf_base_salary !== undefined && employee.pf_base_salary !== null ? employee.pf_base_salary : 0);
   };
 
   const handleSaveSalary = async (employeeId: string) => {
     try {
+      const numericSalary = typeof salaryForm === 'string' ? (parseFloat(salaryForm) || 0) : (salaryForm || 0);
       await mutations.updateEmployeeSalary.mutateAsync({
         userId: employeeId,
-        pf_base_salary: salaryForm,
+        pf_base_salary: Math.max(0, numericSalary),
       });
       toast({
         title: 'Success',
@@ -189,7 +190,7 @@ const Payslips = () => {
                   {/* Employee Info - 3 cols */}
                   <div className="lg:col-span-3">
                     <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-semibold text-lg">
+                      <div className="w-12 h-12 rounded-full bg-[#0B1957] flex items-center justify-center text-white font-semibold text-lg">
                         {employee.full_name?.charAt(0) || 'E'}
                       </div>
                       <div className="flex-1">
@@ -236,25 +237,32 @@ const Payslips = () => {
                           <Label className="text-xs">Gross Salary</Label>
                           <Input
                             type="number"
+                            min="0"
+                            step="any"
                             value={salaryForm}
-                            onChange={(e) => setSalaryForm(parseFloat(e.target.value) || 0)}
+                            onChange={(e) => setSalaryForm(e.target.value === '' ? '' : e.target.value)}
                             className="mt-1"
                           />
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div>
-                            <span className="text-gray-500">Basic (50%)</span>
-                            <p className="font-medium">₹{Math.round(salaryForm * 0.5).toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">HRA (45%)</span>
-                            <p className="font-medium">₹{Math.round(salaryForm * 0.45).toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Other (5%)</span>
-                            <p className="font-medium">₹{Math.round(salaryForm * 0.05).toLocaleString()}</p>
-                          </div>
-                        </div>
+                        {(() => {
+                          const previewSalary = typeof salaryForm === 'number' ? salaryForm : (parseFloat(salaryForm) || 0);
+                          return (
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div>
+                                <span className="text-gray-500">Basic (50%)</span>
+                                <p className="font-medium">₹{Math.round(previewSalary * 0.5).toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">HRA (45%)</span>
+                                <p className="font-medium">₹{Math.round(previewSalary * 0.45).toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Other (5%)</span>
+                                <p className="font-medium">₹{Math.round(previewSalary * 0.05).toLocaleString()}</p>
+                              </div>
+                            </div>
+                          );
+                        })()}
                         <div className="flex gap-2">
                           <Button
                             size="sm"

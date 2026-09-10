@@ -46,7 +46,7 @@ export const PfManagementSection = ({ profileId, isAdmin }: { profileId: string;
         status: pfDetails.status,
         employee_contribution_percent: pfDetails.employee_contribution_percent,
         employer_contribution_percent: pfDetails.employer_contribution_percent,
-        pf_base_salary: pfDetails.pf_base_salary ? String(pfDetails.pf_base_salary) : '',
+        pf_base_salary: pfDetails.pf_base_salary !== undefined && pfDetails.pf_base_salary !== null ? String(pfDetails.pf_base_salary) : '',
         notes: pfDetails.notes || '',
       });
     }
@@ -59,7 +59,7 @@ export const PfManagementSection = ({ profileId, isAdmin }: { profileId: string;
           user_id: profileId,
           ...pfForm,
           status: pfForm.status as 'active' | 'on_hold' | 'closed',
-          pf_base_salary: pfForm.pf_base_salary ? parseFloat(pfForm.pf_base_salary) : undefined,
+          pf_base_salary: pfForm.pf_base_salary !== '' ? Math.max(0, parseFloat(pfForm.pf_base_salary) || 0) : undefined,
         },
         userId: profileId,
       });

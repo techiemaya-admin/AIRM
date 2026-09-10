@@ -66,9 +66,9 @@ export async function upsertPfDetails(pfData) {
       pf_account_number || null,
       enrollment_date || null,
       status || 'active',
-      employee_contribution_percent || 12.00,
-      employer_contribution_percent || 12.00,
-      pf_base_salary || null,
+      employee_contribution_percent !== undefined && employee_contribution_percent !== null ? Number(employee_contribution_percent) : 12.00,
+      employer_contribution_percent !== undefined && employer_contribution_percent !== null ? Number(employer_contribution_percent) : 12.00,
+      pf_base_salary !== undefined && pf_base_salary !== null && !isNaN(Number(pf_base_salary)) ? Number(pf_base_salary) : null,
       notes || null,
       updated_by || null
     ]

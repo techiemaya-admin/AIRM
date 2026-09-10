@@ -342,14 +342,15 @@ export async function updateEmployeeSalary(req, res) {
     const { userId: targetUserId } = req.params;
     const { pf_base_salary } = req.body;
 
-    if (!pf_base_salary || isNaN(pf_base_salary)) {
+    const parsedSalary = Number(pf_base_salary);
+    if (pf_base_salary === undefined || pf_base_salary === null || isNaN(parsedSalary) || parsedSalary < 0) {
       return res.status(400).json({
         error: 'Invalid salary',
-        message: 'pf_base_salary must be a valid number'
+        message: 'pf_base_salary must be a valid non-negative number'
       });
     }
 
-    const result = await payslipService.updateEmployeeSalary(targetUserId, pf_base_salary, userId);
+    const result = await payslipService.updateEmployeeSalary(targetUserId, parsedSalary, userId);
 
     res.json({
       message: 'Salary updated successfully',
