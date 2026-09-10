@@ -29,7 +29,7 @@ const ProfileKanbanCard = ({ profile, onClick }: ProfileKanbanCardProps) => {
               className="w-10 h-10 rounded-full object-cover flex-shrink-0"
             />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-blue-900 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-[#0B1957] flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
               {getInitials(profile.full_name || profile.email)}
             </div>
           )}
@@ -55,7 +55,7 @@ const ProfileKanbanCard = ({ profile, onClick }: ProfileKanbanCardProps) => {
               <span>{completeness}%</span>
               <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden max-w-[60px]">
                 <div 
-                  className="h-full bg-blue-600 transition-all"
+                  className="h-full bg-[#0B1957] transition-all"
                   style={{ width: `${completeness}%` }}
                 />
               </div>

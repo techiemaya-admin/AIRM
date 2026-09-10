@@ -15,12 +15,12 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../configs/.env') });
 
 const pool = new pg.Pool({
-  host: process.env.POSTGRES_HOST || process.env.DB_HOST || '143.110.249.144',
+  host: process.env.POSTGRES_HOST || process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432'),
-  database: process.env.POSTGRES_DB || process.env.DB_NAME || 'salesmaya_agent',
+  database: process.env.POSTGRES_DB || process.env.DB_NAME || 'airm',
   user: process.env.POSTGRES_USER || process.env.DB_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'techiemaya',
-  ssl: { rejectUnauthorized: false }
+  password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || '',
+  ssl: process.env.NODE_ENV === 'production' || process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
 });
 
 async function runMigration() {

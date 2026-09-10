@@ -23,18 +23,24 @@ if (!process.env.POSTGRES_HOST && !process.env.DB_HOST) {
   dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 }
 
-const { Pool } = pg;
+const poolConfig = {
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  ssl: process.env.NODE_ENV === 'production' || process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+};
 
-const pool = new Pool({
-  host: process.env.POSTGRES_HOST || process.env.DB_HOST || '143.110.249.144',
-  port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432'),
-  database: process.env.POSTGRES_DB || process.env.DB_NAME || 'airm',
-  user: process.env.POSTGRES_USER || process.env.DB_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'postgres',
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
-});
+if (process.env.DATABASE_URL) {
+  poolConfig.connectionString = process.env.DATABASE_URL;
+} else {
+  poolConfig.host = process.env.POSTGRES_HOST || process.env.DB_HOST || 'localhost';
+  poolConfig.port = parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432');
+  poolConfig.database = process.env.POSTGRES_DB || process.env.DB_NAME || 'airm';
+  poolConfig.user = process.env.POSTGRES_USER || process.env.DB_USER || 'postgres';
+  poolConfig.password = process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || '';
+}
+
+const pool = new Pool(poolConfig);
 
 // Handle pool errors
 pool.on('error', (err) => {

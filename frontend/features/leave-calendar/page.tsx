@@ -6,6 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import {
   Calendar as CalendarIcon,
@@ -252,7 +259,7 @@ const LeaveCalendar = () => {
                     ? 'text-white shadow-sm'
                     : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
                     }`}
-                  style={isActive ? { backgroundColor: '#1E3A8A' } : {}}
+                  style={isActive ? { backgroundColor: '#0B1957' } : {}}
                 >
                   <span className={isActive ? 'text-white' : 'text-gray-400'}>
                     {tab.icon}
@@ -302,31 +309,39 @@ const LeaveCalendar = () => {
                         variant={showCalendarFilter ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setShowCalendarFilter(!showCalendarFilter)}
-                        className={showCalendarFilter ? 'bg-[#1E3A8A] text-white hover:bg-[#152a63]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}
+                        className={showCalendarFilter ? 'bg-[#0B1957] text-white hover:bg-[#071038]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}
                       >
                         Filter
                       </Button>
 
                       {showCalendarFilter && (
                         <div className="flex items-center gap-2 border-l pl-3 border-gray-200">
-                          <select
-                            value={currentDate.getMonth()}
-                            onChange={(e) => handleMonthChange(parseInt(e.target.value))}
-                            className="h-9 text-sm px-3 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-sm focus:ring-1 focus:ring-[#1E3A8A] focus:outline-none cursor-pointer"
+                          <Select
+                            value={String(currentDate.getMonth())}
+                            onValueChange={(val) => handleMonthChange(parseInt(val))}
                           >
-                            {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, idx) => (
-                              <option key={idx} value={idx}>{m}</option>
-                            ))}
-                          </select>
-                          <select
-                            value={currentDate.getFullYear()}
-                            onChange={(e) => handleYearChange(parseInt(e.target.value))}
-                            className="h-9 text-sm px-3 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-sm focus:ring-1 focus:ring-[#1E3A8A] focus:outline-none cursor-pointer"
+                            <SelectTrigger className="h-9 w-36 text-sm bg-white border-gray-300 font-medium">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white max-h-60">
+                              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, idx) => (
+                                <SelectItem key={idx} value={String(idx)}>{m}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={String(currentDate.getFullYear())}
+                            onValueChange={(val) => handleYearChange(parseInt(val))}
                           >
-                            {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
-                              <option key={y} value={y}>{y}</option>
-                            ))}
-                          </select>
+                            <SelectTrigger className="h-9 w-28 text-sm bg-white border-gray-300 font-medium">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white max-h-60">
+                              {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       )}
                     </div>
@@ -363,7 +378,7 @@ const LeaveCalendar = () => {
                           key={idx}
                           className={`rounded-lg sm:rounded-xl min-h-[40px] sm:min-h-[60px] p-1 sm:p-2 flex flex-col gap-0.5 transition overflow-hidden
                             ${holiday ? 'bg-green-50 border border-green-200' :
-                              todayDay ? 'bg-white border-2 border-[#1E3A8A]' :
+                              todayDay ? 'bg-white border-2 border-[#0B1957]' :
                                 'bg-white border border-gray-200'}
                           `}
                         >
@@ -404,8 +419,8 @@ const LeaveCalendar = () => {
                       <span className="w-4 h-4 rounded bg-orange-100 border border-orange-300 inline-block" />
                       Leave (PTO)
                     </div>
-                    <div className="flex items-center gap-2 text-sm font-medium text-[#1E3A8A]">
-                      <span className="w-4 h-4 rounded-full border-2 border-[#1E3A8A] bg-white inline-block" />
+                    <div className="flex items-center gap-2 text-sm font-medium text-[#0B1957]">
+                      <span className="w-4 h-4 rounded-full border-2 border-[#0B1957] bg-white inline-block" />
                       Today
                     </div>
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-400">
@@ -419,7 +434,7 @@ const LeaveCalendar = () => {
                 <div className="border border-gray-200 dark:border-gray-800 rounded-xl bg-white dark:bg-gray-900 shadow-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-800">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">My Leave Requests</h3>
-                    <Button onClick={() => setShowRequestDialog(true)} className="bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white font-bold rounded-lg px-5 py-2 h-10 w-full sm:w-auto">
+                    <Button onClick={() => setShowRequestDialog(true)} className="bg-[#0B1957] hover:bg-[#0B1957]/90 text-white font-bold rounded-lg px-5 py-2 h-10 w-full sm:w-auto">
                       <Plus className="h-4 w-4 mr-2" /> Request Leave
                     </Button>
                   </div>
@@ -462,18 +477,18 @@ const LeaveCalendar = () => {
                   {isAdmin && (
                     <div className="bg-white border border-gray-200 rounded-xl px-6 py-4 flex items-center gap-4 mb-6">
                       <span className="text-sm font-medium text-gray-700">View Balance For:</span>
-                      <div className="relative">
-                        <select
-                          className="appearance-none text-sm font-medium border border-gray-300 rounded-lg px-4 py-2 pr-8 bg-white text-gray-700 min-w-[180px] cursor-pointer focus:outline-none"
-                          value={selectedUserId}
-                          onChange={(e) => setSelectedUserId(e.target.value)}
-                        >
-                          <option value="all">My Balance</option>
-                          {usersData.map((u: any) => (
-                            <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                          ))}
-                        </select>
-                        <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">▾</div>
+                      <div className="w-56">
+                        <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                          <SelectTrigger className="h-10 w-full text-sm font-medium bg-white border-gray-300">
+                            <SelectValue placeholder="My Balance" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white max-h-60">
+                            <SelectItem value="all">My Balance</SelectItem>
+                            {usersData.map((u: any) => (
+                              <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
@@ -497,7 +512,7 @@ const LeaveCalendar = () => {
                           setBalanceAmount('0');
                           setBalanceLapse('0');
                           setShowEditBalanceDialog(true); 
-                        }} className="bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white text-sm font-semibold rounded-lg px-4 py-2 h-10">
+                        }} className="bg-[#0B1957] hover:bg-[#0B1957]/90 text-white text-sm font-semibold rounded-lg px-4 py-2 h-10">
                           <Plus className="h-4 w-4 mr-1" /> Set Balance
                         </Button>
                       )}
@@ -545,7 +560,7 @@ const LeaveCalendar = () => {
                                     setBalanceLapse(b.lapse?.toString() || '0');
                                     setShowEditBalanceDialog(true);
                                   }}
-                                  className="text-[#1E3A8A] hover:bg-blue-50"
+                                  className="text-[#0B1957] hover:bg-blue-50"
                                 >
                                   Edit
                                 </Button>
@@ -609,7 +624,7 @@ const LeaveCalendar = () => {
                         className="whitespace-nowrap flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition shadow-sm"
                       >Next Week</button>
                       {isAdmin && (
-                        <Button onClick={() => setShowAssignShiftDialog(true)} className="bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white text-sm font-semibold rounded-lg px-4 py-2 h-10 ml-1">
+                        <Button onClick={() => setShowAssignShiftDialog(true)} className="bg-[#0B1957] hover:bg-[#0B1957]/90 text-white text-sm font-semibold rounded-lg px-4 py-2 h-10 ml-1">
                           <Plus className="h-4 w-4 mr-1" /> Assign Shift
                         </Button>
                       )}
@@ -738,18 +753,18 @@ const LeaveCalendar = () => {
                   {isAdmin && (
                     <div className="bg-white border border-gray-200 rounded-xl px-6 py-4 flex items-center gap-4 mb-6">
                       <span className="text-sm font-medium text-gray-700">View Attendance For:</span>
-                      <div className="relative">
-                        <select
-                          className="appearance-none text-sm font-medium border border-gray-300 rounded-lg px-4 py-2 pr-8 bg-white text-gray-700 min-w-[200px] cursor-pointer focus:outline-none"
-                          value={selectedUserId}
-                          onChange={(e) => setSelectedUserId(e.target.value)}
-                        >
-                          <option value="all">All Employees</option>
-                          {usersData.map((u: any) => (
-                            <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                          ))}
-                        </select>
-                        <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">▾</div>
+                      <div className="w-64">
+                        <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                          <SelectTrigger className="h-10 w-full text-sm font-medium bg-white border-gray-300">
+                            <SelectValue placeholder="All Employees" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white max-h-60">
+                            <SelectItem value="all">All Employees</SelectItem>
+                            {usersData.map((u: any) => (
+                              <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
@@ -770,7 +785,7 @@ const LeaveCalendar = () => {
                           variant={attendanceView === 'month' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => { setAttendanceView('month'); setAttendanceDate(new Date()); }}
-                          className={attendanceView === 'month' ? 'bg-[#1E3A8A] text-white hover:bg-[#1E3A8A]/90' : 'bg-white text-gray-700'}
+                          className={attendanceView === 'month' ? 'bg-[#0B1957] text-white hover:bg-[#0B1957]/90' : 'bg-white text-gray-700'}
                         >
                           This Month
                         </Button>
@@ -778,7 +793,7 @@ const LeaveCalendar = () => {
                           variant={attendanceView === 'week' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => { setAttendanceView('week'); setAttendanceDate(new Date()); }}
-                          className={attendanceView === 'week' ? 'bg-[#1E3A8A] text-white hover:bg-[#1E3A8A]/90' : 'bg-white text-gray-700'}
+                          className={attendanceView === 'week' ? 'bg-[#0B1957] text-white hover:bg-[#0B1957]/90' : 'bg-white text-gray-700'}
                         >
                           This Week
                         </Button>
@@ -786,7 +801,7 @@ const LeaveCalendar = () => {
                           variant={attendanceView === 'filter' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setAttendanceView('filter')}
-                          className={attendanceView === 'filter' ? 'bg-[#1E3A8A] text-white hover:bg-[#1E3A8A]/90' : 'bg-white text-gray-700'}
+                          className={attendanceView === 'filter' ? 'bg-[#0B1957] text-white hover:bg-[#0B1957]/90' : 'bg-white text-gray-700'}
                         >
                           Filter
                         </Button>
@@ -799,7 +814,7 @@ const LeaveCalendar = () => {
                                 type="date"
                                 value={filterStartDate}
                                 onChange={(e) => setFilterStartDate(e.target.value)}
-                                className="h-8 text-xs w-[130px] px-2 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-sm focus:ring-1 focus:ring-[#1E3A8A]"
+                                className="h-8 text-xs w-[130px] px-2 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-sm focus:ring-1 focus:ring-[#0B1957]"
                               />
                             </div>
                             <div className="flex items-center gap-1.5">
@@ -808,7 +823,7 @@ const LeaveCalendar = () => {
                                 type="date"
                                 value={filterEndDate}
                                 onChange={(e) => setFilterEndDate(e.target.value)}
-                                className="h-8 text-xs w-[130px] px-2 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-sm focus:ring-1 focus:ring-[#1E3A8A]"
+                                className="h-8 text-xs w-[130px] px-2 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-sm focus:ring-1 focus:ring-[#0B1957]"
                               />
                             </div>
                           </div>
@@ -986,13 +1001,18 @@ const LeaveCalendar = () => {
             </div>
             <div>
               <Label htmlFor="leave-type">Leave Type *</Label>
-              <select id="leave-type" value={leaveType} onChange={e => setLeaveType(e.target.value)} className="w-full p-2 border rounded-lg text-sm">
-                <option value="Privilege Leave">PTO (Paid Time Off)</option>
-                <option value="Sick Leave">Sick Leave</option>
-                <option value="Casual Leave">Casual Leave</option>
-                <option value="Unpaid Leave">Unpaid Leave</option>
-                <option value="Compensatory Off">Compensatory Off</option>
-              </select>
+              <Select value={leaveType} onValueChange={setLeaveType}>
+                <SelectTrigger id="leave-type" className="w-full mt-1 bg-white border-gray-300">
+                  <SelectValue placeholder="Select leave type" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="Privilege Leave">PTO (Paid Time Off)</SelectItem>
+                  <SelectItem value="Sick Leave">Sick Leave</SelectItem>
+                  <SelectItem value="Casual Leave">Casual Leave</SelectItem>
+                  <SelectItem value="Unpaid Leave">Unpaid Leave</SelectItem>
+                  <SelectItem value="Compensatory Off">Compensatory Off</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="reason">Reason (Optional)</Label>
@@ -1012,23 +1032,32 @@ const LeaveCalendar = () => {
           <div className="space-y-4 py-2">
             <div>
               <Label>Employee</Label>
-              <select value={balanceUserId} onChange={e => setBalanceUserId(e.target.value)} className="w-full p-2 border rounded-lg text-sm mt-1">
-                <option value="">Select employee...</option>
-                {usersData.map((u: any) => (
-                  <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                ))}
-              </select>
+              <Select value={balanceUserId} onValueChange={setBalanceUserId}>
+                <SelectTrigger className="w-full mt-1 bg-white border-gray-300">
+                  <SelectValue placeholder="Select employee..." />
+                </SelectTrigger>
+                <SelectContent className="bg-white max-h-60">
+                  {usersData.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Leave Type</Label>
-                <select value={balanceLeaveType} onChange={e => setBalanceLeaveType(e.target.value)} className="w-full p-2 border rounded-lg text-sm mt-1">
-                  <option value="Casual Leave">Casual Leave</option>
-                  <option value="Sick Leave">Sick Leave</option>
-                  <option value="Privilege Leave">Privilege Leave</option>
-                  <option value="Unpaid Leave">Unpaid Leave</option>
-                  <option value="Compensatory Off">Compensatory Off</option>
-                </select>
+                <Select value={balanceLeaveType} onValueChange={setBalanceLeaveType}>
+                  <SelectTrigger className="w-full mt-1 bg-white border-gray-300">
+                    <SelectValue placeholder="Select leave type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="Casual Leave">Casual Leave</SelectItem>
+                    <SelectItem value="Sick Leave">Sick Leave</SelectItem>
+                    <SelectItem value="Privilege Leave">Privilege Leave</SelectItem>
+                    <SelectItem value="Unpaid Leave">Unpaid Leave</SelectItem>
+                    <SelectItem value="Compensatory Off">Compensatory Off</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Financial Year</Label>
@@ -1084,12 +1113,16 @@ const LeaveCalendar = () => {
           <div className="space-y-4 py-2">
             <div>
               <Label>Employee</Label>
-              <select value={shiftUserId} onChange={e => setShiftUserId(e.target.value)} className="w-full p-2 border rounded-lg text-sm mt-1">
-                <option value="">Select employee...</option>
-                {usersData.map((u: any) => (
-                  <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                ))}
-              </select>
+              <Select value={shiftUserId} onValueChange={setShiftUserId}>
+                <SelectTrigger className="w-full mt-1 bg-white border-gray-300">
+                  <SelectValue placeholder="Select employee..." />
+                </SelectTrigger>
+                <SelectContent className="bg-white max-h-60">
+                  {usersData.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Date</Label>
@@ -1097,13 +1130,18 @@ const LeaveCalendar = () => {
             </div>
             <div>
               <Label>Shift Type</Label>
-              <select value={shiftType} onChange={e => setShiftType(e.target.value)} className="w-full p-2 border rounded-lg text-sm mt-1">
-                <option value="Morning">Morning</option>
-                <option value="Afternoon">Afternoon</option>
-                <option value="Night">Night</option>
-                <option value="General">General</option>
-                <option value="Rotational">Rotational</option>
-              </select>
+              <Select value={shiftType} onValueChange={setShiftType}>
+                <SelectTrigger className="w-full mt-1 bg-white border-gray-300">
+                  <SelectValue placeholder="Select shift type" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="Morning">Morning</SelectItem>
+                  <SelectItem value="Afternoon">Afternoon</SelectItem>
+                  <SelectItem value="Night">Night</SelectItem>
+                  <SelectItem value="General">General</SelectItem>
+                  <SelectItem value="Rotational">Rotational</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

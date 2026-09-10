@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useExitRequests, useExitRequest, useExitMutation, useCalculateSettlement } from '@/sdk/features/exit-formalities';
 import type { ExitStatus } from '@/sdk/features/exit-formalities';
@@ -314,21 +315,25 @@ const ExitFormalities = () => {
               />
             </div>
             <div>
-              <select
+              <Select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as ExitStatusFilter)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onValueChange={(val) => setStatusFilter(val as ExitStatusFilter)}
               >
-                <option value="all">All Status</option>
-                <option value="initiated">Initiated</option>
-                <option value="manager_approved">Manager Approved</option>
-                <option value="hr_approved">HR Approved</option>
-                <option value="clearance_pending">Clearance Pending</option>
-                <option value="clearance_completed">Clearance Completed</option>
-                <option value="settlement_pending">Settlement Pending</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="initiated">Initiated</SelectItem>
+                  <SelectItem value="manager_approved">Manager Approved</SelectItem>
+                  <SelectItem value="hr_approved">HR Approved</SelectItem>
+                  <SelectItem value="clearance_pending">Clearance Pending</SelectItem>
+                  <SelectItem value="clearance_completed">Clearance Completed</SelectItem>
+                  <SelectItem value="settlement_pending">Settlement Pending</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center space-x-2">
               <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
@@ -365,7 +370,7 @@ const ExitFormalities = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-semibold">
+                    <div className="w-12 h-12 rounded-full bg-[#0B1957] flex items-center justify-center text-white font-semibold">
                       {exit.full_name?.charAt(0) || 'E'}
                     </div>
                     <div className="flex-1">
@@ -443,7 +448,7 @@ const ExitFormalities = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
+                      ? 'border-[#0B1957] text-[#0B1957]'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                       }`}
                   >
@@ -926,36 +931,45 @@ const ExitFormalities = () => {
             {isAdmin && (
               <div>
                 <Label htmlFor="exit_user">Select Employee *</Label>
-                <select
-                  id="exit_user"
-                  value={initiateForm.user_id}
-                  onChange={(e) => setInitiateForm({ ...initiateForm, user_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- Ensure Employee is selected --</option>
-                  {usersData.map((user: any) => (
-                    <option key={user.id} value={user.id}>
-                      {user.full_name || user.name} {user.employee_id ? `(${user.employee_id})` : ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-1">
+                  <Select
+                    value={initiateForm.user_id}
+                    onValueChange={(val) => setInitiateForm({ ...initiateForm, user_id: val })}
+                  >
+                    <SelectTrigger id="exit_user" className="w-full">
+                      <SelectValue placeholder="-- Ensure Employee is selected --" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usersData.map((user: any) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.full_name || user.name} {user.employee_id ? `(${user.employee_id})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
             <div>
               <Label htmlFor="exit_type">Exit Type *</Label>
-              <select
-                id="exit_type"
-                value={initiateForm.exit_type}
-                onChange={(e) =>
-                  setInitiateForm({ ...initiateForm, exit_type: e.target.value as any })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Resignation">Resignation</option>
-                <option value="Termination">Termination</option>
-                <option value="Absconded">Absconded</option>
-                <option value="Contract End">Contract End</option>
-              </select>
+              <div className="mt-1">
+                <Select
+                  value={initiateForm.exit_type}
+                  onValueChange={(val) =>
+                    setInitiateForm({ ...initiateForm, exit_type: val as any })
+                  }
+                >
+                  <SelectTrigger id="exit_type" className="w-full">
+                    <SelectValue placeholder="Select Exit Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Resignation">Resignation</SelectItem>
+                    <SelectItem value="Termination">Termination</SelectItem>
+                    <SelectItem value="Absconded">Absconded</SelectItem>
+                    <SelectItem value="Contract End">Contract End</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -979,19 +993,23 @@ const ExitFormalities = () => {
             </div>
             <div>
               <Label htmlFor="reason_category">Reason Category</Label>
-              <select
-                id="reason_category"
-                value={initiateForm.reason_category}
-                onChange={(e) => setInitiateForm({ ...initiateForm, reason_category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select reason</option>
-                <option value="Personal">Personal</option>
-                <option value="Better Opportunity">Better Opportunity</option>
-                <option value="Relocation">Relocation</option>
-                <option value="Health">Health</option>
-                <option value="Other">Other</option>
-              </select>
+              <div className="mt-1">
+                <Select
+                  value={initiateForm.reason_category}
+                  onValueChange={(val) => setInitiateForm({ ...initiateForm, reason_category: val })}
+                >
+                  <SelectTrigger id="reason_category" className="w-full">
+                    <SelectValue placeholder="Select reason" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Personal">Personal</SelectItem>
+                    <SelectItem value="Better Opportunity">Better Opportunity</SelectItem>
+                    <SelectItem value="Relocation">Relocation</SelectItem>
+                    <SelectItem value="Health">Health</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Label htmlFor="reason_details">Reason Details</Label>

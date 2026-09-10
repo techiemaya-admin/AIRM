@@ -30,8 +30,8 @@ async function runMigration() {
   try {
     console.log('🔄 Running migration: add password_hash to users...');
 
-    // Set schema — users table lives in lad_dev on this database
-    const schema = process.env.DB_SCHEMA || 'lad_dev';
+    // Set schema dynamically
+    const schema = process.env.DB_SCHEMA || 'erp';
     await client.query(`SET search_path TO ${schema}, public`);
 
     // Check if column already exists

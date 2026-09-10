@@ -648,14 +648,14 @@ const HRDocumentGenerator: React.FC = () => {
                   <button
                     onClick={previewDocument}
                     disabled={loading}
-                    className="flex-1 py-2 px-4 border border-[#1E3A8A] text-[#1E3A8A] rounded-md hover:bg-blue-50/30 disabled:opacity-50"
+                    className="flex-1 py-2 px-4 border border-[#0B1957] text-[#0B1957] rounded-md hover:bg-blue-50/30 disabled:opacity-50"
                   >
                     Preview
                   </button>
                   <button
                     onClick={generateDocument}
                     disabled={loading || !employeeData.employeeName}
-                    className="flex-1 py-2 px-4 bg-[#1E3A8A] text-white rounded-md hover:bg-[#152a63] disabled:opacity-50"
+                    className="flex-1 py-2 px-4 bg-[#0B1957] text-white rounded-md hover:bg-[#071038] disabled:opacity-50"
                   >
                     {loading ? 'Generating...' : 'Generate & Download'}
                   </button>
@@ -734,7 +734,7 @@ const HRDocumentGenerator: React.FC = () => {
                           setActiveTab('generate');
                           setSelectedTemplate(template.id);
                         }}
-                        className="mt-4 w-full py-2 text-sm text-[#1E3A8A] border border-[#1E3A8A] rounded hover:bg-blue-50/30"
+                        className="mt-4 w-full py-2 text-sm text-[#0B1957] border border-[#0B1957] rounded hover:bg-blue-50/30"
                       >
                         Use Template
                       </button>
@@ -780,7 +780,7 @@ const HRDocumentGenerator: React.FC = () => {
                         setActiveTab('generate');
                         setViewTemplateData(null);
                       }}
-                      className="mt-6 px-4 py-2 bg-[#1E3A8A] text-white rounded hover:bg-[#152a63]"
+                      className="mt-6 px-4 py-2 bg-[#0B1957] text-white rounded hover:bg-[#071038]"
                     >
                       Try with Real Data
                     </button>
@@ -849,7 +849,7 @@ const HRDocumentGenerator: React.FC = () => {
               </p>
               <button
                 type="button"
-                className="mt-4 px-4 py-2 bg-[#1E3A8A] text-white rounded-md hover:bg-[#152a63]"
+                className="mt-4 px-4 py-2 bg-[#0B1957] text-white rounded-md hover:bg-[#071038]"
               >
                 Browse Files
               </button>
@@ -889,7 +889,7 @@ const HRDocumentGenerator: React.FC = () => {
                         <div className="flex space-x-2">
                           <button
                             onClick={() => viewTemplate(template.id)}
-                            className="px-3 py-1 text-sm bg-[#1E3A8A]/10 text-[#1E3A8A] rounded hover:bg-[#1E3A8A]/20"
+                            className="px-3 py-1 text-sm bg-[#0B1957]/10 text-[#0B1957] rounded hover:bg-[#0B1957]/20"
                           >
                             Preview
                           </button>

@@ -24,6 +24,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -854,17 +861,21 @@ const RecruitmentPage = () => {
             <div className="space-y-4 py-4">
               <div>
                 <Label>Verification Type *</Label>
-                <select
-                  className="w-full px-3 py-2 border rounded-md"
+                <Select
                   value={verificationForm.verification_type}
-                  onChange={(e) => setVerificationForm({ ...verificationForm, verification_type: e.target.value as any })}
+                  onValueChange={(val: any) => setVerificationForm({ ...verificationForm, verification_type: val })}
                 >
-                  <option value="identity">Identity Verification</option>
-                  <option value="education">Education Verification</option>
-                  <option value="employment">Employment Verification</option>
-                  <option value="criminal">Criminal Background Check</option>
-                  <option value="reference">Reference Check</option>
-                </select>
+                  <SelectTrigger className="w-full mt-1 bg-white border-gray-300">
+                    <SelectValue placeholder="Select verification type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="identity">Identity Verification</SelectItem>
+                    <SelectItem value="education">Education Verification</SelectItem>
+                    <SelectItem value="employment">Employment Verification</SelectItem>
+                    <SelectItem value="criminal">Criminal Background Check</SelectItem>
+                    <SelectItem value="reference">Reference Check</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Verification Name *</Label>
@@ -1113,16 +1124,19 @@ const RecruitmentPage = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <select
-          className="px-4 py-2 border rounded-md bg-white"
-          value={stageFilter}
-          onChange={(e) => setStageFilter(e.target.value)}
-        >
-          <option value="all">All Stages</option>
-          <option value="interview">Stage 1: Interview</option>
-          <option value="verification">Stage 2: Verification</option>
-          <option value="onboarding">Stage 3: Onboarding</option>
-        </select>
+        <div className="w-56">
+          <Select value={stageFilter} onValueChange={setStageFilter}>
+            <SelectTrigger className="w-full bg-white border-gray-300 font-medium">
+              <SelectValue placeholder="All Stages" />
+            </SelectTrigger>
+            <SelectContent className="bg-white">
+              <SelectItem value="all">All Stages</SelectItem>
+              <SelectItem value="interview">Stage 1: Interview</SelectItem>
+              <SelectItem value="verification">Stage 2: Verification</SelectItem>
+              <SelectItem value="onboarding">Stage 3: Onboarding</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Candidates Table */}

@@ -41,46 +41,40 @@ export const authenticate = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    // Get user and roles prioritizing erp schema first
+    // Multi-schema user resolution
     let userRow = null;
+    const candidateSchemas = [process.env.DB_SCHEMA, 'lad_stage', 'erp', 'lad_dev'].filter(Boolean);
 
-    // 1. Prioritize erp schema
-    try {
-      const q = `
-        SELECT u.id, u.email, u.full_name, array_agg(ur.role) as roles
-        FROM erp.users u
-        LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
-        WHERE u.id = $1
-        GROUP BY u.id, u.email, u.full_name
-      `;
-      const r = await pool.query(q, [decoded.userId]);
-      if (r.rows.length > 0) userRow = r.rows[0];
-    } catch (e) {}
+    for (const schema of candidateSchemas) {
+      if (!userRow) {
+        try {
+          const q = `
+            SELECT u.id, u.email, u.full_name, array_remove(array_agg(ur.role), NULL) as roles
+            FROM ${schema}.users u
+            LEFT JOIN ${schema}.user_roles ur ON u.id = ur.user_id
+            WHERE u.id = $1
+            GROUP BY u.id, u.email, u.full_name
+          `;
+          const r = await pool.query(q, [decoded.userId]);
+          if (r.rows.length > 0) userRow = r.rows[0];
+        } catch (_) {}
+      }
 
-    // 2. Fallback to lad_stage schema
-    if (!userRow) {
-      try {
-        const q = `
-          SELECT u.id, u.email,
-                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
-          FROM lad_stage.users u WHERE u.id = $1
-        `;
-        const r = await pool.query(q, [decoded.userId]);
-        if (r.rows.length > 0) userRow = { ...r.rows[0], roles: ['user'] };
-      } catch (e) {}
-    }
+      if (!userRow) {
+        try {
+          const q = `
+            SELECT u.id, u.email,
+                   COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+            FROM ${schema}.users u WHERE u.id = $1
+          `;
+          const r = await pool.query(q, [decoded.userId]);
+          if (r.rows.length > 0) {
+            userRow = { ...r.rows[0], roles: ['user'] };
+          }
+        } catch (_) {}
+      }
 
-    // 3. Fallback to lad_dev schema
-    if (!userRow) {
-      try {
-        const q = `
-          SELECT u.id, u.email,
-                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
-          FROM lad_dev.users u WHERE u.id = $1
-        `;
-        const r = await pool.query(q, [decoded.userId]);
-        if (r.rows.length > 0) userRow = { ...r.rows[0], roles: ['user'] };
-      } catch (e) {}
+      if (userRow) break;
     }
 
     if (!userRow) {

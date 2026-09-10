@@ -35,7 +35,7 @@ export const ProfileCard = ({ profile, onClick, onChangePassword, showActions = 
                 className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0"
               />
             ) : (
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-900 flex items-center justify-center text-white text-lg sm:text-xl font-semibold flex-shrink-0">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#0B1957] flex items-center justify-center text-white text-lg sm:text-xl font-semibold flex-shrink-0">
                 {getInitials(profile.full_name || profile.email)}
               </div>
             )}
@@ -67,7 +67,7 @@ export const ProfileCard = ({ profile, onClick, onChangePassword, showActions = 
               <span>{completeness}%</span>
               <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-blue-600 transition-all"
+                  className="h-full bg-[#0B1957] transition-all"
                   style={{ width: `${completeness}%` }}
                 />
               </div>
@@ -166,7 +166,7 @@ export const ProfileCard = ({ profile, onClick, onChangePassword, showActions = 
           <div className="pt-3 border-t space-y-2" onClick={(e) => e.stopPropagation()}>
             <Button
               onClick={() => onChangePassword?.(profile)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg flex items-center justify-center space-x-2"
+              className="w-full bg-[#0B1957] hover:bg-[#071038] text-white font-medium py-2 rounded-lg flex items-center justify-center space-x-2 shadow-xs"
             >
               <Key className="h-4 w-4" />
               <span>Change Password</span>

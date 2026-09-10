@@ -1,5 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Menu } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Notifications } from './Notifications';
@@ -12,6 +13,7 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -31,12 +33,14 @@ export function Layout({ children }: LayoutProps) {
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
+    queryClient.clear();
     navigate('/auth');
   };
 
   const getHeaderTitle = (pathname: string) => {
     if (pathname === '/') return 'Timesheet';
     if (pathname.startsWith('/project-management') || pathname.startsWith('/projects')) return 'Project Dashboard';
+    if (pathname.startsWith('/fjt-board')) return 'FJT Board';
     if (pathname.startsWith('/resource-management')) return 'Resource Management';
     if (pathname.startsWith('/profiles')) return 'Employee Profiles';
     if (pathname.startsWith('/users')) return 'Employee Management';

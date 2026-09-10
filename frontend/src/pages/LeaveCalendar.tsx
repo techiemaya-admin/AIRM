@@ -286,7 +286,7 @@ export default function LeaveCalendar() {
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="text-[#1E3A8A] hover:text-[#1E3A8A] hover:bg-blue-50"
+                    className="text-[#0B1957] hover:text-[#0B1957] hover:bg-blue-50"
                     onClick={() => {
                       const newMonth = new Date(currentMonth);
                       newMonth.setMonth(newMonth.getMonth() - 1);
@@ -297,14 +297,14 @@ export default function LeaveCalendar() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="text-[#1E3A8A] hover:text-[#1E3A8A] hover:bg-blue-50"
+                    className="text-[#0B1957] hover:text-[#0B1957] hover:bg-blue-50"
                     onClick={() => setCurrentMonth(new Date())}
                   >
                     Today
                   </Button>
                   <Button
                     variant="outline"
-                    className="text-[#1E3A8A] hover:text-[#1E3A8A] hover:bg-blue-50"
+                    className="text-[#0B1957] hover:text-[#0B1957] hover:bg-blue-50"
                     onClick={() => {
                       const newMonth = new Date(currentMonth);
                       newMonth.setMonth(newMonth.getMonth() + 1);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getJoiningFormById } from "@sdk/joiningFormService";
 import type { JoiningForm } from '../../joining-form/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import {
   Check,
   Trash2,
   Key,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -126,10 +127,22 @@ export const ProfileDetailDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex flex-col gap-4 pr-2">
-            <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+      <DialogContent className="sm:max-w-4xl w-full h-[640px] max-h-[90vh] flex flex-col p-6 overflow-hidden" hideDefaultClose={true}>
+        {/* Close button aligned with user name and directly on top of scrollbar track */}
+        <DialogClose asChild>
+          <button
+            type="button"
+            className="absolute right-6 top-6 sm:top-7 z-20 rounded-md p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none flex items-center justify-center cursor-pointer"
+            title="Close"
+          >
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close</span>
+          </button>
+        </DialogClose>
+
+        <DialogHeader className="flex-shrink-0 w-full">
+          <div className="flex flex-col gap-4 w-full">
+            <div className="flex items-start gap-3 sm:gap-4 w-full">
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
@@ -137,15 +150,15 @@ export const ProfileDetailDialog = ({
                   className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover flex-shrink-0"
                 />
               ) : (
-                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-blue-900 flex items-center justify-center text-white text-xl sm:text-2xl font-semibold flex-shrink-0">
+                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-[#0B1957] flex items-center justify-center text-white text-xl sm:text-2xl font-semibold flex-shrink-0">
                   {getInitials(profile.full_name || profile.email)}
                 </div>
               )}
-              <div className="min-w-0 flex-1">
-                <DialogTitle className="text-xl sm:text-2xl break-words">
+              <div className="min-w-0 flex-1 w-full">
+                <DialogTitle className="text-xl sm:text-2xl break-words pr-12">
                   {profile.full_name || profile.email}
                 </DialogTitle>
-                <p className="text-gray-500 mt-1 text-sm break-words">
+                <p className="text-gray-500 mt-1 text-sm break-words pr-12">
                   {profile.job_title || profile.role}
                   {profile.department && ` • ${profile.department}`}
                 </p>
@@ -172,7 +185,7 @@ export const ProfileDetailDialog = ({
               {onChangePassword && (
                 <Button
                   onClick={onChangePassword}
-                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
+                  className="bg-[#0B1957] hover:bg-[#071038] text-white flex items-center space-x-2 shadow-xs"
                   size="sm"
                 >
                   <Key className="h-4 w-4" />
@@ -196,13 +209,13 @@ export const ProfileDetailDialog = ({
         </DialogHeader>
 
         {/* Tabs */}
-        <div className="flex space-x-1 border-b mb-4 overflow-x-auto -mx-1 px-1 scrollbar-thin">
+        <div className="flex space-x-1 border-b mb-4 overflow-x-auto -mx-1 px-1 scrollbar-thin flex-shrink-0">
           {['basic', 'contact', 'family', 'education', 'experience', 'health', 'verification'].map(tab => (
             <button
               key={tab}
               onClick={() => handleTabClick(tab)}
               className={`px-3 sm:px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === tab
-                ? 'border-blue-600 text-blue-600'
+                ? 'border-[#0B1957] text-[#0B1957]'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
             >
@@ -212,7 +225,7 @@ export const ProfileDetailDialog = ({
         </div>
 
         {/* Tab Content */}
-        <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto pr-1 space-y-6">
           {/* Basic Information (from joining form) */}
           {activeTab === 'basic' && (
             loadingJoiningForm ? (

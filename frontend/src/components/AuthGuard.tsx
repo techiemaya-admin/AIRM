@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { NotificationPopup } from "./NotificationPopup";
 
 export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: user, isLoading, isError } = useCurrentUser();
 
   useEffect(() => {
@@ -12,9 +14,10 @@ export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
     if (!token || (isError && !isLoading)) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
+      queryClient.clear();
       navigate("/auth");
     }
-  }, [user, isLoading, isError, navigate]);
+  }, [user, isLoading, isError, navigate, queryClient]);
 
   if (isLoading) {
     return (

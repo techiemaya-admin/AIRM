@@ -405,7 +405,7 @@ export default function Git() {
                         <button
                           onClick={syncUsers}
                           disabled={syncing}
-                          className="w-full bg-[#1E3A8A] hover:bg-[#152a63] text-white py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full bg-[#0B1957] hover:bg-[#071038] text-white py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {syncing ? 'Syncing...' : 'Sync GitHub Users'}
                         </button>

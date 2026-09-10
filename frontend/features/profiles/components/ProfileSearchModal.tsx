@@ -50,7 +50,7 @@ export const ProfileSearchModal = ({
                   onClick={() => onProfileSelect(profile)}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-900 flex items-center justify-center text-white text-sm font-semibold">
+                    <div className="w-10 h-10 rounded-full bg-[#0B1957] flex items-center justify-center text-white text-sm font-semibold">
                       {getInitials(profile.full_name || profile.email)}
                     </div>
                     <div>

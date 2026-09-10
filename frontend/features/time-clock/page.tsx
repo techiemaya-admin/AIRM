@@ -640,10 +640,10 @@ const TimeClock = () => {
                     type="linear"
                     dataKey="Projects"
                     name="Projects"
-                    stroke="#1E3A8A"
+                    stroke="#0B1957"
                     strokeWidth={3}
                     dot={false}
-                    activeDot={{ r: 6, fill: '#1E3A8A', stroke: '#fff', strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: '#0B1957', stroke: '#fff', strokeWidth: 2 }}
                   />
                   <Line
                     type="linear"

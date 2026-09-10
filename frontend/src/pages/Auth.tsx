@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -10,6 +11,7 @@ const logo = "/techiemaya-logo.png";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -58,6 +60,10 @@ const Auth = () => {
 
       localStorage.setItem("auth_token", response.token);
       localStorage.setItem("user", JSON.stringify(response.user));
+
+      // Invalidate and clear all previous user state from memory
+      queryClient.clear();
+      queryClient.setQueryData(['me'], response.user);
 
       if (remember) {
         localStorage.setItem("remember_email", email.trim().toLowerCase());

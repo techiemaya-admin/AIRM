@@ -184,7 +184,7 @@ const Users = () => {
               <div className="flex items-center gap-3">
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="flex items-center gap-2 bg-[#1E3A8A] hover:bg-[#152a63]">
+                    <Button size="sm" className="flex items-center gap-2 bg-[#0B1957] hover:bg-[#071038]">
                       <UserPlus className="h-4 w-4" />
                       Add Employee
                     </Button>
@@ -230,7 +230,7 @@ const Users = () => {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button onClick={handleAddUser} disabled={addingUser} className="bg-[#1E3A8A] hover:bg-[#152a63]">
+                      <Button onClick={handleAddUser} disabled={addingUser} className="bg-[#0B1957] hover:bg-[#071038]">
                         {addingUser ? "Creating..." : "Create Employee"}
                       </Button>
                     </DialogFooter>

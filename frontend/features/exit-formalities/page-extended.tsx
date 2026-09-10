@@ -404,7 +404,7 @@ const ExitFormalities = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-semibold">
+                    <div className="w-12 h-12 rounded-full bg-[#0B1957] flex items-center justify-center text-white font-semibold">
                       {exit.full_name?.charAt(0) || 'E'}
                     </div>
                     <div className="flex-1">

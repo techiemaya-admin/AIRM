@@ -46,72 +46,68 @@ router.post('/login', [
       });
     }
 
-    // Query user prioritizing erp schema first
-    let user = null;
+    // Multi-schema candidate lookup and password verification
+    let matchedUser = null;
+    let userWithoutPassword = null;
+    const candidateSchemas = [process.env.DB_SCHEMA, 'erp', 'lad_stage', 'lad_dev'].filter(Boolean);
 
-    // 1. Prioritize erp schema
-    try {
-      const q = `
-        SELECT u.id, u.email, u.password_hash, u.full_name, ur.role
-        FROM erp.users u
-        LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
-        WHERE LOWER(u.email) = $1
-      `;
-      const res = await pool.query(q, [email]);
-      if (res.rows.length > 0) user = res.rows[0];
-    } catch (e) {}
+    for (const schema of candidateSchemas) {
+      let candidate = null;
 
-    // 2. Fallback to lad_stage schema if erp permissions are not granted
-    if (!user) {
+      // 1. Try schema with full_name and user_roles join
       try {
         const q = `
-          SELECT u.id, u.email, u.password_hash,
-                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
-          FROM lad_stage.users u
+          SELECT u.id, u.email, u.password_hash, u.full_name, ur.role
+          FROM ${schema}.users u
+          LEFT JOIN ${schema}.user_roles ur ON u.id = ur.user_id
           WHERE LOWER(u.email) = $1
         `;
-        const res = await pool.query(q, [email]);
-        if (res.rows.length > 0) user = res.rows[0];
-      } catch (e) {}
+        const res = await pool.query(q, [email.toLowerCase()]);
+        if (res.rows.length > 0) candidate = res.rows[0];
+      } catch (_) {}
+
+      // 2. Try schema with first_name / last_name
+      if (!candidate) {
+        try {
+          const q = `
+            SELECT u.id, u.email, u.password_hash,
+                   COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+            FROM ${schema}.users u
+            WHERE LOWER(u.email) = $1
+          `;
+          const res = await pool.query(q, [email.toLowerCase()]);
+          if (res.rows.length > 0) candidate = res.rows[0];
+        } catch (_) {}
+      }
+
+      if (candidate) {
+        if (candidate.password_hash) {
+          const isPasswordValid = await bcrypt.compare(password, candidate.password_hash);
+          if (isPasswordValid) {
+            matchedUser = candidate;
+            break;
+          }
+        } else {
+          userWithoutPassword = candidate;
+        }
+      }
     }
 
-    // 3. Fallback to lad_dev schema
-    if (!user) {
-      try {
-        const q = `
-          SELECT u.id, u.email, u.password_hash,
-                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
-          FROM lad_dev.users u
-          WHERE LOWER(u.email) = $1
-        `;
-        const res = await pool.query(q, [email]);
-        if (res.rows.length > 0) user = res.rows[0];
-      } catch (e) {}
-    }
+    if (!matchedUser) {
+      if (userWithoutPassword) {
+        return res.status(401).json({
+          error: 'No password set',
+          message: 'No password has been set for this account. Please contact your administrator.'
+        });
+      }
 
-    if (!user) {
       return res.status(401).json({
         error: 'Invalid credentials',
         message: 'Invalid email or password'
       });
     }
 
-    // Check if password has been set
-    if (!user.password_hash) {
-      return res.status(401).json({
-        error: 'No password set',
-        message: 'No password has been set for this account. Please contact your administrator.'
-      });
-    }
-
-    // Verify password using bcrypt
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        error: 'Invalid credentials',
-        message: 'Invalid email or password'
-      });
-    }
+    const user = matchedUser;
 
     // Generate auth token
     const authToken = jwt.sign(
@@ -389,46 +385,38 @@ router.post('/test-login', [
  */
 router.get('/me', authenticate, async (req, res) => {
   try {
+    // Multi-schema user resolution
     let user = null;
+    const candidateSchemas = [process.env.DB_SCHEMA, 'lad_stage', 'erp', 'lad_dev'].filter(Boolean);
 
-    // 1. Prioritize erp schema
-    try {
-      const q = `
-        SELECT u.id, u.email, u.full_name, ur.role
-        FROM erp.users u
-        LEFT JOIN erp.user_roles ur ON u.id = ur.user_id
-        WHERE u.id = $1
-      `;
-      const r = await pool.query(q, [req.userId]);
-      if (r.rows.length > 0) user = r.rows[0];
-    } catch (e) {}
+    for (const schema of candidateSchemas) {
+      if (!user) {
+        try {
+          const q = `
+            SELECT u.id, u.email, u.full_name, ur.role
+            FROM ${schema}.users u
+            LEFT JOIN ${schema}.user_roles ur ON u.id = ur.user_id
+            WHERE u.id = $1
+          `;
+          const r = await pool.query(q, [req.userId]);
+          if (r.rows.length > 0) user = r.rows[0];
+        } catch (_) {}
+      }
 
-    // 2. Fallback to lad_stage
-    if (!user) {
-      try {
-        const q = `
-          SELECT u.id, u.email,
-                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
-          FROM lad_stage.users u
-          WHERE u.id = $1
-        `;
-        const r = await pool.query(q, [req.userId]);
-        if (r.rows.length > 0) user = r.rows[0];
-      } catch (e) {}
-    }
+      if (!user) {
+        try {
+          const q = `
+            SELECT u.id, u.email,
+                   COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
+            FROM ${schema}.users u
+            WHERE u.id = $1
+          `;
+          const r = await pool.query(q, [req.userId]);
+          if (r.rows.length > 0) user = r.rows[0];
+        } catch (_) {}
+      }
 
-    // 3. Fallback to lad_dev
-    if (!user) {
-      try {
-        const q = `
-          SELECT u.id, u.email,
-                 COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS full_name
-          FROM lad_dev.users u
-          WHERE u.id = $1
-        `;
-        const r = await pool.query(q, [req.userId]);
-        if (r.rows.length > 0) user = r.rows[0];
-      } catch (e) {}
+      if (user) break;
     }
 
     if (!user) {

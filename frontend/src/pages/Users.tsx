@@ -161,7 +161,7 @@ const Users = () => {
                 All Employees
               </CardTitle>
               <div className="flex items-center gap-3">
-                <Button size="sm" className="flex items-center gap-2 bg-[#1E3A8A] hover:bg-[#152a63]">
+                <Button size="sm" className="flex items-center gap-2 bg-[#0B1957] hover:bg-[#071038]">
                   <Plus className="h-4 w-4" />
                   Add Employee
                 </Button>

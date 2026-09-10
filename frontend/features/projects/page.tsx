@@ -1470,7 +1470,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                         <button className="p-1 hover:bg-gray-100 border-r"><ChevronLeft className="w-4 h-4" /></button>
                         <button className="p-1 hover:bg-gray-100"><ChevronRight className="w-4 h-4" /></button>
                      </div>
-                     <Button size="sm" variant="default" className="h-7 text-[10px] font-bold bg-[#1E3A8A] hover:bg-[#152a63]" onClick={handleAddDates}>
+                     <Button size="sm" variant="default" className="h-7 text-[10px] font-bold bg-[#0B1957] hover:bg-[#071038]" onClick={handleAddDates}>
                         Add dates to start
                      </Button>
                   </div>
@@ -1552,7 +1552,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
         </div>
 
         <div className="p-4 border-t bg-gray-50/30">
-          <Button variant="ghost" className="text-[#1E3A8A] hover:text-[#152a63] hover:bg-blue-50 font-bold" onClick={() => setSelectedBoard(null)}>
+          <Button variant="ghost" className="text-[#0B1957] hover:text-[#071038] hover:bg-blue-50 font-bold" onClick={() => setSelectedBoard(null)}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Project
           </Button>
         </div>
@@ -1737,7 +1737,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                    </div>
                    
                    <div className="pl-14 pt-4">
-                     <Button variant="ghost" size="sm" className="text-gray-500 hover:text-[#1E3A8A] font-bold" onClick={() => setSelectedIssue(null)}>
+                     <Button variant="ghost" size="sm" className="text-gray-500 hover:text-[#0B1957] font-bold" onClick={() => setSelectedIssue(null)}>
                        <ArrowLeft className="w-4 h-4 mr-2" /> Back to issues
                      </Button>
                    </div>
@@ -1905,12 +1905,12 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                   {openedFile ? (
                     <div className="border rounded-lg overflow-hidden shadow-sm bg-white">
                       <div className="bg-[#f6f8fa] p-2 border-b flex items-center gap-2 text-xs">
-                        <button className="text-[#1E3A8A] hover:text-[#152a63] hover:underline font-bold" onClick={() => { setOpenedFile(null); setCurrentPath(''); }}>
+                        <button className="text-[#0B1957] hover:text-[#071038] hover:underline font-bold" onClick={() => { setOpenedFile(null); setCurrentPath(''); }}>
                           ← Back
                         </button>
                         <span className="text-gray-400">/</span>
                         {currentPath.split('/').map((seg, i, arr) => (
-                          <span key={i} className={i === arr.length - 1 ? 'font-bold text-gray-900' : 'text-[#1E3A8A] hover:text-[#152a63] hover:underline cursor-pointer'}>{seg}{i < arr.length - 1 ? ' /' : ''}</span>
+                          <span key={i} className={i === arr.length - 1 ? 'font-bold text-gray-900' : 'text-[#0B1957] hover:text-[#071038] hover:underline cursor-pointer'}>{seg}{i < arr.length - 1 ? ' /' : ''}</span>
                         ))}
                       </div>
                       <div className="p-4">
@@ -1938,7 +1938,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                       {/* Breadcrumb if inside folder */}
                       {currentPath && (
                         <div className="px-3 py-2 border-b bg-gray-50 text-xs flex items-center gap-1">
-                          <button className="text-[#1E3A8A] hover:text-[#152a63] hover:underline font-bold" onClick={() => setCurrentPath('')}>root</button>
+                          <button className="text-[#0B1957] hover:text-[#071038] hover:underline font-bold" onClick={() => setCurrentPath('')}>root</button>
                           {currentPath.split('/').map((seg, i) => (
                             <span key={i}><span className="text-gray-400"> / </span><span className="font-bold text-gray-700">{seg}</span></span>
                           ))}
@@ -2276,7 +2276,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
           
           <Button 
             variant="ghost" 
-            className="mt-8 text-[#1E3A8A] hover:text-[#152a63] hover:bg-blue-50 font-bold" 
+            className="mt-8 text-[#0B1957] hover:text-[#071038] hover:bg-blue-50 font-bold" 
             onClick={() => setSelectedProject(null)}
           >
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
@@ -2299,7 +2299,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
             {isAdmin && (
               <Button
                 onClick={startProjectWizard}
-                className="bg-[#1E3A8A] hover:bg-[#152a63] shadow-lg shadow-blue-500/20"
+                className="bg-[#0B1957] hover:bg-[#071038] shadow-lg shadow-blue-500/20"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 New Project
@@ -2341,7 +2341,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
               {isAdmin && (
                 <Button
                   onClick={mainTab === 'projects' ? startProjectWizard : startWizard}
-                  className="bg-[#1E3A8A] hover:bg-[#152a63] shadow-lg shadow-blue-500/20 mb-2"
+                  className="bg-[#0B1957] hover:bg-[#071038] shadow-lg shadow-blue-500/20 mb-2"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   {mainTab === 'projects' ? 'New Project' : 'New Repository'}
@@ -2482,7 +2482,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                   <Github className="w-3.5 h-3.5" />
                   <span>GitHub Linked</span>
                 </div>
-                <Button variant="ghost" size="sm" className="h-8 text-[#1E3A8A] hover:text-[#152a63] hover:bg-blue-50 font-bold">
+                <Button variant="ghost" size="sm" className="h-8 text-[#0B1957] hover:text-[#071038] hover:bg-blue-50 font-bold">
                   Manage <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
               </CardFooter>
