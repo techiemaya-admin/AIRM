@@ -28,8 +28,8 @@ export default function FjtBoardPage() {
 
   const handleTabChange = (tab: FjtTab) => {
     setActiveTab(tab);
-    if (tab === 'board') navigate('/fjt-board');
-    else navigate(`/fjt-board/${tab}`);
+    if (tab === 'board') navigate('/task-board');
+    else navigate(`/task-board/${tab}`);
   };
 
   return (

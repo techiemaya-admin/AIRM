@@ -109,7 +109,7 @@ const App = () => (
             />
 
             <Route
-              path="/fjt-board"
+              path="/task-board"
               element={
                 <AuthGuard>
                   <Layout>
@@ -119,7 +119,7 @@ const App = () => (
               }
             />
             <Route
-              path="/fjt-board/*"
+              path="/task-board/*"
               element={
                 <AuthGuard>
                   <Layout>
@@ -128,6 +128,8 @@ const App = () => (
                 </AuthGuard>
               }
             />
+            <Route path="/fjt-board" element={<Navigate to="/task-board" replace />} />
+            <Route path="/fjt-board/*" element={<Navigate to="/task-board" replace />} />
 
             <Route
               path="/projects/:id"
