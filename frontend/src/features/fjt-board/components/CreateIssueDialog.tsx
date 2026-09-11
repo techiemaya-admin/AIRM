@@ -264,11 +264,18 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
     if (!open) {
       resetForm();
     } else {
-      setTimeout(() => {
+      const scrollToTop = () => {
         if (formRef.current) {
           formRef.current.scrollTop = 0;
         }
-      }, 10);
+      };
+      scrollToTop();
+      const timer1 = setTimeout(scrollToTop, 20);
+      const timer2 = setTimeout(scrollToTop, 100);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
     }
   }, [open, issueType, resetForm]);
 
@@ -354,28 +361,28 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
         linkedTaskId: (issueType === 'task' || issueType === 'bug') && linkedTaskId !== 'none' ? linkedTaskId : undefined,
         linkedTaskKey: (issueType === 'task' || issueType === 'bug') && selectedLinkedTaskObj ? selectedLinkedTaskObj.key : undefined,
         linkedTaskSummary: (issueType === 'task' || issueType === 'bug') && selectedLinkedTaskObj ? selectedLinkedTaskObj.summary : undefined,
-        storyPoints: issueType !== 'epic' ? parsedStoryPoints : undefined,
-        startDate: issueType !== 'epic' ? (startDate || undefined) : undefined,
-        endDate: issueType !== 'epic' ? (endDate || undefined) : undefined,
-        description: description.trim(),
+        status,
+        storyPoints: parsedStoryPoints,
+        startDate: startDate ? startDate : undefined,
+        endDate: endDate ? endDate : undefined,
+        description: description.trim() || undefined,
         descriptionAuthor: currentMember,
-        descriptionCreatedAt: descriptionCreatedAt || new Date().toISOString(),
+        descriptionCreatedAt: descriptionSaved && descriptionCreatedAt ? descriptionCreatedAt : (description.trim() ? new Date().toISOString() : undefined),
         descriptionSaved: descriptionSaved || !!description.trim(),
         comments,
-        status,
-        priority: issueType !== 'epic' ? priority : 'medium',
-        labels: issueType !== 'epic' ? parsedLabels : [],
+        priority,
+        labels: parsedLabels,
         projectId: selectedProject.id,
         projectKey: selectedProject.key,
         projectName: selectedProject.name,
-        assignees: issueType !== 'epic' ? selectedAssignees : [],
-        assignee: issueType !== 'epic' ? selectedAssignees[0] : undefined,
-        assigneeName: issueType !== 'epic' ? selectedAssignees.map((a) => a.name).join(', ') : undefined,
+        assignees: selectedAssignees,
+        assignee: selectedAssignees[0] || null,
+        assigneeName: selectedAssignees.map((a) => a.name).join(', ') || undefined,
       } as any);
 
       toast({
-        title: `Created (${created.key})`,
-        description: `${created.key} created successfully.`,
+        title: 'Issue created',
+        description: `${created.key || 'Item'} has been created successfully.`,
       });
 
       handleClose();
@@ -408,17 +415,17 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
         onOpenAutoFocus={(e) => {
           e.preventDefault();
         }}
-        className="sm:max-w-[720px] max-h-[92vh] overflow-hidden flex flex-col bg-white p-0 gap-0 shadow-2xl"
+        className="w-[calc(100%-2rem)] sm:w-full sm:max-w-[720px] max-h-[75vh] sm:max-h-[92vh] overflow-hidden flex flex-col bg-white p-0 gap-0 shadow-2xl rounded-xl"
       >
         {/* Modal Header */}
-        <div className="h-14 sm:h-15 px-5 sm:px-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0 bg-white">
-          <DialogTitle className="text-lg font-bold text-gray-900 m-0 leading-none">
+        <div className="py-4 sm:py-4.5 px-5 sm:px-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0 bg-white">
+          <DialogTitle className="text-base sm:text-lg font-bold text-gray-900 m-0 leading-none">
             Create issue
           </DialogTitle>
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-md p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none flex items-center justify-center -mr-1"
+            className="rounded-md p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none flex items-center justify-center flex-shrink-0 -mr-1"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -825,7 +832,7 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
             </div>
           )}
 
-          <DialogFooter className="pt-4 border-t border-gray-100 flex items-center justify-end gap-2">
+          <div className="pt-4 border-t border-gray-100 flex flex-row items-center justify-end gap-2.5 w-full">
             <Button
               type="button"
               variant="outline"
@@ -841,7 +848,7 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
             >
               {createIssueMutation.isPending ? 'Creating...' : 'Create'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

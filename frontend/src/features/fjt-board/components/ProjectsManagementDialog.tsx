@@ -137,24 +137,24 @@ export const ProjectsManagementDialog: React.FC<ProjectsManagementDialogProps> =
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideDefaultClose
-        className="sm:max-w-[680px] w-full h-[580px] max-h-[90vh] overflow-hidden flex flex-col bg-white p-0 gap-0 shadow-2xl rounded-xl"
+        className="w-[calc(100%-2rem)] sm:w-full sm:max-w-[680px] h-[480px] sm:h-[580px] max-h-[75vh] sm:max-h-[90vh] overflow-hidden flex flex-col bg-white p-0 gap-0 shadow-2xl rounded-xl"
       >
         {/* Clean Header: Icon, Title, Subtitle, and Close button */}
-        <div className="h-14 px-5 sm:px-6 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#0B1957] flex items-center justify-center font-bold">
+        <div className="py-4 sm:py-4.5 px-5 sm:px-6 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 flex-shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#0B1957] flex items-center justify-center font-bold flex-shrink-0">
               <FolderKanban className="h-4 w-4" />
             </div>
-            <div>
-              <h2 className="text-sm font-bold text-gray-900">Projects Directory</h2>
-              <p className="text-[11px] text-gray-500">Switch active project or create a new project workspace.</p>
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-gray-900 truncate">Projects Directory</h2>
+              <p className="text-[11px] text-gray-500 truncate hidden sm:block">Switch active project or create a new project workspace.</p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="rounded-md p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors -mr-1"
+            className="rounded-md p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors flex-shrink-0 -mr-1"
           >
             <X className="h-4 w-4" />
           </button>

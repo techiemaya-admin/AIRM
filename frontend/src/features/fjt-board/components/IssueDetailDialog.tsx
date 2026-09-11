@@ -403,21 +403,21 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
     <Dialog open={open} onOpenChange={(val) => { if (!val) handleCancel(); else onOpenChange(val); }}>
       <DialogContent
         hideDefaultClose
-        className="sm:max-w-[940px] max-h-[92vh] overflow-hidden flex flex-col bg-white p-0 gap-0 shadow-2xl"
+        className="w-[calc(100%-2rem)] sm:w-full sm:max-w-[940px] max-h-[75vh] sm:max-h-[92vh] overflow-hidden flex flex-col bg-white p-0 gap-0 shadow-2xl rounded-xl"
       >
         {/* Top Header Bar */}
-        <div className="h-14 sm:h-15 px-5 sm:px-6 border-b border-gray-200 flex items-center justify-between bg-gray-50/70 flex-shrink-0">
-          <div className="flex items-center gap-2.5 text-xs text-gray-600 font-medium">
+        <div className="py-4 sm:py-4.5 px-5 sm:px-6 border-b border-gray-200 flex items-center justify-between bg-gray-50/70 flex-shrink-0">
+          <div className="flex items-center gap-2 text-xs text-gray-600 font-medium min-w-0 pr-2">
             <IssueTypeIcon type={issue.type} />
-            <span className="font-bold text-gray-900 text-sm">{issue.key}</span>
-            <span className="text-gray-300">•</span>
-            <span className="text-gray-600">{displayProjectName}</span>
+            <span className="font-bold text-gray-900 text-sm flex-shrink-0">{issue.key}</span>
+            <span className="text-gray-300 flex-shrink-0">•</span>
+            <span className="text-gray-600 truncate">{displayProjectName}</span>
           </div>
 
           <button
             type="button"
             onClick={handleCancel}
-            className="rounded-md p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition-colors focus:outline-none flex items-center justify-center"
+            className="rounded-md p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition-colors focus:outline-none flex items-center justify-center flex-shrink-0 -mr-1"
             aria-label="Close"
           >
             <X className="h-4 w-4" />

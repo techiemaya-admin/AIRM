@@ -1229,7 +1229,6 @@ export const GithubIssueTimeline: React.FC<GithubIssueTimelineProps> = ({
               onCancel={description.trim() ? handleCancelEditDesc : undefined}
               submitLabel="Comment"
               placeholder="Add your description here..."
-              autoFocus
             />
           </div>
         ) : (

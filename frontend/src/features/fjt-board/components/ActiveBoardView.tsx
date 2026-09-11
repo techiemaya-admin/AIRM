@@ -242,9 +242,9 @@ export const ActiveBoardView: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="flex-1 flex flex-col h-full bg-white min-h-0 overflow-hidden">
+      <div className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-gray-200 flex-shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
               <button
@@ -476,9 +476,9 @@ export const ActiveBoardView: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col bg-gray-50/40">
+        <div className="flex-1 flex flex-col bg-gray-50/40 min-h-0 overflow-hidden">
           {/* Mobile Status Tabs (Only visible in mobile mode) */}
-          <div className="md:hidden px-3 pt-3 pb-2 bg-white border-b border-gray-200">
+          <div className="md:hidden px-3 pt-2.5 pb-2 bg-white border-b border-gray-200 flex-shrink-0">
             <div className="flex bg-gray-100 p-1 rounded-xl gap-1">
               {columns.map((col) => {
                 const isActive = mobileStatusTab === col.id;
@@ -510,23 +510,23 @@ export const ActiveBoardView: React.FC = () => {
           </div>
 
           {/* Mobile Single Column View */}
-          <div className="block md:hidden flex-1 p-3 overflow-y-auto min-h-0">
+          <div className="block md:hidden flex-1 p-2.5 sm:p-3 min-h-0 flex flex-col overflow-hidden">
             {(() => {
               const activeCol = columns.find((c) => c.id === mobileStatusTab) || columns[0];
               return (
-                <div className="flex flex-col bg-gray-100/70 rounded-xl p-3 border border-gray-200/80 max-h-[calc(100vh-230px)] h-[calc(100vh-230px)] max-w-full">
-                  <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-gray-200/60 px-1 flex-shrink-0">
+                <div className="flex-1 flex flex-col bg-gray-100/70 rounded-xl p-2.5 sm:p-3 border border-gray-200/80 min-h-0 overflow-hidden">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-200/60 px-1 flex-shrink-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-xs text-gray-700 tracking-wider">
+                      <h3 className="font-bold text-xs text-gray-700 tracking-wider uppercase">
                         {activeCol.title}
                       </h3>
                       <span className="bg-[#0B1957] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        {activeCol.issues.length} issues
+                        {activeCol.issues.length} {activeCol.issues.length === 1 ? 'issue' : 'issues'}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex-1 space-y-2.5 overflow-y-auto pr-0.5 pb-8 custom-scrollbar min-h-0">
+                  <div className="flex-1 space-y-2.5 overflow-y-auto pr-0.5 pb-6 custom-scrollbar min-h-0">
                     {activeCol.issues.map((issue) => (
                       <div key={issue.id} className="w-full">
                         <IssueCard
@@ -557,11 +557,11 @@ export const ActiveBoardView: React.FC = () => {
                   key={col.id}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, col.id)}
-                  className="flex flex-col bg-gray-100/70 rounded-lg p-3 border border-gray-200/80 h-[calc(100vh-230px)] max-h-[calc(100vh-230px)]"
+                  className="flex flex-col bg-gray-100/70 rounded-lg p-3 border border-gray-200/80 h-full min-h-0 overflow-hidden"
                 >
                   <div className="flex items-center justify-between pb-3 mb-2 border-b border-gray-200/60 px-1 flex-shrink-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-xs text-gray-700 tracking-wider">
+                      <h3 className="font-bold text-xs text-gray-700 tracking-wider uppercase">
                         {col.title}
                       </h3>
                       <span className="bg-gray-200/90 text-gray-700 text-xs font-semibold px-2 py-0.5 rounded-full">
@@ -570,7 +570,7 @@ export const ActiveBoardView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex-1 space-y-3 overflow-y-auto pr-1.5 pb-8 custom-scrollbar min-h-0">
+                  <div className="flex-1 space-y-3 overflow-y-auto pr-1.5 pb-6 custom-scrollbar min-h-0">
                     {col.issues.map((issue) => (
                       <div
                         key={issue.id}
