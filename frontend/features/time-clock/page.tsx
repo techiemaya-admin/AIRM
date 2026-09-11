@@ -514,12 +514,12 @@ const TimeClock = () => {
                         }}
                       >
                         <SelectTrigger className="w-full text-sm font-medium border-gray-300 focus:border-[#0B1957] focus:ring-[#0B1957]/20 bg-white">
-                          <SelectValue placeholder={storiesList.length === 0 ? "No stories created yet in FJT Board" : "Select a story..."} />
+                          <SelectValue placeholder={storiesList.length === 0 ? "No stories created yet in Task Board" : "Select a story..."} />
                         </SelectTrigger>
                         <SelectContent className="bg-white max-h-60">
                           {storiesList.length === 0 ? (
                             <div className="py-3 px-4 text-xs text-gray-500 text-center">
-                              No stories created yet in FJT Board
+                              No stories created yet in Task Board
                             </div>
                           ) : (
                             storiesList.map((story) => (

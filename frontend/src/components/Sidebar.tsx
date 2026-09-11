@@ -39,7 +39,7 @@ export function Sidebar({
   const menuItems = [
     { icon: Home, label: 'Timesheet', path: '/timesheet', adminOnly: false },
     { icon: FolderKanban, label: 'Project Management', path: '/project-management', adminOnly: false },
-    { icon: Kanban, label: 'FJT Board', path: '/fjt-board', adminOnly: false },
+    { icon: Kanban, label: 'Task Board', path: '/fjt-board', adminOnly: false },
     { icon: Briefcase, label: 'Resource Management', path: '/resource-management', adminOnly: true },
     { icon: Users, label: 'Employees', path: '/users', adminOnly: true },
     { icon: BarChart3, label: 'Monitoring', path: '/monitoring', adminOnly: true },

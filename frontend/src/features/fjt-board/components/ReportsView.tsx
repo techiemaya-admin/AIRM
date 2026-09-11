@@ -227,7 +227,7 @@ export const ReportsView: React.FC = () => {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-gray-900">Team & Employee Workload Analysis</h1>
               <span className="bg-blue-50 text-blue-700 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-blue-200/60 flex items-center gap-1">
-                <Sparkles className="h-3 w-3" /> FJT Board
+                <Sparkles className="h-3 w-3" /> Task Board
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
