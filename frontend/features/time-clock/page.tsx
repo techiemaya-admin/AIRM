@@ -84,11 +84,11 @@ const TimeClock = () => {
 
   const [chartView, setChartView] = useState<'Month' | 'Year'>('Month');
 
-  // Dynamic Stories from PostgreSQL DB (fjt_issues)
+  // Dynamic Stories from PostgreSQL DB (fjt_issues) - exclude completed stories
   const storiesList = useMemo<StoryOption[]>(() => {
     const fjtIssues = fjtBoardData?.issues || [];
     return fjtIssues
-      .filter((i: any) => i.type === 'story')
+      .filter((i: any) => i.type === 'story' && String(i.status || '').toLowerCase() !== 'done')
       .map((i: any) => ({
         id: i.id,
         key: i.key,
@@ -97,7 +97,7 @@ const TimeClock = () => {
       }));
   }, [fjtBoardData]);
 
-  // Dynamic Tasks and Bugs connected to the selected Story from DB
+  // Dynamic Tasks and Bugs connected to the selected Story from DB - exclude completed / done items
   const availableTasksAndBugs = useMemo<TaskBugOption[]>(() => {
     if (!selectedStoryId) return [];
 
@@ -107,7 +107,8 @@ const TimeClock = () => {
     return fjtIssues
       .filter((i: any) => 
         (i.type === 'task' || i.type === 'bug') &&
-        (i.storyId === selectedStoryId || (selectedStory && i.storyKey === selectedStory.key))
+        (i.storyId === selectedStoryId || (selectedStory && i.storyKey === selectedStory.key)) &&
+        String(i.status || '').toLowerCase() !== 'done'
       )
       .map((i: any, index: number) => ({
         id: i.numericId || i.id || (index + 1),
