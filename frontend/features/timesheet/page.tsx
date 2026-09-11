@@ -10,6 +10,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { TimesheetSkeleton } from "@/components/PageSkeletons";
 import { formatTaskBugDisplay } from "@/lib/timeTrackingData";
+import { logger } from "@/lib/logger";
 
 const LiveTimeCell = ({ clockIn, initialHours = 0 }: { clockIn: string; initialHours?: number }) => {
   const [elapsed, setElapsed] = useState(0);
@@ -67,8 +68,6 @@ const HOLIDAYS_LIST = [
 ];
 
 const Timesheet = () => {
-  console.log('🎬 Timesheet component rendered');
-
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -82,12 +81,6 @@ const Timesheet = () => {
     endOfWeek(new Date(), { weekStartsOn: 1 })
   );
 
-  console.log('🎬 Timesheet state:', {
-    user: user?.id,
-    selectedUserId,
-    weekStart: format(weekStart, "yyyy-MM-dd"),
-    weekEnd: format(weekEnd, "yyyy-MM-dd")
-  });
   const [entries, setEntries] = useState<TimesheetEntry[]>([
     {
       project: "",
@@ -107,10 +100,7 @@ const Timesheet = () => {
   useEffect(() => {
     const initUser = async () => {
       try {
-        console.log('🔵 useEffect triggered - initializing user');
-        console.log('🔵 weekStart dependency:', format(weekStart, "yyyy-MM-dd"));
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        console.log('🔵 User data from localStorage:', userData);
         if (userData.id) {
           setUser(userData);
           setSelectedUserId(userData.id);
@@ -121,17 +111,10 @@ const Timesheet = () => {
           if (adminStatus) {
             await loadUsers();
           }
-          console.log('🔵 About to call loadTimesheet with userId:', userData.id);
-          console.log('🔵 loadTimesheet function exists:', typeof loadTimesheet);
           await loadTimesheet(userData.id);
-          console.log('🔵 loadTimesheet call completed');
-        } else {
-          console.warn('⚠️ No user ID found in localStorage');
         }
       } catch (error) {
-        console.error('❌ Error initializing user:', error);
-        console.error('❌ Error stack:', (error as any)?.stack);
-        console.error('❌ Error message:', (error as any)?.message);
+        logger.error('Error initializing user:', error);
       }
     };
     initUser();
@@ -207,7 +190,7 @@ const Timesheet = () => {
 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'timesheetRefreshTrigger' && user && selectedUserId) {
-        console.log('💾 Storage change detected, refreshing timesheet...');
+        logger.debug('Storage change detected, refreshing timesheet...');
         setTimeout(() => {
           loadTimesheet(selectedUserId || user.id);
         }, 500);
@@ -227,7 +210,7 @@ const Timesheet = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && user && selectedUserId) {
-        console.log('📄 Page became visible, reloading timesheet...');
+        logger.debug('Page became visible, reloading timesheet...');
         loadTimesheet(selectedUserId || user.id);
       }
     };
@@ -376,72 +359,27 @@ const Timesheet = () => {
         firstTimesheetId = matchedTimesheets[0].id;
         setTimesheetId(firstTimesheetId);
 
-        console.log(`📋 Processing ${matchedTimesheets.length} matched timesheet(s)`);
-
         // Collect entries from ALL matched timesheets
         for (const ts of matchedTimesheets) {
-          console.log(`  Checking timesheet ${ts.id}:`, {
-            entries_type: typeof ts.entries,
-            entries_is_array: Array.isArray(ts.entries),
-            entries_length: Array.isArray(ts.entries) ? ts.entries.length : 'N/A'
-          });
-
           let entries = ts.entries || [];
 
           // Handle string entries
           if (typeof entries === 'string') {
             try {
               entries = JSON.parse(entries);
-              console.log(`  ✅ Parsed entries from JSON string`);
             } catch (e) {
-              console.error(`  ❌ Failed to parse entries:`, e);
+              logger.error('Failed to parse entries:', e);
               entries = [];
             }
           }
 
           // Ensure it's an array
-          if (!Array.isArray(entries)) {
-            console.warn(`  ⚠️ Entries is not an array:`, typeof entries);
-            entries = [];
-          }
-
-          if (entries.length > 0) {
-            console.log(`  📋 Collecting ${entries.length} entries from timesheet ${ts.id}`);
-            entries.forEach((e: any, idx: number) => {
-              const total = (parseFloat(e.mon_hours) || 0) + (parseFloat(e.tue_hours) || 0) +
-                (parseFloat(e.wed_hours) || 0) + (parseFloat(e.thu_hours) || 0) +
-                (parseFloat(e.fri_hours) || 0) + (parseFloat(e.sat_hours) || 0) +
-                (parseFloat(e.sun_hours) || 0);
-              console.log(`    Entry ${idx + 1}: ${e.project || 'N/A'}/${e.task || 'N/A'}`, {
-                source: e.source,
-                total: total,
-                hours: {
-                  mon: e.mon_hours,
-                  tue: e.tue_hours,
-                  wed: e.wed_hours,
-                  thu: e.thu_hours,
-                  fri: e.fri_hours,
-                  sat: e.sat_hours,
-                  sun: e.sun_hours
-                }
-              });
-            });
+          if (Array.isArray(entries) && entries.length > 0) {
             allEntries = [...allEntries, ...entries];
-          } else {
-            console.log(`  ⚠️ Timesheet ${ts.id} has no entries`);
           }
         }
-
-        console.log(`📊 Total entries collected from all timesheets: ${allEntries.length}`);
       } else {
         setTimesheetId(null);
-        console.log('⚠️ No timesheet found for week:', weekStartStr);
-        console.log('Available timesheets:', timesheets.map((t: any) => ({
-          id: t.id,
-          week_start: typeof t.week_start === 'string' ? t.week_start.split('T')[0] : new Date(t.week_start).toISOString().split('T')[0],
-          week_end: typeof t.week_end === 'string' ? t.week_end.split('T')[0] : (t.week_end ? new Date(t.week_end).toISOString().split('T')[0] : 'N/A'),
-          entries_count: Array.isArray(t.entries) ? t.entries.length : 0
-        })));
       }
 
       // Determine which user ID to use for filtering leave requests and issues
@@ -582,18 +520,40 @@ const Timesheet = () => {
         let cleanProject = (entry.project || '').trim();
         let cleanTask = (entry.task || '').trim();
 
-        // Clean combined project/task names
-        if (cleanProject.includes(' - [Task') || cleanProject.includes(' - [Bug') || cleanProject.includes(' - Task') || cleanProject.includes(' - Bug')) {
-          const splitIndex = cleanProject.search(/\s*-\s*\[?(?:Task|Bug)\]?/i);
+        // 1. Clean combined project/task names: "Project - [Story/Task/Bug] ..."
+        if (cleanProject.includes(' - [Story') || cleanProject.includes(' - [Task') || cleanProject.includes(' - [Bug') || cleanProject.includes(' - Story') || cleanProject.includes(' - Task') || cleanProject.includes(' - Bug')) {
+          const splitIndex = cleanProject.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
           if (splitIndex !== -1) {
-            const storyPart = cleanProject.substring(0, splitIndex).trim();
-            const taskPart = cleanProject.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
-            cleanProject = storyPart;
+            const projectPart = cleanProject.substring(0, splitIndex).trim();
+            const topicPart = cleanProject.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+            cleanProject = projectPart;
             if (cleanTask === 'General Work' || cleanTask === 'Task' || !cleanTask) {
-              cleanTask = taskPart;
+              cleanTask = topicPart;
             }
           }
+        } else if (cleanProject.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
+          const match = cleanProject.match(/^\[([A-Za-z0-9_-]+)-Story/i);
+          const prefix = match ? match[1].toUpperCase() : '';
+          if (cleanTask === 'General Work' || cleanTask === 'Task' || !cleanTask) {
+            cleanTask = cleanProject;
+            cleanProject = prefix ? `${prefix} Project` : 'Project';
+          } else {
+            cleanProject = prefix ? `${prefix} Project` : 'Project';
+          }
         }
+
+        // 2. If cleanTask is still 'General Work' or 'Task', resolve from matching clock entry notes if available
+        if (cleanTask === 'General Work' || cleanTask === 'Task' || !cleanTask) {
+          const matchingClock = clockEntries.find((ce: any) => {
+            const ceProject = (ce.project_name || '').toLowerCase();
+            const cp = cleanProject.toLowerCase();
+            return (ceProject.includes(cp) || cp.includes(ceProject)) && ce.notes && ce.notes !== 'General Work' && ce.notes !== 'Active Session';
+          });
+          if (matchingClock && matchingClock.notes) {
+            cleanTask = matchingClock.notes;
+          }
+        }
+
         cleanProject = cleanProject.replace(/:\s*undefined/g, '').trim();
         cleanTask = cleanTask.replace(/:\s*undefined/g, '').trim();
 
@@ -654,36 +614,73 @@ const Timesheet = () => {
           if (format(addDays(weekStart, i), 'yyyy-MM-dd') === activeDayStr) dayIdx = i;
         }
         if (dayIdx !== -1) {
-          let activeProject = activeEntry.project_name || (activeEntry.issue?.project_name) || 'Story';
+          let activeProject = activeEntry.project_name || (activeEntry.issue?.project_name) || 'Project';
           let activeTask = activeEntry.notes || (activeEntry.issue?.title) || 'Task';
-          if (activeProject.includes(' - [Task') || activeProject.includes(' - [Bug')) {
-            const splitIndex = activeProject.search(/\s*-\s*\[?(?:Task|Bug)\]?/i);
+          if (activeProject.includes(' - [Story') || activeProject.includes(' - [Task') || activeProject.includes(' - [Bug') || activeProject.includes(' - Story') || activeProject.includes(' - Task') || activeProject.includes(' - Bug')) {
+            const splitIndex = activeProject.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
             if (splitIndex !== -1) {
-              const storyPart = activeProject.substring(0, splitIndex).trim();
-              const taskPart = activeProject.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
-              activeProject = storyPart;
-              activeTask = taskPart;
+              const projectPart = activeProject.substring(0, splitIndex).trim();
+              const topicPart = activeProject.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+              activeProject = projectPart;
+              if (activeTask === 'General Work' || activeTask === 'Task' || !activeTask) {
+                activeTask = topicPart;
+              }
+            }
+          } else if (activeProject.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
+            const match = activeProject.match(/^\[([A-Za-z0-9_-]+)-Story/i);
+            const prefix = match ? match[1].toUpperCase() : '';
+            if (activeTask === 'General Work' || activeTask === 'Task' || !activeTask) {
+              activeTask = activeProject;
+              activeProject = prefix ? `${prefix} Project` : 'Project';
+            } else {
+              activeProject = prefix ? `${prefix} Project` : 'Project';
             }
           }
           activeProject = activeProject.replace(/:\s*undefined/g, '').trim();
           activeTask = activeTask.replace(/:\s*undefined/g, '').trim();
 
-          let existingRow = finalEntries.find(r => r.project.toLowerCase() === activeProject.toLowerCase() && (r.task.toLowerCase() === activeTask.toLowerCase() || (activeEntry.issue_id && r.task?.includes(`#${activeEntry.issue_id}`))));
+          if (activeTask.includes(' - [Story') || activeTask.includes(' - [Task') || activeTask.includes(' - [Bug') || activeTask.includes(' - Story') || activeTask.includes(' - Task') || activeTask.includes(' - Bug')) {
+            const splitIndex = activeTask.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+            if (splitIndex !== -1) {
+              const projectPart = activeTask.substring(0, splitIndex).trim();
+              const topicPart = activeTask.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+              if (!activeProject || activeProject === 'Project' || activeProject === 'General') {
+                activeProject = projectPart;
+              }
+              activeTask = topicPart;
+            }
+          }
 
-          if (existingRow) {
+          // Check if this project & task already exists in finalEntries
+          const existingIndex = finalEntries.findIndex(r =>
+            r.project.toLowerCase() === activeProject.toLowerCase() &&
+            (r.task.toLowerCase() === activeTask.toLowerCase() || (activeEntry.issue_id && r.task?.includes(`#${activeEntry.issue_id}`)))
+          );
+
+          if (existingIndex !== -1) {
+            // Remove from current position and move to the LAST position of the table!
+            const [existingRow] = finalEntries.splice(existingIndex, 1);
             existingRow.activeClockIn = activeEntry.clock_in;
             existingRow.activeDayIndex = dayIdx;
+            finalEntries.push(existingRow); // Always in the last row!
           } else {
+            // Append as new active row to the LAST position of the table!
             const newActiveRow: any = {
               id: `active-${activeEntry.id || Date.now()}`,
               project: activeProject,
               task: activeTask,
-              mon_hours: 0, tue_hours: 0, wed_hours: 0, thu_hours: 0, fri_hours: 0, sat_hours: 0, sun_hours: 0,
+              mon_hours: 0,
+              tue_hours: 0,
+              wed_hours: 0,
+              thu_hours: 0,
+              fri_hours: 0,
+              sat_hours: 0,
+              sun_hours: 0,
               source: 'time_clock',
               activeClockIn: activeEntry.clock_in,
               activeDayIndex: dayIdx,
             };
-            finalEntries.unshift(newActiveRow);
+            finalEntries.push(newActiveRow); // Always in the last row!
           }
         }
       }
@@ -706,44 +703,54 @@ const Timesheet = () => {
         });
       }
 
-      console.log('📊 Final entries summary:', {
-        regular: regularEntries.length,
-        leave: leaveEntries.length,
-        assigned: newAssignedEntries.length,
-        total: finalEntries.length,
-        withHours: finalEntries.filter(e =>
-          e.mon_hours > 0 || e.tue_hours > 0 || e.wed_hours > 0 ||
-          e.thu_hours > 0 || e.fri_hours > 0 || e.sat_hours > 0 || e.sun_hours > 0
-        ).length
-      });
+      // Sort entries chronologically by latest activity so the most recent / last clocked task is ALWAYS at the bottom/last row
+      const getLatestActivityTimestamp = (row: any): number => {
+        if (row.activeClockIn) {
+          return Date.now() + 100000000; // Live in-progress task is ALWAYS the absolute last row!
+        }
+        if (row.source === 'leave') {
+          return 0; // Leave rows stay at top
+        }
 
-      // Log all final entries with details
-      console.log('📋 All final entries being set:');
-      finalEntries.forEach((e, idx) => {
-        const total = e.mon_hours + e.tue_hours + e.wed_hours + e.thu_hours +
-          e.fri_hours + e.sat_hours + e.sun_hours;
-        console.log(`  Entry ${idx + 1}:`, {
-          id: e.id,
-          project: e.project,
-          task: e.task,
-          source: e.source,
-          total: total,
-          hours: {
-            mon: e.mon_hours,
-            tue: e.tue_hours,
-            wed: e.wed_hours,
-            thu: e.thu_hours,
-            fri: e.fri_hours,
-            sat: e.sat_hours,
-            sun: e.sun_hours
-          }
+        const pLower = (row.project || '').toLowerCase().trim();
+        const tLower = (row.task || '').toLowerCase().trim();
+
+        // Match against clockEntries to find the most recent clock_in / clock_out / updated_at
+        const matchingClocks = clockEntries.filter((ce: any) => {
+          const ceProject = (ce.project_name || '').toLowerCase().trim();
+          const ceNotes = (ce.notes || '').toLowerCase().trim();
+          const ceIssue = (ce.issue?.title || '').toLowerCase().trim();
+
+          const pMatch = !pLower || ceProject.includes(pLower) || pLower.includes(ceProject);
+          const tMatch = !tLower || ceNotes.includes(tLower) || tLower.includes(ceNotes) || (ceIssue && (tLower.includes(ceIssue) || ceIssue.includes(tLower)));
+
+          return pMatch && tMatch;
         });
+
+        if (matchingClocks.length > 0) {
+          const timestamps = matchingClocks.map((ce: any) => {
+            const dt = ce.clock_out || ce.clock_in || ce.updated_at || ce.created_at;
+            return dt ? new Date(dt).getTime() : 0;
+          });
+          return Math.max(...timestamps, 0);
+        }
+
+        if (row.updated_at || row.created_at) {
+          return new Date(row.updated_at || row.created_at).getTime();
+        }
+
+        return 1;
+      };
+
+      finalEntries.sort((a, b) => {
+        const timeA = getLatestActivityTimestamp(a);
+        const timeB = getLatestActivityTimestamp(b);
+        return timeA - timeB; // Ascending: earliest at top, most recent at bottom
       });
 
-      console.log('✅ Setting entries state with', finalEntries.length, 'entries');
       setEntries(finalEntries);
     } catch (error: any) {
-      console.error("Error loading timesheet:", error);
+      logger.error("Error loading timesheet:", error);
       const errorMessage = error?.message || "Failed to load timesheet";
       toast({
         title: "Error",
@@ -951,7 +958,7 @@ const Timesheet = () => {
       return;
     }
 
-    const shareUrl = `${window.location.origin}/timesheet/${currentTimesheetId}`;
+    const shareUrl = `${window.location.origin}/time-sheet/${currentTimesheetId}`;
 
     if (navigator.share) {
       try {
@@ -1197,14 +1204,10 @@ const Timesheet = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Timesheet</h1>
-        </div>
-
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle>Weekly Timesheet</CardTitle>
+              <CardTitle>Weekly Time Sheet</CardTitle>
               <div className="flex flex-wrap gap-2 sm:gap-4">
                 <Button variant="outline" size="sm" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />
@@ -1271,23 +1274,28 @@ const Timesheet = () => {
               <TimesheetSkeleton />
             ) : (
               <>
-                {/* Compact Late Clock-in Warning */}
-                {Object.entries(clockInTimings).some(([_, entry]: [any, any]) => new Date(entry.clock_in).getHours() >= 11) && (
-                  <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 rounded-r-md flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                    <div className="text-sm font-medium text-red-900">
-                      <span className="font-bold">Late Attendance Warning:</span> First-shift absence recorded for{' '}
-                      {Object.entries(clockInTimings)
-                        .filter(([_, entry]: [any, any]) => new Date(entry.clock_in).getHours() >= 11)
-                        .map(([date, entry]: [any, any]) => (
-                          <span key={date} className="inline-flex items-center bg-red-100 px-2 py-0.5 rounded text-[11px] font-bold mx-0.5">
-                            {format(new Date(date + 'T12:00:00'), "EEE, MMM dd")} ({format(new Date(entry.clock_in), "hh:mm a")})
+                {/* Compact Late Clock-in Warning (Evaluated for Today) */}
+                {(() => {
+                  const todayStr = format(new Date(), "yyyy-MM-dd");
+                  const todayEntry = clockInTimings[todayStr];
+                  const isLateToday = todayEntry && new Date(todayEntry.clock_in).getHours() >= 11;
+
+                  if (isLateToday) {
+                    return (
+                      <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 rounded-r-md flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                        <div className="text-sm font-medium text-red-900">
+                          <span className="font-bold">Late Attendance Warning:</span> First-shift absence recorded for Today,{' '}
+                          <span className="inline-flex items-center bg-red-100 px-2 py-0.5 rounded text-[11px] font-bold mx-0.5">
+                            {format(new Date(todayStr + 'T12:00:00'), "EEE, MMM dd")} ({format(new Date(todayEntry.clock_in), "hh:mm a")})
                           </span>
-                        ))}
-                      . (Clock-in required before 11:00 AM)
-                    </div>
-                  </div>
-                )}
+                          . (Clock-in required before 11:00 AM)
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">

@@ -29,7 +29,7 @@ router.post('/clock-in', [
     }
 
     const userId = req.userId;
-    const { issue_id, project_name, latitude, longitude, location_address } = req.body;
+    const { issue_id, project_name, notes, latitude, longitude, location_address } = req.body;
 
     // Check if user already has an active clock-in
     const activeEntry = await pool.query(
@@ -61,15 +61,16 @@ router.post('/clock-in', [
     // Create new clock-in entry
     const result = await pool.query(
       `INSERT INTO time_clock (
-        user_id, issue_id, project_name, status,
+        user_id, issue_id, project_name, notes, status,
         latitude, longitude, location_address, location_timestamp
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
       RETURNING *`,
       [
         userId,
         validIssueId,
         project_name || null,
+        notes || null,
         'clocked_in',
         latitude || null,
         longitude || null,
@@ -328,13 +329,36 @@ router.post('/clock-out', [
           project = entry.project_name || 'General';
           task = entry.notes || 'General Work';
 
-          if (project && (project.includes(' - [Task') || project.includes(' - [Bug') || project.includes(' - Task') || project.includes(' - Bug'))) {
-            const splitIndex = project.search(/\s*-\s*\[?(?:Task|Bug)\]?/i);
+          if (project && (project.includes(' - [Story') || project.includes(' - [Task') || project.includes(' - [Bug') || project.includes(' - Story') || project.includes(' - Task') || project.includes(' - Bug'))) {
+            const splitIndex = project.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
             if (splitIndex !== -1) {
-              const storyPart = project.substring(0, splitIndex).trim();
-              const taskPart = project.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
-              project = storyPart || project;
-              task = taskPart || task;
+              const projectPart = project.substring(0, splitIndex).trim();
+              const topicPart = project.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+              project = projectPart || project;
+              if (task === 'General Work' || task === 'Task' || !task) {
+                task = topicPart || task;
+              }
+            }
+          } else if (project && project.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
+            const match = project.match(/^\[([A-Za-z0-9_-]+)-Story/i);
+            const prefix = match ? match[1].toUpperCase() : '';
+            if (task === 'General Work' || task === 'Task' || !task) {
+              task = project;
+              project = prefix ? `${prefix} Project` : 'Project';
+            } else {
+              project = prefix ? `${prefix} Project` : 'Project';
+            }
+          }
+
+          if (task && (task.includes(' - [Story') || task.includes(' - [Task') || task.includes(' - [Bug') || task.includes(' - Story') || task.includes(' - Task') || task.includes(' - Bug'))) {
+            const splitIndex = task.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+            if (splitIndex !== -1) {
+              const projectPart = task.substring(0, splitIndex).trim();
+              const topicPart = task.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+              if (!project || project === 'General' || project === 'Project') {
+                project = projectPart;
+              }
+              task = topicPart;
             }
           }
         }

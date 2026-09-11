@@ -21,7 +21,7 @@ export async function getActiveEntry(userId) {
 /**
  * Create clock-in entry
  */
-export async function createClockIn(userId, issueId, projectName, latitude, longitude, locationAddress) {
+export async function createClockIn(userId, issueId, projectName, latitude, longitude, locationAddress, notes) {
   let validIssueId = null;
   if (issueId) {
     try {
@@ -36,15 +36,16 @@ export async function createClockIn(userId, issueId, projectName, latitude, long
 
   const result = await pool.query(
     `INSERT INTO time_clock (
-      id, user_id, issue_id, project_name, status,
+      id, user_id, issue_id, project_name, notes, status,
       latitude, longitude, location_address, location_timestamp
     )
-    VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, NOW())
+    VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW())
     RETURNING *`,
     [
       userId,
       validIssueId,
       projectName || null,
+      notes || null,
       'clocked_in',
       latitude || null,
       longitude || null,

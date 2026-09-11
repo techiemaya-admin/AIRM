@@ -74,12 +74,20 @@ const App = () => (
             />
 
             <Route
-              path="/timesheet"
+              path="/time-sheet"
               element={
                 <AuthGuard>
                   <Layout>
                     <Timesheet />
                   </Layout>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="/timesheet"
+              element={
+                <AuthGuard>
+                  <Navigate to="/time-sheet" replace />
                 </AuthGuard>
               }
             />
@@ -341,6 +349,7 @@ const App = () => (
                 </AuthGuard>
               }
             />
+            <Route path="/time-sheet/:id" element={<SharedTimesheet />} />
             <Route path="/timesheet/:id" element={<SharedTimesheet />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

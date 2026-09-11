@@ -49,13 +49,13 @@ export const ReportsView: React.FC = () => {
     return [];
   }, [dbUsers]);
 
-  // Overall Board Metrics (Only Tasks and Bugs)
+  // Overall Board Metrics (Stories, Tasks, and Bugs)
   const metrics = useMemo(() => {
     if (!boardData) {
       return { totalIssues: 0, doneIssues: 0, inProgressIssues: 0, todoIssues: 0, completionRate: 0 };
     }
 
-    const workIssues = boardData.issues.filter((i) => i.type === 'task' || i.type === 'bug');
+    const workIssues = boardData.issues.filter((i) => i.type === 'story' || i.type === 'task' || i.type === 'bug');
     const totalIssues = workIssues.length;
     const doneIssues = workIssues.filter((i) => i.status === 'done').length;
     const inProgressIssues = workIssues.filter((i) => i.status === 'in_progress').length;
@@ -65,11 +65,11 @@ export const ReportsView: React.FC = () => {
     return { totalIssues, doneIssues, inProgressIssues, todoIssues, completionRate };
   }, [boardData]);
 
-  // Employee Workload Analysis mapping (Tasks & Bugs only)
+  // Employee Workload Analysis mapping (Stories, Tasks & Bugs)
   const employeeAnalysis = useMemo(() => {
     if (!boardData) return [];
 
-    const issues = boardData.issues.filter((i) => i.type === 'task' || i.type === 'bug');
+    const issues = boardData.issues.filter((i) => i.type === 'story' || i.type === 'task' || i.type === 'bug');
 
     // Build analysis for each known member
     const memberStats = availableMembers.map((member) => {
@@ -95,6 +95,7 @@ export const ReportsView: React.FC = () => {
       const totalPoints = assigned.reduce((sum, i) => sum + (i.storyPoints || 0), 0);
       const donePoints = doneList.reduce((sum, i) => sum + (i.storyPoints || 0), 0);
 
+      const storiesCount = assigned.filter((i) => i.type === 'story').length;
       const tasksCount = assigned.filter((i) => i.type === 'task').length;
       const bugsCount = assigned.filter((i) => i.type === 'bug').length;
 
@@ -138,6 +139,7 @@ export const ReportsView: React.FC = () => {
         completionPct,
         totalPoints,
         donePoints,
+        storiesCount,
         tasksCount,
         bugsCount,
         loadStatus,
@@ -165,6 +167,7 @@ export const ReportsView: React.FC = () => {
         completionPct: Math.round((doneList.length / unassignedIssues.length) * 100),
         totalPoints: unassignedIssues.reduce((sum, i) => sum + (i.storyPoints || 0), 0),
         donePoints: doneList.reduce((sum, i) => sum + (i.storyPoints || 0), 0),
+        storiesCount: unassignedIssues.filter((i) => i.type === 'story').length,
         tasksCount: unassignedIssues.filter((i) => i.type === 'task').length,
         bugsCount: unassignedIssues.filter((i) => i.type === 'bug').length,
         loadStatus: {
@@ -193,16 +196,17 @@ export const ReportsView: React.FC = () => {
     );
   }, [employeeAnalysis, searchMember]);
 
-  // Issue Type distribution (Tasks and Bugs only)
+  // Issue Type distribution (Stories, Tasks and Bugs)
   const typeDistribution = useMemo(() => {
     if (!boardData) return [];
-    const counts: Record<string, number> = { task: 0, bug: 0 };
+    const counts: Record<string, number> = { story: 0, task: 0, bug: 0 };
     boardData.issues.forEach((i) => {
-      if (i.type === 'task' || i.type === 'bug') {
+      if (i.type === 'story' || i.type === 'task' || i.type === 'bug') {
         counts[i.type] = (counts[i.type] || 0) + 1;
       }
     });
     return [
+      { type: 'story', label: 'Stories', count: counts.story || 0, color: 'bg-emerald-500' },
       { type: 'task', label: 'Tasks', count: counts.task || 0, color: 'bg-blue-500' },
       { type: 'bug', label: 'Bugs', count: counts.bug || 0, color: 'bg-red-500' },
     ];
@@ -404,8 +408,13 @@ export const ReportsView: React.FC = () => {
 
                       {/* Issue Types Counter */}
                       <div className="flex items-center gap-3 text-[11px] text-gray-500 pt-0.5">
+                        {item.storiesCount > 0 && (
+                          <span className="flex items-center gap-1 font-medium text-emerald-700">
+                            <IssueTypeIcon type="story" className="h-3 w-3" /> {item.storiesCount} stories
+                          </span>
+                        )}
                         {item.tasksCount > 0 && (
-                          <span className="flex items-center gap-1 font-medium">
+                          <span className="flex items-center gap-1 font-medium text-blue-700">
                             <IssueTypeIcon type="task" className="h-3 w-3" /> {item.tasksCount} tasks
                           </span>
                         )}

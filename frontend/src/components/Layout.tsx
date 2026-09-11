@@ -38,7 +38,7 @@ export function Layout({ children }: LayoutProps) {
   };
 
   const getHeaderTitle = (pathname: string) => {
-    if (pathname === '/') return 'Timesheet';
+    if (pathname === '/' || pathname.startsWith('/time-sheet') || pathname.startsWith('/timesheet')) return 'Time Sheet';
     if (pathname.startsWith('/project-management') || pathname.startsWith('/projects')) return 'Project Dashboard';
     if (pathname.startsWith('/task-board') || pathname.startsWith('/fjt-board')) return 'Task Board';
     if (pathname.startsWith('/resource-management')) return 'Resource Management';

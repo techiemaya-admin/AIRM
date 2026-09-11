@@ -37,7 +37,7 @@ export function Sidebar({
   const isAdmin = user?.role === 'admin';
 
   const menuItems = [
-    { icon: Home, label: 'Timesheet', path: '/timesheet', adminOnly: false },
+    { icon: Home, label: 'Time sheet', path: '/time-sheet', adminOnly: false },
     { icon: FolderKanban, label: 'Project Management', path: '/project-management', adminOnly: false },
     { icon: Kanban, label: 'Task Board', path: '/task-board', adminOnly: false },
     { icon: Briefcase, label: 'Resource Management', path: '/resource-management', adminOnly: true },
@@ -60,7 +60,7 @@ export function Sidebar({
   };
 
   const isItemActive = (path: string) => {
-    if (path === '/timesheet') return location.pathname === '/timesheet';
+    if (path === '/time-sheet' || path === '/timesheet') return location.pathname === '/time-sheet' || location.pathname === '/timesheet';
     if (path === '/task-board' || path === '/fjt-board') return location.pathname.startsWith('/task-board') || location.pathname.startsWith('/fjt-board');
     if (path === '/resource-management') {
       return (

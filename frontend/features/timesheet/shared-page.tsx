@@ -253,7 +253,7 @@ const SharedTimesheet = () => {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Weekly Timesheet</CardTitle>
+              <CardTitle>Weekly Time Sheet</CardTitle>
               <Button variant="outline" onClick={handleDownload}>
                 <Download className="mr-2 h-4 w-4" />
                 Download

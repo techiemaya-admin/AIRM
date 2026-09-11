@@ -830,7 +830,7 @@ const Timesheet = () => {
       return;
     }
 
-    const shareUrl = `${window.location.origin}/timesheet/${currentTimesheetId}`;
+    const shareUrl = `${window.location.origin}/time-sheet/${currentTimesheetId}`;
 
     if (navigator.share) {
       try {
@@ -1083,7 +1083,7 @@ const Timesheet = () => {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Weekly Timesheet</CardTitle>
+              <CardTitle>Weekly Time Sheet</CardTitle>
               <div className="flex gap-4">
                 <Button variant="outline" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />

@@ -21,6 +21,7 @@ export const useTimesheetMutation = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['timesheets'] });
             queryClient.invalidateQueries({ queryKey: ['active-timesheet'] });
+            queryClient.invalidateQueries({ queryKey: ['timesheet-entries'] });
         },
     });
 
@@ -29,6 +30,7 @@ export const useTimesheetMutation = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['timesheets'] });
             queryClient.invalidateQueries({ queryKey: ['active-timesheet'] });
+            queryClient.invalidateQueries({ queryKey: ['timesheet-entries'] });
         },
     });
 
@@ -36,6 +38,7 @@ export const useTimesheetMutation = () => {
         mutationFn: (data?: { reason?: string }) => api.timesheets.pause(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['active-timesheet'] });
+            queryClient.invalidateQueries({ queryKey: ['timesheet-entries'] });
         },
     });
 
@@ -43,6 +46,7 @@ export const useTimesheetMutation = () => {
         mutationFn: () => api.timesheets.resume(),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['active-timesheet'] });
+            queryClient.invalidateQueries({ queryKey: ['timesheet-entries'] });
         },
     });
 
@@ -50,6 +54,7 @@ export const useTimesheetMutation = () => {
         mutationFn: (data: { week_start: string; entries: any[] }) => api.timesheets.save(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['timesheets'] });
+            queryClient.invalidateQueries({ queryKey: ['timesheet-entries'] });
         },
     });
 
