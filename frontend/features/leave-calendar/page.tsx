@@ -512,7 +512,7 @@ const LeaveCalendar = () => {
                           setBalanceAmount('0');
                           setBalanceLapse('0');
                           setShowEditBalanceDialog(true); 
-                        }} className="bg-[#0B1957] hover:bg-[#0B1957]/90 text-white text-sm font-semibold rounded-lg px-4 py-2 h-10">
+                        }} className="bg-[#0B1957] hover:bg-[#0B1957]/90 text-white text-sm font-semibold rounded-lg px-4 py-2 h-10 self-end sm:self-auto shrink-0">
                           <Plus className="h-4 w-4 mr-1" /> Set Balance
                         </Button>
                       )}
