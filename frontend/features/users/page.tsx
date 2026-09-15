@@ -287,7 +287,7 @@ const Users = () => {
                         Joined: {new Date(user.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
+                    <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
                       <Button
                         variant={user.role === "admin" ? "destructive" : "default"}
                         size="sm"
