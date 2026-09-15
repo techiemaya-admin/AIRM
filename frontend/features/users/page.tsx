@@ -176,7 +176,7 @@ const Users = () => {
 
         <Card>
           <CardHeader className="p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col items-start sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-base sm:text-xl font-bold text-gray-900">
                 <UsersIcon className="h-5 w-5" />
                 All Employees
@@ -259,16 +259,16 @@ const Users = () => {
                 {users.map((user) => (
                   <div
                     key={user.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 border rounded-lg gap-3 bg-white hover:bg-gray-50/50 transition-colors"
+                    className="flex min-w-0 flex-col items-start sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 border rounded-lg gap-3 bg-white hover:bg-gray-50/50 transition-colors"
                   >
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 w-full sm:flex-1">
                       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         {user.role === "admin" ? (
                           <Shield className="h-4 w-4 text-purple-500 flex-shrink-0" />
                         ) : (
                           <UserIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
                         )}
-                        <h3 className="font-semibold text-xs sm:text-sm text-gray-900 break-all sm:break-normal" title={user.email}>
+                        <h3 className="min-w-0 font-semibold text-xs sm:text-sm text-gray-900 [overflow-wrap:anywhere]" title={user.email}>
                           {user.email}
                         </h3>
                         <span

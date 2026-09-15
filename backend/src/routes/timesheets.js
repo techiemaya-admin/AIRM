@@ -33,7 +33,7 @@ router.post('/clock-in', [
 
     // Check if user already has an active clock-in
     const activeEntry = await pool.query(
-      `SELECT id FROM time_clock 
+      `SELECT id FROM time_clock
        WHERE user_id = $1 AND status IN ('clocked_in', 'paused')
        ORDER BY clock_in DESC LIMIT 1`,
       [userId]
@@ -145,7 +145,7 @@ router.post('/clock-out', [
 
     // Get active entry
     const activeEntry = await pool.query(
-      `SELECT * FROM time_clock 
+      `SELECT * FROM time_clock
        WHERE user_id = $1 AND status IN ('clocked_in', 'paused')
        ORDER BY clock_in DESC LIMIT 1`,
       [userId]
@@ -177,7 +177,7 @@ router.post('/clock-out', [
 
     // Update entry
     const result = await pool.query(
-      `UPDATE time_clock 
+      `UPDATE time_clock
        SET clock_out = $1,
            total_hours = $2,
            status = 'clocked_out',
@@ -373,7 +373,7 @@ router.post('/clock-out', [
         // Get or create timesheet FIRST (before logging)
         let timesheetId;
         const timesheetResult = await pool.query(
-          `SELECT id FROM timesheets 
+          `SELECT id FROM timesheets
            WHERE user_id = $1 AND CAST(week_start AS DATE) = CAST($2 AS DATE)
            LIMIT 1`,
           [userId, weekStartStr]
@@ -437,7 +437,7 @@ router.post('/clock-out', [
         });
 
         const insertResult = await pool.query(
-          `INSERT INTO timesheet_entries 
+          `INSERT INTO timesheet_entries
            (timesheet_id, project, task, mon_hours, tue_hours, wed_hours, thu_hours, fri_hours, sat_hours, sun_hours, source, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'time_clock', NOW(), NOW())
            RETURNING id, ${dayColumn}`,
@@ -494,7 +494,7 @@ router.post('/pause', [
     const { reason } = req.body;
 
     const activeEntry = await pool.query(
-      `SELECT * FROM time_clock 
+      `SELECT * FROM time_clock
        WHERE user_id = $1 AND status = 'clocked_in'
        ORDER BY clock_in DESC LIMIT 1`,
       [userId]
@@ -508,7 +508,7 @@ router.post('/pause', [
     }
 
     const result = await pool.query(
-      `UPDATE time_clock 
+      `UPDATE time_clock
        SET status = 'paused',
            pause_start = NOW(),
            pause_reason = $1,
@@ -540,7 +540,7 @@ router.post('/resume', async (req, res) => {
     const userId = req.userId;
 
     const pausedEntry = await pool.query(
-      `SELECT * FROM time_clock 
+      `SELECT * FROM time_clock
        WHERE user_id = $1 AND status = 'paused'
        ORDER BY pause_start DESC LIMIT 1`,
       [userId]
@@ -561,7 +561,7 @@ router.post('/resume', async (req, res) => {
     const totalPausedHours = (entry.paused_duration || 0) + pauseDurationHours;
 
     const result = await pool.query(
-      `UPDATE time_clock 
+      `UPDATE time_clock
        SET status = 'clocked_in',
            paused_duration = $1,
            pause_start = NULL,
@@ -594,7 +594,7 @@ router.get('/current', async (req, res) => {
     const userId = req.userId;
 
     const result = await pool.query(
-      `SELECT 
+      `SELECT
         tc.*,
         i.title as issue_title,
         i.project_name as issue_project
@@ -644,7 +644,7 @@ router.get('/entries', async (req, res) => {
     const isAdmin = roleResult.rows[0]?.role === 'admin';
 
     let query = `
-      SELECT 
+      SELECT
         tc.*,
         i.title as issue_title,
         i.project_name as issue_project,
@@ -715,7 +715,7 @@ router.get('/entries', async (req, res) => {
 router.get('/active', requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT 
+      `SELECT
         tc.*,
         i.title as issue_title,
         i.project_name as issue_project,
@@ -794,7 +794,7 @@ router.get('/', async (req, res) => {
 
     // Build the base query to find all matching timesheets
     let query = `
-      SELECT 
+      SELECT
         t.id,
         t.user_id,
         t.week_start,
@@ -843,7 +843,7 @@ router.get('/', async (req, res) => {
     for (const t of timesheetResult.rows) {
       // Fetch entries for this timesheet
       const entriesResult = await pool.query(
-        `SELECT 
+        `SELECT
           id,
           project,
           task,
@@ -1010,7 +1010,7 @@ router.post('/', [
 
     // Get or create timesheet (simplified)
     let timesheetResult = await pool.query(
-      `SELECT id FROM timesheets 
+      `SELECT id FROM timesheets
        WHERE user_id = $1 AND CAST(week_start AS DATE) = CAST($2 AS DATE)
        LIMIT 1`,
       [targetUserId, week_start]
@@ -1033,7 +1033,7 @@ router.post('/', [
 
     // Delete existing manual entries (not time_clock or leave)
     await pool.query(
-      `DELETE FROM timesheet_entries 
+      `DELETE FROM timesheet_entries
        WHERE timesheet_id = $1 AND source = 'manual'`,
       [timesheetId]
     );
@@ -1165,7 +1165,7 @@ router.get('/:id', async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT 
+      SELECT
         t.*,
         json_agg(
           jsonb_build_object(

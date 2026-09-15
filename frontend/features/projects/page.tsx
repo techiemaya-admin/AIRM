@@ -1,3 +1,4 @@
+import "./project-board.css";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -962,13 +963,13 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
 
   if (selectedBoard) {
     return (
-      <div className="flex flex-col h-full bg-white min-h-screen">
+      <div className="project-board flex flex-col min-w-0 w-full bg-white min-h-screen">
         {/* Project Board Header */}
-        <div className="bg-[#f6f8fa] border-b px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
+        <div className="bg-[#f6f8fa] border-b px-3 sm:px-6 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
               <Github className="w-4 h-4" />
-              <div className="flex items-center gap-1 text-blue-600 font-normal">
+              <div className="flex min-w-0 flex-wrap items-center gap-1 text-blue-600 font-normal [overflow-wrap:anywhere]">
                 <span className="hover:underline cursor-pointer" onClick={() => { setSelectedBoard(null); setSelectedProject(null); }}>prasad758</span>
                 <span className="text-gray-400">/</span>
                 <span className="hover:underline cursor-pointer" onClick={() => setSelectedBoard(null)}>Projects</span>
@@ -977,12 +978,12 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                 <Lock className="w-3 h-3 text-gray-400 ml-1" />
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
                <div className="relative">
                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                  <Input placeholder="Type / to search" className="pl-9 h-7 w-48 bg-white border-gray-300 text-[10px]" />
                </div>
-               <div className="flex items-center gap-2">
+               <div className="flex flex-wrap items-center gap-2">
                  <Bell className="w-3.5 h-3.5 text-gray-500 hover:text-gray-900 cursor-pointer" />
                  <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] text-white font-bold">P</div>
                </div>
@@ -991,13 +992,13 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
         </div>
 
         {/* Board Toolbar */}
-        <div className="border-b px-6 py-2 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-4">
-             <h2 className="text-lg font-bold flex items-center gap-2">
+        <div className="border-b px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-3 bg-white">
+          <div className="flex flex-wrap items-center gap-4">
+             <h2 className="text-lg font-bold flex min-w-0 items-center gap-2 [overflow-wrap:anywhere]">
                <Layout className="w-5 h-5" /> @prasad758's {selectedBoard.name || 'untitled project'} project
              </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button 
               variant="outline" 
               size="sm" 
@@ -1017,7 +1018,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Syncing...' : 'Sync'}
             </Button>
-            <div className="flex items-center border rounded-md overflow-hidden h-7 text-xs">
+            <div className="flex flex-wrap items-center border rounded-md min-h-7 text-xs">
               <button 
                 className="px-3 py-1 hover:bg-gray-50 border-r flex items-center gap-1 font-bold"
                 onClick={() => handleToolbarAction("Insights")}
@@ -1046,7 +1047,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
         </div>
 
         {/* Views Bar */}
-        <div className="px-6 border-b flex items-center gap-2 bg-[#f6f8fa] min-h-[40px] relative z-20">
+        <div className="px-3 sm:px-6 border-b flex flex-wrap items-center gap-2 bg-[#f6f8fa] min-h-[40px] relative z-20">
           {projectViews.map(view => (
             <div key={view.id} className="relative">
               <div 
@@ -1086,13 +1087,13 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                 >
                   <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Management</div>
                   <button 
-                    className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 text-gray-700"
+                    className="w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100 text-gray-700"
                     onClick={(e) => { e.stopPropagation(); handleRenameView(view.id); }}
                   >
                     <FileText className="w-3.5 h-3.5" /> Rename view
                   </button>
                   <button 
-                    className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 text-gray-700"
+                    className="w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100 text-gray-700"
                     onClick={(e) => { e.stopPropagation(); handleToolbarAction("Move View"); setShowViewMenuId(null); }}
                   >
                     <ArrowRight className="w-3.5 h-3.5" /> Move view
@@ -1105,7 +1106,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                        setActiveViewId(id);
                        setShowViewMenuId(null);
                     }}
-                    className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 text-gray-700"
+                    className="w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100 text-gray-700"
                   >
                     <Layers className="w-3.5 h-3.5" /> Duplicate view
                   </button>
@@ -1119,7 +1120,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                        }
                        setShowViewMenuId(null);
                     }}
-                    className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 text-red-600"
+                    className="w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100 text-red-600"
                   >
                     <Trash2 className="w-3.5 h-3.5" /> Delete view
                   </button>
@@ -1133,7 +1134,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                       setProjectViews(newViews);
                       setShowViewMenuId(null);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 ${view.layout === 'table' ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
+                    className={`w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100 ${view.layout === 'table' ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
                   >
                     <TableIcon className="w-3.5 h-3.5" /> Table
                   </button>
@@ -1144,7 +1145,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                       setProjectViews(newViews);
                       setShowViewMenuId(null);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 ${view.layout === 'board' ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
+                    className={`w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100 ${view.layout === 'board' ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
                   >
                     <Kanban className="w-3.5 h-3.5" /> Board
                   </button>
@@ -1155,20 +1156,20 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                       setProjectViews(newViews);
                       setShowViewMenuId(null);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 ${view.layout === 'roadmap' ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
+                    className={`w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100 ${view.layout === 'roadmap' ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
                   >
                     <Calendar className="w-3.5 h-3.5" /> Roadmap
                   </button>
 
                   <div className="border-t my-1" />
                   <button 
-                    className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 text-gray-700"
+                    className="w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100 text-gray-700"
                     onClick={(e) => { e.stopPropagation(); setShowViewMenuId(null); }}
                   >
                     <BarChart2 className="w-3.5 h-3.5" /> Generate chart
                   </button>
                   <button 
-                    className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 text-gray-700"
+                    className="w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100 text-gray-700"
                     onClick={(e) => { e.stopPropagation(); setShowViewMenuId(null); }}
                   >
                     <ArrowRight className="w-3.5 h-3.5 rotate-90" /> Export view data
@@ -1199,7 +1200,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                     setActiveViewId(id);
                     setShowNewViewMenu(false);
                   }}
-                  className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100"
+                  className="w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100"
                 >
                   <TableIcon className="w-3.5 h-3.5" /> Table
                 </button>
@@ -1210,7 +1211,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                     setActiveViewId(id);
                     setShowNewViewMenu(false);
                   }}
-                  className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100"
+                  className="w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100"
                 >
                   <Kanban className="w-3.5 h-3.5" /> Board
                 </button>
@@ -1221,7 +1222,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                     setActiveViewId(id);
                     setShowNewViewMenu(false);
                   }}
-                  className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100"
+                  className="w-full text-left px-3 py-1.5 text-xs flex flex-wrap items-center gap-2 hover:bg-gray-100"
                 >
                   <Calendar className="w-3.5 h-3.5" /> Roadmap
                 </button>
@@ -1231,7 +1232,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
         </div>
 
         {/* Dynamic Content based on View Layout */}
-        <div className="flex-1 overflow-auto bg-white">
+        <div className="min-w-0 flex-1 bg-white">
           {projectViews.find(v => v.id === activeViewId)?.layout === 'table' ? (
             <div className="p-4 space-y-4">
               <div className="relative max-w-2xl">
@@ -1245,7 +1246,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
               </div>
 
               <div className="border rounded-md overflow-hidden shadow-sm">
-                <table className="w-full text-xs text-left border-collapse">
+                <table className="project-board-table w-full text-xs text-left border-collapse">
                   <thead className="bg-[#f6f8fa] border-b text-gray-500 font-semibold">
                     <tr>
                       <th className="p-2 border-r w-10 text-center bg-[#f6f8fa]"><input type="checkbox" className="rounded-sm" /></th>
@@ -1264,7 +1265,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                      {boardItems.map(item => (
                        <tr key={item.id} className="hover:bg-gray-50/80 group h-10">
                          <td className="p-2 text-center text-gray-300 font-bold border-r"><input type="checkbox" className="rounded-sm" /></td>
-                         <td className="p-2 border-r font-medium text-gray-900">{item.title}</td>
+                         <td data-label="Title" className="p-2 border-r font-medium text-gray-900">{item.title}</td>
                          <td className="p-2 border-r text-center text-gray-300">...</td>
                          <td className="p-2 border-r">
                            <div className="flex -space-x-1">
@@ -1298,7 +1299,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                        <td className="p-2 text-center text-gray-300 font-bold">+</td>
                        <td className="p-2 text-gray-400 font-normal italic" colSpan={9}>
                          {isAddingItem ? (
-                           <div className="flex items-center gap-2">
+                           <div className="flex flex-wrap items-center gap-2">
                              <Input 
                                autoFocus
                                placeholder="Item title" 
@@ -1345,11 +1346,11 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                 'In Progress': 'border-l-blue-400', 'Review': 'border-l-orange-400',
               };
               return (
-                <div className="p-6 h-full bg-gray-50/30 overflow-x-auto flex gap-4">
+                <div className="p-3 sm:p-6 bg-gray-50/30 flex flex-col md:flex-row md:flex-wrap gap-4">
                   {boardColumns.map(status => (
                     <div
                       key={status}
-                      className={`w-72 flex-shrink-0 flex flex-col gap-3 transition-all duration-150 ${
+                      className={`w-full min-w-0 md:w-72 flex-shrink-0 flex flex-col gap-3 transition-all duration-150 ${
                         dragOverColumn === status ? 'ring-2 ring-blue-400 ring-offset-2 rounded-xl bg-blue-50/40' : ''
                       }`}
                       onDragOver={(e) => { e.preventDefault(); setDragOverColumn(status); }}
@@ -1359,8 +1360,8 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                       onDrop={(e) => { e.preventDefault(); handleDrop(status); }}
                     >
                       {/* Column Header */}
-                      <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className={`w-3 h-3 rounded-full ${COL_COLOR[status] || 'bg-gray-400'}`} />
                           <h3 className="font-bold text-sm text-gray-900">{status}</h3>
                           <span className="bg-gray-200/60 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-gray-500">
@@ -1393,11 +1394,11 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2 mb-2">
-                              <h4 className="text-xs font-bold text-gray-900 leading-tight">{item.title}</h4>
+                              <h4 className="min-w-0 [overflow-wrap:anywhere] text-xs font-bold text-gray-900 leading-tight">{item.title}</h4>
                               <Plus className="w-3.5 h-3.5 text-gray-300 opacity-0 group-hover:opacity-100 shrink-0" />
                             </div>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 {item.prs > 0 && <span className="flex items-center gap-1 text-[10px] text-gray-500"><GitPullRequest className="w-2.5 h-2.5" /> {item.prs}</span>}
                               </div>
                               <div className="w-5 h-5 rounded-full bg-blue-600 border flex items-center justify-center text-[8px] text-white font-bold">P</div>
@@ -1449,8 +1450,8 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
           ) : (
             <div className="h-full bg-white flex flex-col overflow-hidden">
                {/* Roadmap Header/Toolbar - GitHub Parity */}
-               <div className="border-b p-3 flex items-center justify-between bg-white">
-                  <div className="flex items-center gap-4">
+               <div className="border-b p-3 flex flex-wrap items-center justify-between gap-2 bg-white">
+                  <div className="flex flex-wrap items-center gap-4">
                      <div className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 rounded cursor-pointer text-xs text-gray-600">
                         <MapPin className="w-3.5 h-3.5" /> Markers
                      </div>
@@ -1461,7 +1462,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                         <Calendar className="w-3.5 h-3.5" /> Date fields
                      </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                      <div className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 rounded cursor-pointer text-xs text-gray-600">
                         <Plus className="w-3.5 h-3.5" /> Month
                      </div>
@@ -1477,9 +1478,9 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                </div>
 
                {/* Timeline Content - Split Layout */}
-               <div className="flex-1 flex overflow-hidden">
+               <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                   {/* Left Sidebar - Item Titles */}
-                  <div className="w-80 border-r flex flex-col bg-white">
+                  <div className="w-full md:w-80 md:shrink-0 border-r flex flex-col bg-white">
                      <div className="h-10 border-b flex items-center px-4 bg-gray-50/50">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">March 2026</span>
                      </div>
@@ -1496,18 +1497,18 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                   </div>
 
                   {/* Right Sidebar - Timeline Grid */}
-                  <div className="flex-1 overflow-auto bg-white relative no-scrollbar">
+                  <div className="min-w-0 flex-1 bg-white relative no-scrollbar">
                      {/* Day Header */}
-                     <div className="h-10 border-b flex min-w-[2000px] sticky top-0 bg-white z-10">
+                     <div className="h-10 border-b flex w-full sticky top-0 bg-white z-10">
                         {Array.from({ length: 31 }).map((_, i) => (
-                           <div key={i} className="w-12 border-r flex items-center justify-center text-[10px] text-gray-400">
+                           <div key={i} className="flex-1 min-w-0 border-r flex items-center justify-center text-[10px] text-gray-400">
                               {i + 1}
                            </div>
                         ))}
                      </div>
 
                      {/* Rows with Bars */}
-                     <div className="relative min-w-[2000px]">
+                     <div className="relative w-full">
                         {boardItems.map((item, idx) => {
                            const startDay = parseInt(item.start?.split('-')[2] || '1');
                            const duration = (parseInt(item.end?.split('-')[2] || '5') - startDay) + 1;
@@ -1521,8 +1522,8 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                                        item.status === 'In Progress' ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-gray-100 border-gray-300 text-gray-700'
                                     }`}
                                     style={{ 
-                                       left: `${(startDay - 1) * 48}px`,
-                                       width: `${duration * 48}px`,
+                                       left: `${(startDay - 1) / 31 * 100}%`,
+                                       width: `${Math.min(duration, 32 - startDay) / 31 * 100}%`,
                                        zIndex: 5
                                     }}
                                  >
@@ -1533,7 +1534,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                                  {/* Row Grid Lines */}
                                  <div className="absolute inset-0 flex pointer-events-none">
                                     {Array.from({ length: 31 }).map((_, i) => (
-                                       <div key={i} className="w-12 border-r h-full opacity-[0.03] border-black" />
+                                       <div key={i} className="flex-1 min-w-0 border-r h-full opacity-[0.03] border-black" />
                                     ))}
                                  </div>
                               </div>
@@ -1541,7 +1542,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                         })}
                         
                         {/* Current Day Marker */}
-                        <div className="absolute top-0 bottom-0 left-[480px] w-0.5 bg-red-400 z-20 pointer-events-none">
+                        <div className="absolute top-0 bottom-0 left-[32.258%] w-0.5 bg-red-400 z-20 pointer-events-none">
                            <div className="w-2 h-2 rounded-full bg-red-400 absolute -top-1 -left-[3px]" />
                         </div>
                      </div>
@@ -2287,11 +2288,11 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto min-w-0 p-3 sm:p-6 space-y-6">
       {/* Header */}
       <div className="space-y-6">
         {onlyProjects ? (
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
               <p className="text-muted-foreground mt-1">Your GitHub Projects (V2) boards</p>
@@ -2313,8 +2314,8 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
               <h1 className="text-3xl font-bold tracking-tight">Project Dashboard</h1>
               <p className="text-muted-foreground mt-1">Manage your GitHub repositories and projects</p>
             </div>
-            <div className="border-b flex items-center justify-between">
-              <div className="flex items-center gap-8">
+            <div className="border-b flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-8">
                 <button 
                   onClick={() => setMainTab('repos')}
                   className={`flex items-center gap-2 px-1 py-4 text-sm font-medium transition-all border-b-2 -mb-[2px] ${
@@ -2409,11 +2410,11 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                         }
                       }}
                     >
-                       <div className="flex gap-3">
-                          <Layout className="w-5 h-5 text-gray-500 mt-0.5" />
-                          <div>
-                             <div className="flex items-center gap-2">
-                                <span className="font-bold text-blue-600 hover:underline text-[15px]">{project.name}</span>
+                       <div className="flex min-w-0 gap-3">
+                          <Layout className="w-5 h-5 shrink-0 text-gray-500 mt-0.5" />
+                          <div className="min-w-0">
+                             <div className="flex flex-wrap items-center gap-2">
+                                <span className="min-w-0 [overflow-wrap:anywhere] font-bold text-blue-600 hover:underline text-[15px]">{project.name}</span>
                                 <span className="text-[10px] border px-1.5 py-0.5 rounded-full text-gray-500 font-medium">Private</span>
                              </div>
                              <div className="text-xs text-gray-500 mt-1">
@@ -2421,7 +2422,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                              </div>
                           </div>
                        </div>
-                       <MoreHorizontal className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100" />
+                       <MoreHorizontal className="w-5 h-5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100" />
                     </div>
                  ))}
               </div>
@@ -2433,7 +2434,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
           {projects.map((project) => (
             <Card 
               key={project.id} 
-              className="group hover:shadow-xl hover:border-blue-500/50 transition-all duration-300 cursor-pointer overflow-hidden relative"
+              className="group min-w-0 hover:shadow-xl hover:border-blue-500/50 transition-all duration-300 cursor-pointer overflow-hidden relative"
               onClick={() => {
                 if (project.source === 'github_project') {
                   openProjectBoard(project);
@@ -2462,8 +2463,8 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                   <div className={`w-2 h-2 rounded-full ${project.visibility === 'public' ? 'bg-green-500' : 'bg-orange-500'}`} />
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{project.visibility}</span>
                 </div>
-                <CardTitle className="line-clamp-1">{project.name}</CardTitle>
-                <CardDescription className="line-clamp-2 h-10">{project.description || "No description provided"}</CardDescription>
+                <CardTitle className="line-clamp-1 [overflow-wrap:anywhere]">{project.name}</CardTitle>
+                <CardDescription className="line-clamp-2 h-10 [overflow-wrap:anywhere]">{project.description || "No description provided"}</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center gap-4 text-sm">
@@ -2477,7 +2478,7 @@ const Projects = ({ onProjectSelect, onlyProjects = false }: { onProjectSelect?:
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="bg-muted/50 border-t py-3 flex justify-between items-center">
+              <CardFooter className="bg-muted/50 border-t py-3 flex flex-wrap gap-2 justify-between items-center">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Github className="w-3.5 h-3.5" />
                   <span>GitHub Linked</span>

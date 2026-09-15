@@ -211,6 +211,7 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
 
   // Date Logic Validation
   const dateError = useMemo(() => {
+    // 1. Start date year formatting & past date validation
     if (startDate) {
       const yearStr = startDate.split('-')[0] || '';
       if (yearStr.length > 4 || parseInt(yearStr, 10) > 9999) {
@@ -220,6 +221,8 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
         return 'Start date cannot be in the past.';
       }
     }
+
+    // 2. End date year formatting & past date validation
     if (endDate) {
       const yearStr = endDate.split('-')[0] || '';
       if (yearStr.length > 4 || parseInt(yearStr, 10) > 9999) {
@@ -229,9 +232,22 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
         return 'End date cannot be in the past.';
       }
     }
+
+    // 3. Compulsory End Date if Start Date is entered
+    if (startDate && !endDate) {
+      return 'End date is required when start date is specified.';
+    }
+
+    // 4. Start Date required if End Date is entered
+    if (!startDate && endDate) {
+      return 'Start date is required when end date is specified.';
+    }
+
+    // 5. End Date must be >= Start Date
     if (startDate && endDate && endDate < startDate) {
       return 'End date must be greater than or equal to Start date.';
     }
+
     return null;
   }, [startDate, endDate, todayStr]);
 
@@ -355,9 +371,9 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
         epicId: issueType === 'story' && epicId !== 'none' ? epicId : undefined,
         epicKey: issueType === 'story' && selectedEpicObj ? selectedEpicObj.key : undefined,
         epicColor: issueType === 'story' && selectedEpicObj ? selectedEpicObj.color : undefined,
-        storyId: (issueType === 'task' || issueType === 'bug') && storyId !== 'none' ? storyId : undefined,
-        storyKey: (issueType === 'task' || issueType === 'bug') && selectedStoryObj ? selectedStoryObj.key : undefined,
-        storySummary: (issueType === 'task' || issueType === 'bug') && selectedStoryObj ? selectedStoryObj.summary : undefined,
+        storyId: (issueType === 'task' || issueType === 'bug' || issueType === 'story') && storyId !== 'none' ? storyId : undefined,
+        storyKey: (issueType === 'task' || issueType === 'bug' || issueType === 'story') && selectedStoryObj ? selectedStoryObj.key : undefined,
+        storySummary: (issueType === 'task' || issueType === 'bug' || issueType === 'story') && selectedStoryObj ? selectedStoryObj.summary : undefined,
         linkedTaskId: (issueType === 'task' || issueType === 'bug') && linkedTaskId !== 'none' ? linkedTaskId : undefined,
         linkedTaskKey: (issueType === 'task' || issueType === 'bug') && selectedLinkedTaskObj ? selectedLinkedTaskObj.key : undefined,
         linkedTaskSummary: (issueType === 'task' || issueType === 'bug') && selectedLinkedTaskObj ? selectedLinkedTaskObj.summary : undefined,
@@ -375,6 +391,8 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
         projectId: selectedProject.id,
         projectKey: selectedProject.key,
         projectName: selectedProject.name,
+        reporterId: (currentMember?.id && !currentMember.id.startsWith('usr-')) ? currentMember.id : undefined,
+        reporter: currentMember,
         assignees: selectedAssignees,
         assignee: selectedAssignees[0] || null,
         assigneeName: selectedAssignees.map((a) => a.name).join(', ') || undefined,
@@ -588,6 +606,39 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
             </div>
           )}
 
+          {/* Tag Existing Story (Story Link) - When IssueType is Story */}
+          {issueType === 'story' && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Tag Existing Story (Story Link)
+              </label>
+              <Select value={storyId} onValueChange={setStoryId}>
+                <SelectTrigger className="w-full bg-white border-gray-300 text-xs">
+                  <SelectValue placeholder="Select an existing story to tag/link..." />
+                </SelectTrigger>
+                <SelectContent className="bg-white max-h-56">
+                  <SelectItem value="none">
+                    <span className="text-gray-400">None (No linked story)</span>
+                  </SelectItem>
+                  {availableStories.map((story) => (
+                    <SelectItem key={story.id} value={story.id}>
+                      <div className="flex items-center gap-2 min-w-0 max-w-full">
+                        <IssueTypeIcon type="story" className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="font-semibold text-gray-900 whitespace-nowrap flex-shrink-0 text-xs">
+                          {story.key}:
+                        </span>
+                        <span className="truncate text-gray-700 text-xs">{story.summary}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Optional: Tag an existing story related to this story.
+              </p>
+            </div>
+          )}
+
           {/* 6. Tag Existing Task (Task Link) - Only enabled when IssueType is Task or Bug */}
           {(issueType === 'task' || issueType === 'bug') && (
             <div>
@@ -718,7 +769,14 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
                       setEndDate(val);
                     }
                   }}
-                  className={`bg-white text-xs ${startDate && (startDate < todayStr || startDate.split('-')[0]?.length > 4) ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`bg-white text-xs ${
+                    (startDate && (startDate < todayStr || startDate.split('-')[0]?.length > 4)) ||
+                    (startDate && !endDate) ||
+                    (!startDate && endDate) ||
+                    (startDate && endDate && endDate < startDate)
+                      ? 'border-red-500'
+                      : 'border-gray-300'
+                  }`}
                 />
               </div>
 
@@ -734,7 +792,14 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
                   min={startDate || todayStr}
                   max="9999-12-31"
                   onChange={(e) => setEndDate(sanitizeDateInput(e.target.value))}
-                  className={`bg-white text-xs ${endDate && (endDate < todayStr || (startDate && endDate < startDate) || endDate.split('-')[0]?.length > 4) ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`bg-white text-xs ${
+                    (endDate && (endDate < todayStr || endDate.split('-')[0]?.length > 4)) ||
+                    (startDate && !endDate) ||
+                    (!startDate && endDate) ||
+                    (startDate && endDate && endDate < startDate)
+                      ? 'border-red-500'
+                      : 'border-gray-300'
+                  }`}
                 />
               </div>
 

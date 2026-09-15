@@ -125,8 +125,10 @@ export interface FjtIssue {
   assignees?: FjtMember[];
   reviewers?: FjtMember[];
   reporter?: {
+    id?: string;
     name: string;
-    initials: string;
+    email?: string;
+    initials?: string;
   };
   components?: string[];
   labels?: string[];

@@ -343,8 +343,8 @@ const TimeClock = () => {
 
       const projectTitle = selectedProject ? `${selectedProject.name} (${selectedProject.key})` : "Project";
       const typeLabel = selectedTopic?.type ? (selectedTopic.type.charAt(0).toUpperCase() + selectedTopic.type.slice(1)) : 'Topic';
-      const topicTitle = selectedTopic 
-        ? `[${typeLabel}] ${selectedTopic.key}: ${selectedTopic.title}` 
+      const topicTitle = selectedTopic
+        ? `[${typeLabel}] ${selectedTopic.key}: ${selectedTopic.title}`
         : (notes.trim() || null);
 
       await timesheetMutation.clockIn.mutateAsync({
@@ -373,9 +373,9 @@ const TimeClock = () => {
         locationMsg = ` Location captured`;
       }
 
-      toast({ 
-        title: "Clocked In Successfully", 
-        description: `Time tracking started on ${selectedTopic?.key || selectedProject?.name || 'Project'}!${locationMsg}` 
+      toast({
+        title: "Clocked In Successfully",
+        description: `Time tracking started on ${selectedTopic?.key || selectedProject?.name || 'Project'}!${locationMsg}`
       });
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to clock in", variant: "destructive" });
@@ -646,14 +646,14 @@ const TimeClock = () => {
                         onValueChange={(val) => setSelectedTopicId(val)}
                       >
                         <SelectTrigger className="w-full text-sm font-medium border-gray-300 focus:border-[#0B1957] focus:ring-[#0B1957]/20 bg-white disabled:opacity-50 disabled:bg-gray-50">
-                          <SelectValue 
+                          <SelectValue
                             placeholder={
-                              !selectedProjectId 
-                                ? "Select a project first..." 
-                                : availableTopics.length === 0 
-                                ? "No To Do or In Progress topics in this project" 
+                              !selectedProjectId
+                                ? "Select a project first..."
+                                : availableTopics.length === 0
+                                ? "No To Do or In Progress topics in this project"
                                 : "Select a story, task, or bug..."
-                            } 
+                            }
                           />
                         </SelectTrigger>
                         <SelectContent className="bg-white max-h-60">

@@ -253,13 +253,13 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
       {isAdmin && !settlement && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center space-x-2">
+            <CardTitle className="text-lg flex min-w-0 flex-wrap items-center gap-2">
               <Calculator className="h-5 w-5" />
               <span>Calculate Final Settlement</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="leaveBalance">Leave Balance (Days)</Label>
                 <Input
@@ -372,10 +372,10 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
           {/* Net Settlement Summary */}
           <Card className={settlementData.netSettlement > 0 ? 'bg-green-50 border-green-200' : settlementData.netSettlement < 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50'}>
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <div>
                   <Label className="text-sm text-gray-600">Net Settlement</Label>
-                  <div className="flex items-center space-x-2 mt-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 mt-2">
                     {settlementData.netSettlement > 0 ? (
                       <TrendingUp className="h-6 w-6 text-green-600" />
                     ) : settlementData.netSettlement < 0 ? (
@@ -395,7 +395,7 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
                         : 'Fully Settled (No Dues)'}
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   {settlementData.settlementStatus === 'company_pays_employee' ? (
                     <CheckCircle className="h-8 w-8 text-green-600" />
                   ) : settlementData.settlementStatus === 'employee_pays_company' ? (
@@ -411,34 +411,34 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
           {/* Earnings Breakdown */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center space-x-2">
+              <CardTitle className="text-lg flex min-w-0 flex-wrap items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-green-600" />
                 <span>Earnings</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Salary Payable</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.earnings.salaryPayable)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Leave Encashment</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.earnings.leaveEncashment)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Bonus</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.earnings.bonus)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Incentives</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.earnings.incentives)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Reimbursements</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.earnings.reimbursements)}</span>
                 </div>
-                <div className="flex justify-between pt-2 border-t font-semibold">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1 pt-2 border-t font-semibold">
                   <span>Total Earnings</span>
                   <span>{formatCurrency(settlementData.earnings.totalPayable)}</span>
                 </div>
@@ -449,38 +449,38 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
           {/* Deductions Breakdown */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center space-x-2">
+              <CardTitle className="text-lg flex min-w-0 flex-wrap items-center gap-2">
                 <TrendingDown className="h-5 w-5 text-red-600" />
                 <span>Deductions</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Notice Period Recovery</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.deductions.noticeRecovery)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Asset Recovery</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.deductions.assetRecovery)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Loans</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.deductions.loans)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Advances</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.deductions.advances)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Pending Recoveries</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.deductions.pendingRecoveries)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1">
                   <span className="text-sm">Statutory Deductions</span>
                   <span className="text-sm font-medium">{formatCurrency(settlementData.deductions.statutoryDeductions)}</span>
                 </div>
-                <div className="flex justify-between pt-2 border-t font-semibold">
+                <div className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1 pt-2 border-t font-semibold">
                   <span>Total Deductions</span>
                   <span>{formatCurrency(settlementData.deductions.totalRecoverable)}</span>
                 </div>
@@ -491,12 +491,12 @@ export function SettlementTab({ exitRequest, isAdmin, onRefresh }: SettlementTab
           {/* Actions */}
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <FileText className="h-4 w-4 text-gray-500" />
                   <span className="text-sm text-gray-600">Generate Documents</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <Button
                     onClick={handleDownloadSettlementPDF}
                     disabled={pdfLoading}

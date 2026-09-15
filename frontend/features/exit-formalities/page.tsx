@@ -368,14 +368,14 @@ const ExitFormalities = () => {
               }}
             >
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-[#0B1957] flex items-center justify-center text-white font-semibold">
+                <div className="flex min-w-0 items-center justify-between">
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
+                    <div className="w-12 h-12 shrink-0 rounded-full bg-[#0B1957] flex items-center justify-center text-white font-semibold">
                       {exit.full_name?.charAt(0) || 'E'}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <h3 className="font-semibold">{exit.full_name}</h3>
+                    <div className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere]">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="min-w-0 font-semibold">{exit.full_name}</h3>
                         {exit.employee_id && (
                           <span className="text-xs text-gray-500">({exit.employee_id})</span>
                         )}
@@ -388,29 +388,29 @@ const ExitFormalities = () => {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
                         {exit.department && (
                           <span className="flex items-center space-x-1">
-                            <Building className="h-3 w-3" />
+                            <Building className="h-3 w-3 shrink-0" />
                             <span>{exit.department}</span>
                           </span>
                         )}
                         <span className="flex items-center space-x-1">
-                          <Calendar className="h-3 w-3" />
+                          <Calendar className="h-3 w-3 shrink-0" />
                           <span>
                             Last Day: {format(new Date(exit.last_working_day), 'MMM dd, yyyy')}
                           </span>
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
+                    <div className="min-w-0 max-w-full">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(
+                        className={`max-w-full px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 [&>svg]:shrink-0 ${getStatusColor(
                           exit.status
                         )}`}
                       >
                         {getStatusIcon(exit.status)}
-                        <span>{exit.status.replace('_', ' ').toUpperCase()}</span>
+                        <span className="min-w-0 [overflow-wrap:anywhere]">{exit.status.replace(/_/g, ' ').toUpperCase()}</span>
                       </span>
                     </div>
                   </div>
@@ -424,35 +424,37 @@ const ExitFormalities = () => {
       {/* Exit Detail Dialog with Tabs */}
       {selectedExit && (
         <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center justify-between">
-                <span>Exit Request Details</span>
+          <DialogContent className="max-w-6xl h-[85vh] max-h-[85vh] flex flex-col p-4 sm:p-6 overflow-hidden [overflow-wrap:anywhere]">
+            <DialogHeader className="mb-4 shrink-0">
+              <div className="flex flex-col items-start gap-1">
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  Exit Request Details
+                </DialogTitle>
                 {exitRequestDetail?.exit_request.exit_progress_percentage !== undefined && (
-                  <div className="flex items-center space-x-2">
-                    <Percent className="h-4 w-4" />
-                    <span className="text-sm font-normal">
+                  <div className="flex items-center gap-1.5 text-gray-500 text-sm font-medium">
+                    <Percent className="h-3.5 w-3.5 text-gray-400" />
+                    <span>
                       {exitRequestDetail.exit_request.exit_progress_percentage}% Complete
                     </span>
                   </div>
                 )}
-              </DialogTitle>
+              </div>
             </DialogHeader>
 
             {/* Tabs */}
-            <div className="flex space-x-1 border-b">
+            <div className="flex min-w-0 max-w-full gap-1 overflow-x-auto border-b shrink-0 custom-scrollbar">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                    className={`shrink-0 whitespace-nowrap px-3 sm:px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
                       ? 'border-[#0B1957] text-[#0B1957]'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                       }`}
                   >
-                    <div className="flex items-center space-x-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <Icon className="h-4 w-4" />
                       <span>{tab.label}</span>
                     </div>
@@ -462,21 +464,22 @@ const ExitFormalities = () => {
             </div>
 
             {detailLoading || loading ? (
-              <div className="flex items-center justify-center h-64">
+              <div className="flex flex-1 items-center justify-center">
                 <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
               </div>
             ) : exitRequestDetail ? (
-              <div className="space-y-6 mt-4">
-                {/* Overview Tab */}
-                {activeTab === 'overview' && (
-                  <>
+              <div className="flex-1 min-h-0 flex flex-col mt-4">
+                <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 space-y-6">
+                  {/* Overview Tab */}
+                  {activeTab === 'overview' && (
+                    <>
                     {/* Basic Info */}
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg">Employee Information</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <Label className="text-xs text-gray-500">Full Name</Label>
                             <p className="text-sm font-medium">{exitRequestDetail.exit_request.full_name}</p>
@@ -509,7 +512,7 @@ const ExitFormalities = () => {
                         <CardTitle className="text-lg">Exit Details</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <Label className="text-xs text-gray-500">Resignation Date</Label>
                             <p className="text-sm font-medium">
@@ -547,7 +550,7 @@ const ExitFormalities = () => {
                             {exitRequestDetail.clearance.map((item: any) => (
                               <div
                                 key={item.id}
-                                className="flex items-center justify-between p-3 border rounded-lg"
+                                className="flex min-w-0 flex-wrap items-center justify-between gap-3 p-3 border rounded-lg"
                               >
                                 <div>
                                   <p className="font-medium">{item.department}</p>
@@ -604,7 +607,7 @@ const ExitFormalities = () => {
                         <div className="space-y-3">
                           {assets.map((asset: any) => (
                             <div key={asset.id} className="p-4 border rounded-lg">
-                              <div className="flex items-center justify-between">
+                              <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                                 <div>
                                   <p className="font-medium">{asset.asset_name}</p>
                                   <p className="text-sm text-gray-500">{asset.asset_id}</p>
@@ -656,7 +659,7 @@ const ExitFormalities = () => {
                         <div className="space-y-3">
                           {deprovisioning.map((item: any) => (
                             <div key={item.id} className="p-4 border rounded-lg">
-                              <div className="flex items-center justify-between">
+                              <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                                 <div>
                                   <p className="font-medium">{item.system_name}</p>
                                   <p className="text-sm text-gray-500">{item.system_type}</p>
@@ -699,7 +702,7 @@ const ExitFormalities = () => {
                           <p className="text-gray-500">PF exit not initiated</p>
                         ) : (
                           <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <Label className="text-xs text-gray-500">PF Exit Status</Label>
                                 <p className="text-sm font-medium">
@@ -725,7 +728,7 @@ const ExitFormalities = () => {
                           <p className="text-gray-500">Gratuity not calculated</p>
                         ) : (
                           <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <Label className="text-xs text-gray-500">Eligible</Label>
                                 <p className="text-sm font-medium">{gratuity.eligible ? 'Yes' : 'No'}</p>
@@ -758,7 +761,7 @@ const ExitFormalities = () => {
                       ) : (
                         <div className="space-y-2">
                           {compliance.map((item: any) => (
-                            <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div key={item.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 p-3 border rounded-lg">
                               <div>
                                 <p className="font-medium">{item.compliance_item}</p>
                                 {item.remarks && (
@@ -820,7 +823,7 @@ const ExitFormalities = () => {
                           <div className="space-y-2">
                             {risks.map((risk: any) => (
                               <div key={risk.id} className="p-3 border rounded-lg">
-                                <div className="flex items-center justify-between">
+                                <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                                   <div>
                                     <p className="font-medium">{risk.asset_name || 'General Risk'}</p>
                                     <p className="text-sm text-gray-500">{risk.risk_reason}</p>
@@ -848,8 +851,8 @@ const ExitFormalities = () => {
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
                     {isAdmin && exitRequestDetail.exit_request.status === 'initiated' && (
                       <Button
                         onClick={() => handleApprove(exitRequestDetail.exit_request.id, 'manager')}
@@ -914,6 +917,7 @@ const ExitFormalities = () => {
                   </Button>
                 </div>
               </div>
+              </div>
             ) : (
               <p className="text-gray-500">Failed to load exit request details</p>
             )}
@@ -923,8 +927,8 @@ const ExitFormalities = () => {
 
       {/* Initiate Exit Dialog */}
       <Dialog open={isInitiateOpen} onOpenChange={setIsInitiateOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="mb-4">
             <DialogTitle>Initiate Exit Request</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -1032,7 +1036,7 @@ const ExitFormalities = () => {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-6 flex flex-row items-center justify-end gap-2">
             <Button variant="outline" onClick={() => setIsInitiateOpen(false)}>
               Cancel
             </Button>
