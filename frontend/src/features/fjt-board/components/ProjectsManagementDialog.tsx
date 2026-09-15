@@ -326,7 +326,7 @@ export const ProjectsManagementDialog: React.FC<ProjectsManagementDialogProps> =
                     <SelectTrigger className="w-full bg-white border border-gray-300 rounded-md text-xs h-9 px-3 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#0B1957]">
                       <SelectValue placeholder="Select Project Lead" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white max-h-56 z-50 shadow-lg border border-gray-200">
+                    <SelectContent side="top" align="start" className="bg-white max-h-56 z-50 shadow-lg border border-gray-200">
                       {dbUsers.map((u: any) => {
                         const uid = String(u.id || u.user_id);
                         const uname = u.full_name || u.name || u.email;
