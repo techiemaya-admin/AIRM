@@ -230,13 +230,17 @@ const Monitoring = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Recent Time Entries (Last 24 Hours) - {entries.length}</span>
-              <div className="flex items-center gap-4">
+            <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0 space-y-2">
+                <CardTitle className="leading-snug">Recent Time Entries (Last 24 Hours) - {entries.length}</CardTitle>
+                <p className="text-sm font-normal text-gray-500 break-words">Real-time employee activity</p>
+              </div>
+              <div className="w-full min-w-0 lg:w-auto lg:max-w-xs lg:shrink-0">
                 <select
                   value={selectedUserId}
                   onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="text-sm px-3 py-1.5 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-700"
+                  aria-label="Filter time entries by employee"
+                  className="w-full min-w-0 max-w-full text-sm px-3 py-1.5 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-700"
                 >
                   <option value="all">All Employees ({allEntriesData.length})</option>
                   {usersList.map((user) => (
@@ -245,9 +249,8 @@ const Monitoring = () => {
                     </option>
                   ))}
                 </select>
-                <span className="text-sm font-normal text-gray-500">Real-time employee activity</span>
               </div>
-            </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
             {entries.length === 0 ? (

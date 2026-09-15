@@ -288,7 +288,7 @@ const LeaveCalendar = () => {
                       <CalendarIcon className="h-6 w-6 text-gray-700" />
                       {format(currentDate, 'MMMM yyyy')}
                     </h2>
-                    <div className="flex flex-wrap items-center gap-3 mt-2 sm:mt-0 flex-shrink-0">
+                    <div className="flex w-full min-w-0 flex-wrap items-center gap-3 mt-2 sm:mt-0 sm:w-auto">
                       <Button
                         variant="outline"
                         size="sm"
@@ -315,12 +315,12 @@ const LeaveCalendar = () => {
                       </Button>
 
                       {showCalendarFilter && (
-                        <div className="flex items-center gap-2 border-l pl-3 border-gray-200">
+                        <div className="grid w-full min-w-0 grid-cols-1 min-[400px]:grid-cols-2 gap-2 border-t pt-3 border-gray-200 sm:flex sm:w-auto sm:flex-wrap sm:border-t-0 sm:border-l sm:pt-0 sm:pl-3">
                           <Select
                             value={String(currentDate.getMonth())}
                             onValueChange={(val) => handleMonthChange(parseInt(val))}
                           >
-                            <SelectTrigger className="h-9 w-36 text-sm bg-white border-gray-300 font-medium">
+                            <SelectTrigger aria-label="Month" className="h-9 w-full min-w-0 sm:w-36 text-sm bg-white border-gray-300 font-medium">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-white max-h-60">
@@ -333,7 +333,7 @@ const LeaveCalendar = () => {
                             value={String(currentDate.getFullYear())}
                             onValueChange={(val) => handleYearChange(parseInt(val))}
                           >
-                            <SelectTrigger className="h-9 w-28 text-sm bg-white border-gray-300 font-medium">
+                            <SelectTrigger aria-label="Year" className="h-9 w-full min-w-0 sm:w-28 text-sm bg-white border-gray-300 font-medium">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-white max-h-60">
@@ -475,9 +475,9 @@ const LeaveCalendar = () => {
 
                   {/* View Balance For row */}
                   {isAdmin && (
-                    <div className="bg-white border border-gray-200 rounded-xl px-6 py-4 flex items-center gap-4 mb-6">
+                    <div className="bg-white border border-gray-200 rounded-xl px-4 sm:px-6 py-4 flex flex-col items-start sm:flex-row sm:items-center gap-4 mb-6">
                       <span className="text-sm font-medium text-gray-700">View Balance For:</span>
-                      <div className="w-56">
+                      <div className="w-full min-w-0 sm:w-56">
                         <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                           <SelectTrigger className="h-10 w-full text-sm font-medium bg-white border-gray-300">
                             <SelectValue placeholder="My Balance" />
@@ -494,8 +494,8 @@ const LeaveCalendar = () => {
                   )}
 
                   {/* Balance table card */}
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="px-6 py-5 flex items-center justify-between border-b border-gray-100">
+                  <div className="min-w-0 max-w-full bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="px-4 sm:px-6 py-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100">
                       <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
                         <BarChart3 className="h-5 w-5 text-gray-600" />
                         My Leave Balance (April 1, 2025 to March 31, 2026)
@@ -518,7 +518,8 @@ const LeaveCalendar = () => {
                       )}
                     </div>
 
-                    <table className="w-full text-sm">
+                    <div className="w-full overflow-x-auto" role="region" aria-label="My Leave Balance table" tabIndex={0}>
+                    <table className="w-full min-w-[700px] text-sm">
                       <thead>
                         <tr className="border-b border-gray-200">
                           <th className="text-left py-4 px-6 font-semibold text-gray-700 bg-white">Leave Type</th>
@@ -570,13 +571,14 @@ const LeaveCalendar = () => {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                     <div className="px-6 py-3 border-t border-gray-100">
                       <p className="text-xs text-gray-400 italic">* Unpaid Leave and Compensatory Off are not tracked in balance</p>
                     </div>
                   </div>
 
                   {/* Summary cards */}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="rounded-xl border border-gray-200 bg-gray-50 px-6 py-6 text-center">
                       <p className="text-xs font-medium text-gray-500 mb-3">Total Available</p>
                       <p className="text-4xl font-bold text-blue-600 tracking-tight">{fmt(totalAvailable)}</p>
@@ -605,12 +607,12 @@ const LeaveCalendar = () => {
               return (
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                   {/* Header */}
-                  <div className="flex flex-wrap items-center justify-between px-6 py-5 gap-4">
-                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-max">
-                      <Clock className="h-5 w-5 text-gray-500" />
+                  <div className="flex min-w-0 flex-col items-start sm:flex-row sm:flex-wrap sm:items-center sm:justify-between px-4 sm:px-6 py-5 gap-4">
+                    <h3 className="min-w-0 text-lg font-semibold text-gray-800 flex items-center gap-2">
+                      <Clock className="h-5 w-5 shrink-0 text-gray-500" />
                       Shift Roster - Week of {format(weekStart, 'MMM d, yyyy')}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-3 mt-2 sm:mt-0 flex-shrink-0">
+                    <div className="grid w-full min-w-0 grid-cols-1 min-[400px]:grid-cols-2 gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-center [&>button]:min-w-0 [&>button]:whitespace-normal">
                       <button
                         onClick={() => setShiftDate(subWeeks(shiftDate, 1))}
                         className="whitespace-nowrap flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition shadow-sm"
@@ -624,7 +626,7 @@ const LeaveCalendar = () => {
                         className="whitespace-nowrap flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition shadow-sm"
                       >Next Week</button>
                       {isAdmin && (
-                        <Button onClick={() => setShowAssignShiftDialog(true)} className="bg-[#0B1957] hover:bg-[#0B1957]/90 text-white text-sm font-semibold rounded-lg px-4 py-2 h-10 ml-1">
+                        <Button onClick={() => setShowAssignShiftDialog(true)} className="bg-[#0B1957] hover:bg-[#0B1957]/90 text-white text-sm font-semibold rounded-lg px-4 py-2 min-h-10 h-auto">
                           <Plus className="h-4 w-4 mr-1" /> Assign Shift
                         </Button>
                       )}

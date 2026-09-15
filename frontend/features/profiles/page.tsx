@@ -629,12 +629,12 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
   }
 
   return (
-    <div className={noPadding ? "" : "p-6"}>
+    <div className={noPadding ? "min-w-0" : "min-w-0 p-3 sm:p-6"}>
 
 
       {!hideHeader && (
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex min-w-0 flex-col items-start gap-4 mb-6">
+          <div className="min-w-0">
             <h1 className="text-3xl font-bold text-gray-900">
               {onlyCurrentUser ? 'My Profile' : 'Employee Profiles'}
             </h1>
@@ -645,7 +645,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
             </p>
           </div>
           {!onlyCurrentUser && (
-            <div className="flex items-center space-x-4">
+            <div className="flex w-full min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center [&>button]:h-auto [&>button]:min-h-10 [&>button]:whitespace-normal">
               {/* Download Template Button */}
               <Button
                 variant="outline"
@@ -670,7 +670,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
               </Button>
 
               {/* Upload File Dropdown */}
-              <div className="relative">
+              <div className="relative min-w-0">
                 {/* Hidden file inputs for different upload types */}
                 <input
                   type="file"
@@ -760,6 +760,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
                 <Button
                   variant="outline"
                   disabled={isUploading}
+                  className="w-full sm:w-auto h-auto min-h-10 whitespace-normal"
                   onClick={() => document.getElementById('profile-upload')?.click()}
                 >
                   {isUploading ? (
@@ -777,7 +778,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
               </div>
 
               {/* View Mode Toggle */}
-              <div className="flex items-center border rounded-md overflow-hidden">
+              <div className="flex self-start items-center border rounded-md overflow-hidden sm:self-auto">
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
