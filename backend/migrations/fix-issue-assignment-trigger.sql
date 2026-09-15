@@ -1,7 +1,6 @@
 -- Fix issue assignment trigger - issue_id is INTEGER, not UUID
 -- This fixes the "cannot cast type integer to uuid" error
--- Run this in your PostgreSQL database connected to salesmaya_agent
-
+-- Run this in your PostgreSQL database
 SET search_path TO erp, public;
 
 -- Drop existing trigger if it exists

@@ -43,7 +43,7 @@ interface CreateIssueDialogProps {
 export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
   open,
   onOpenChange,
-  defaultType = 'task',
+  defaultType = 'story',
   defaultEpicId,
   defaultStoryId,
   defaultLinkedTaskId,
@@ -104,7 +104,7 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
       setSelectedProjectId(activeProject.id);
     }
     if (open) {
-      setIssueType(defaultType || 'task');
+      setIssueType(defaultType || 'story');
       setEpicId(defaultEpicId || 'none');
       setStoryId(defaultStoryId || 'none');
       setLinkedTaskId(defaultLinkedTaskId || 'none');

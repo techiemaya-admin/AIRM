@@ -1,11 +1,4 @@
-import pkg from 'pg';
-const { Pool } = pkg;
-
-const pool = new Pool({
-  connectionString: 'postgresql://developer:O8yH7SuPfCCu1PsrZYGAAB2@165.22.221.77:5432/salesmaya_agent?sslmode=no-verify',
-  ssl: { rejectUnauthorized: false },
-  max: 1
-});
+import pool from '../shared/database/connection.js';
 
 async function run() {
   try {

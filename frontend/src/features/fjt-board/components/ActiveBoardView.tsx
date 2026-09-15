@@ -603,7 +603,7 @@ export const ActiveBoardView: React.FC = () => {
       <CreateIssueDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
-        defaultType="task"
+        defaultType="story"
       />
 
       <ProjectsManagementDialog

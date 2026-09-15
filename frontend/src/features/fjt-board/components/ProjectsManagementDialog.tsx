@@ -320,13 +320,13 @@ export const ProjectsManagementDialog: React.FC<ProjectsManagementDialogProps> =
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Project Lead (All Employees from erp.users)
+                    Project Lead
                   </label>
                   <Select value={leadUserId} onValueChange={setLeadUserId}>
                     <SelectTrigger className="w-full bg-white border border-gray-300 rounded-md text-xs h-9 px-3 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#0B1957]">
                       <SelectValue placeholder="Select Project Lead" />
                     </SelectTrigger>
-                    <SelectContent side="top" align="start" className="bg-white max-h-56 z-50">
+                    <SelectContent className="bg-white max-h-56 z-50 shadow-lg border border-gray-200">
                       {dbUsers.map((u: any) => {
                         const uid = String(u.id || u.user_id);
                         const uname = u.full_name || u.name || u.email;
@@ -334,7 +334,7 @@ export const ProjectsManagementDialog: React.FC<ProjectsManagementDialogProps> =
                           <SelectItem
                             key={uid}
                             value={uid}
-                            className="text-xs cursor-pointer focus:bg-blue-600 focus:text-white hover:bg-blue-600 hover:text-white data-[highlighted]:bg-blue-600 data-[highlighted]:text-white data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+                            className="text-xs cursor-pointer text-gray-700 focus:bg-blue-50 focus:text-[#0B1957] hover:bg-blue-50 hover:text-[#0B1957] data-[highlighted]:bg-blue-50 data-[highlighted]:text-[#0B1957] data-[state=checked]:bg-blue-50 data-[state=checked]:text-[#0B1957] data-[state=checked]:font-semibold"
                           >
                             {uname} {u.email ? `(${u.email})` : ''}
                           </SelectItem>

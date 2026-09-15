@@ -3,27 +3,7 @@
  * Run once: node backend/migrations/add_password_hash.js
  */
 
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import pg from 'pg';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-
-const { Pool } = pg;
-
-// Use individual credentials (same fallback as shared/database/connection.js)
-const pool = new Pool({
-  host: process.env.DB_HOST || '165.22.221.77',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'salesmaya_agent',
-  user: process.env.DB_USER || 'developer',
-  password: process.env.DB_PASSWORD,
-  ssl: { rejectUnauthorized: false },
-});
+import pool from '../shared/database/connection.js';
 
 async function runMigration() {
   const client = await pool.connect();

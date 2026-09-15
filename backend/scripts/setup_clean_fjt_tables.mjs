@@ -1,5 +1,4 @@
-import pkg from 'pg';
-const { Client } = pkg;
+import pool from '../shared/database/connection.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -7,18 +6,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const client = new Client({
-  connectionString: 'postgresql://developer:O8yH7SuPfCCu1PsrZYGAAB2@165.22.221.77:5432/salesmaya_agent?sslmode=no-verify',
-  ssl: { rejectUnauthorized: false }
-});
-
 async function main() {
   try {
-    await client.connect();
-    console.log('✅ Connected to database');
-
     console.log('Dropping existing fjt tables to start clean without any dummy data...');
-    await client.query(`
+    await pool.query(`
       DROP TABLE IF EXISTS erp.fjt_issues CASCADE;
       DROP TABLE IF EXISTS erp.fjt_sprints CASCADE;
       DROP TABLE IF EXISTS erp.fjt_epics CASCADE;
@@ -29,15 +20,15 @@ async function main() {
     // Read and run DDL
     const ddlPath = path.resolve(__dirname, '../features/fjt-board/schema/fjt_board.sql');
     const ddl = fs.readFileSync(ddlPath, 'utf8');
-    await client.query(ddl);
+    await pool.query(ddl);
     console.log('✅ Created fresh empty tables: erp.fjt_projects, erp.fjt_epics, erp.fjt_sprints, erp.fjt_issues');
 
     // Verify row counts are all 0
     const [projCount, epicCount, sprintCount, issueCount] = await Promise.all([
-      client.query('SELECT count(*) FROM erp.fjt_projects'),
-      client.query('SELECT count(*) FROM erp.fjt_epics'),
-      client.query('SELECT count(*) FROM erp.fjt_sprints'),
-      client.query('SELECT count(*) FROM erp.fjt_issues'),
+      pool.query('SELECT count(*) FROM erp.fjt_projects'),
+      pool.query('SELECT count(*) FROM erp.fjt_epics'),
+      pool.query('SELECT count(*) FROM erp.fjt_sprints'),
+      pool.query('SELECT count(*) FROM erp.fjt_issues'),
     ]);
 
     console.log(`Current Row Counts in Database:
@@ -50,7 +41,8 @@ async function main() {
   } catch (err) {
     console.error('Error during setup:', err);
   } finally {
-    await client.end();
+    await pool.end();
+    process.exit(0);
   }
 }
 
