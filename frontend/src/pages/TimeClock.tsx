@@ -757,10 +757,10 @@ const TimeClock = () => {
 
       {/* Pause Reason Dialog */}
       <Dialog open={showPauseDialog} onOpenChange={setShowPauseDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Pause Work</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="w-[calc(100%-2rem)] sm:w-full sm:max-w-lg rounded-xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-left text-lg font-bold">Pause Work</DialogTitle>
+            <DialogDescription className="text-left text-sm text-gray-500">
               Please provide a reason for pausing your work
             </DialogDescription>
           </DialogHeader>
@@ -796,10 +796,10 @@ const TimeClock = () => {
           setClockOutComment("");
         }
       }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Clock Out</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="w-[calc(100%-2rem)] sm:w-full max-w-2xl rounded-xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-left text-lg font-bold">Clock Out</DialogTitle>
+            <DialogDescription className="text-left text-sm text-gray-500">
               Please provide a summary of the work completed or any notes before clocking out.
             </DialogDescription>
           </DialogHeader>

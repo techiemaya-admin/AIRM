@@ -11,7 +11,7 @@ import * as utils from './timesheet-utils.service.js';
  * Clock in
  */
 export async function clockIn(userId, clockInData) {
-  const { issue_id, project_name, latitude, longitude, location_address } = clockInData;
+  const { issue_id, project_name, notes, latitude, longitude, location_address } = clockInData;
   console.log('🔵 Time clock service - checking for active entry:', userId);
 
   // Check if user already has an active clock-in
@@ -29,7 +29,8 @@ export async function clockIn(userId, clockInData) {
     project_name,
     latitude,
     longitude,
-    location_address
+    location_address,
+    notes
   );
   console.log('✅ Clock-in entry created:', result.id);
 
@@ -152,21 +153,56 @@ export async function clockOut(userId, comment) {
 
       // Determine project and task
       let project = activeEntry.project_name || 'General';
-      let task = 'General Work';
+      let task = activeEntry.notes || '-';
 
-      if (activeEntry.issue_id) {
+      // Check if project_name contains combined "[Project] - [Story/Task/Bug] ..."
+      if (project && (project.includes(' - [Story') || project.includes(' - [Task') || project.includes(' - [Bug') || project.includes(' - Story') || project.includes(' - Task') || project.includes(' - Bug'))) {
+        const splitIndex = project.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+        if (splitIndex !== -1) {
+          const projectPart = project.substring(0, splitIndex).trim();
+          const topicPart = project.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+          project = projectPart || project;
+          if (task === 'General Work' || task === 'Task' || !task || task === '-') {
+            task = topicPart || task;
+          }
+        }
+      } else if (project && project.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
+        const match = project.match(/^\[([A-Za-z0-9_-]+)-Story/i);
+        const prefix = match ? match[1].toUpperCase() : '';
+        if (task === 'General Work' || task === 'Task' || !task || task === '-') {
+          task = project;
+          project = prefix ? `${prefix} Project` : 'Project';
+        } else {
+          project = prefix ? `${prefix} Project` : 'Project';
+        }
+      } else if (activeEntry.issue_id) {
         const issue = await timesheetModel.getIssueDetails(activeEntry.issue_id);
         if (issue) {
           project = issue.project_name || activeEntry.project_name || 'General';
-          task = `Issue #${activeEntry.issue_id}: ${issue.title || 'Untitled'}`;
+          task = `#${activeEntry.issue_id} - ${issue.title || 'Untitled'}`;
         } else {
           project = activeEntry.project_name || 'General';
-          task = `Issue #${activeEntry.issue_id}`;
+          task = `#${activeEntry.issue_id}`;
+        }
+      }
+
+      if (task && (task.includes(' - [Story') || task.includes(' - [Task') || task.includes(' - [Bug') || task.includes(' - Story') || task.includes(' - Task') || task.includes(' - Bug'))) {
+        const splitIndex = task.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+        if (splitIndex !== -1) {
+          const projectPart = task.substring(0, splitIndex).trim();
+          const topicPart = task.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+          if (!project || project === 'General' || project === 'Project') {
+            project = projectPart;
+          }
+          task = topicPart;
         }
       }
 
       project = (project || 'General').trim();
-      task = (task || 'General Work').trim();
+      task = (task || '-').trim();
+      if (task === 'General Work' || task === 'Task') {
+        task = '-';
+      }
 
       // Get or create timesheet
       let timesheet = await timesheetModel.getTimesheetByWeek(userId, weekStartStr);
@@ -178,16 +214,8 @@ export async function clockOut(userId, comment) {
         timesheetId = await timesheetModel.createTimesheet(userId, weekStartStr, weekEndStr);
       }
 
-      // Find or create entry
-      const existingEntry = await timesheetModel.getOrCreateTimeClockEntry(timesheetId, project, task);
-
-      if (existingEntry) {
-        const currentHours = parseFloat(existingEntry[dayColumn]) || 0;
-        const newHours = Math.round((currentHours + totalHours) * 100) / 100;
-        await timesheetModel.updateTimesheetEntryHours(existingEntry.id, dayColumn, newHours);
-      } else {
-        await timesheetModel.createTimesheetEntryForDay(timesheetId, project, task, dayColumn, totalHours);
-      }
+      // Always create a new entry for each clock-out session
+      await timesheetModel.createTimesheetEntryForDay(timesheetId, project, task, dayColumn, totalHours);
 
       timesheetUpdateSuccess = true;
     }

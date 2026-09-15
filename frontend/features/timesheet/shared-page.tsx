@@ -253,7 +253,7 @@ const SharedTimesheet = () => {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Weekly Timesheet</CardTitle>
+              <CardTitle>Weekly Time Sheet</CardTitle>
               <Button variant="outline" onClick={handleDownload}>
                 <Download className="mr-2 h-4 w-4" />
                 Download
@@ -318,7 +318,7 @@ const SharedTimesheet = () => {
                   {timesheet.timesheet_entries.map((entry) => (
                     <tr key={entry.id}>
                       <td className="border border-border p-2">{entry.project}</td>
-                      <td className="border border-border p-2">{entry.task}</td>
+                      <td className="border border-border p-2">{entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : '-'}</td>
                       <td className="border border-border p-2 text-center">{formatHours(entry.mon_hours)}</td>
                       <td className="border border-border p-2 text-center">{formatHours(entry.tue_hours)}</td>
                       <td className="border border-border p-2 text-center">{formatHours(entry.wed_hours)}</td>

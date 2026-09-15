@@ -21,7 +21,7 @@ const Auth = () => {
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (token) {
-      navigate("/");
+      navigate("/time-clock");
     }
     
     const rememberedEmail = localStorage.getItem("remember_email");
@@ -76,7 +76,7 @@ const Auth = () => {
         description: `Signed in as ${response.user.full_name || response.user.email}`,
       });
 
-      navigate("/");
+      navigate("/time-clock");
     } catch (error: any) {
       let msg = error.message || "Sign in failed. Please try again.";
       if (

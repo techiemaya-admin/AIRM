@@ -147,21 +147,21 @@ const Users = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="min-h-screen bg-background p-3 sm:p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
         <div className="sr-only">
           <h1 className="text-2xl font-bold">Employee Management</h1>
         </div>
 
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-xl font-bold text-gray-900">
                 <UsersIcon className="h-5 w-5" />
                 All Employees
               </CardTitle>
-              <div className="flex items-center gap-3">
-                <Button size="sm" className="flex items-center gap-2 bg-[#0B1957] hover:bg-[#071038]">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <Button size="sm" className="flex items-center gap-2 bg-[#0B1957] hover:bg-[#071038] text-xs sm:text-sm h-8 sm:h-9">
                   <Plus className="h-4 w-4" />
                   Add Employee
                 </Button>
@@ -170,14 +170,15 @@ const Users = () => {
                   size="sm"
                   onClick={loadUsers}
                   disabled={loading}
+                  className="h-8 sm:h-9 text-xs sm:text-sm"
                 >
-                  <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 ${loading ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-6 pt-0">
             {loading && users.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">Loading employees...</p>
             ) : users.length === 0 ? (
@@ -187,18 +188,18 @@ const Users = () => {
                 {users.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 border rounded-lg gap-3 bg-white hover:bg-gray-50/50 transition-colors"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         {user.role === "admin" ? (
-                          <Shield className="h-4 w-4 text-purple-500" />
+                          <Shield className="h-4 w-4 text-purple-500 flex-shrink-0" />
                         ) : (
-                          <UserIcon className="h-4 w-4 text-gray-500" />
+                          <UserIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
                         )}
-                        <h3 className="font-semibold">{user.email}</h3>
+                        <h3 className="font-semibold text-xs sm:text-sm text-gray-900 break-all sm:break-normal" title={user.email}>{user.email}</h3>
                         <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${user.role === "admin"
+                          className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-medium ${user.role === "admin"
                             ? "bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200"
                             : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
                             }`}
@@ -206,10 +207,10 @@ const Users = () => {
                           {user.role}
                         </span>
                         {user.id === currentUser?.id && (
-                          <span className="text-xs text-muted-foreground">(You)</span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">(You)</span>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                         Joined: {user.created_at && !isNaN(new Date(user.created_at).getTime())
                           ? new Date(user.created_at).toLocaleDateString()
                           : 'N/A'}
@@ -218,6 +219,7 @@ const Users = () => {
                     <Button
                       variant={user.role === "admin" ? "destructive" : "default"}
                       size="sm"
+                      className="h-8 text-xs px-2.5 sm:px-3 font-semibold self-end sm:self-center flex-shrink-0"
                       onClick={() => toggleUserRole(user.id, user.role)}
                       disabled={loading || user.id === currentUser?.id}
                     >

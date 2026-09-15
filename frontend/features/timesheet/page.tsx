@@ -9,6 +9,8 @@ import { Plus, Trash2, Save, Share2, ChevronLeft, ChevronRight, Download, Refres
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { TimesheetSkeleton } from "@/components/PageSkeletons";
+import { formatTaskBugDisplay } from "@/lib/timeTrackingData";
+import { logger } from "@/lib/logger";
 
 const LiveTimeCell = ({ clockIn, initialHours = 0 }: { clockIn: string; initialHours?: number }) => {
   const [elapsed, setElapsed] = useState(0);
@@ -66,8 +68,6 @@ const HOLIDAYS_LIST = [
 ];
 
 const Timesheet = () => {
-  console.log('🎬 Timesheet component rendered');
-
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -81,12 +81,6 @@ const Timesheet = () => {
     endOfWeek(new Date(), { weekStartsOn: 1 })
   );
 
-  console.log('🎬 Timesheet state:', {
-    user: user?.id,
-    selectedUserId,
-    weekStart: format(weekStart, "yyyy-MM-dd"),
-    weekEnd: format(weekEnd, "yyyy-MM-dd")
-  });
   const [entries, setEntries] = useState<TimesheetEntry[]>([
     {
       project: "",
@@ -106,31 +100,30 @@ const Timesheet = () => {
   useEffect(() => {
     const initUser = async () => {
       try {
-        console.log('🔵 useEffect triggered - initializing user');
-        console.log('🔵 weekStart dependency:', format(weekStart, "yyyy-MM-dd"));
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        console.log('🔵 User data from localStorage:', userData);
         if (userData.id) {
           setUser(userData);
           setSelectedUserId(userData.id);
-          // Get user role from API
-          const currentUser = await api.auth.getMe() as any;
-          const adminStatus = currentUser?.user?.role === 'admin';
-          setIsAdmin(adminStatus);
-          if (adminStatus) {
-            await loadUsers();
+          const initialAdmin = userData.role === 'admin';
+          setIsAdmin(initialAdmin);
+          if (initialAdmin) {
+            loadUsers();
           }
-          console.log('🔵 About to call loadTimesheet with userId:', userData.id);
-          console.log('🔵 loadTimesheet function exists:', typeof loadTimesheet);
-          await loadTimesheet(userData.id);
-          console.log('🔵 loadTimesheet call completed');
-        } else {
-          console.warn('⚠️ No user ID found in localStorage');
+
+          // Trigger timesheet loading immediately without blocking
+          loadTimesheet(userData.id);
+
+          // Update user status and roles in the background
+          api.auth.getMe().then((currentUser: any) => {
+            const adminStatus = currentUser?.user?.role === 'admin';
+            setIsAdmin(adminStatus);
+            if (adminStatus) {
+              loadUsers();
+            }
+          }).catch(() => {});
         }
       } catch (error) {
-        console.error('❌ Error initializing user:', error);
-        console.error('❌ Error stack:', (error as any)?.stack);
-        console.error('❌ Error message:', (error as any)?.message);
+        logger.error('Error initializing user:', error);
       }
     };
     initUser();
@@ -149,7 +142,7 @@ const Timesheet = () => {
       })) : [];
       setUsers(userProfiles);
     } catch (err) {
-      console.error("Error in loadUsers:", err);
+      logger.error("Error in loadUsers:", err);
     }
   };
 
@@ -182,10 +175,10 @@ const Timesheet = () => {
     const viewingWeekStartStr = format(weekStart, "yyyy-MM-dd");
 
     if (currentWeekStartStr !== viewingWeekStartStr) {
-      console.log('📅 Not viewing current week. Current:', currentWeekStartStr, 'Viewing:', viewingWeekStartStr);
+      logger.debug('📅 Not viewing current week. Current:', currentWeekStartStr, 'Viewing:', viewingWeekStartStr);
       // Only auto-navigate if viewing a past week (more than 7 days old)
       if (isAfter(today, weekEnd) && (today.getTime() - weekEnd.getTime()) > 7 * 24 * 60 * 60 * 1000) {
-        console.log('📅 Auto-navigating to current week');
+        logger.debug('📅 Auto-navigating to current week');
         setWeekStart(currentWeekStart);
         setWeekEnd(currentWeekEnd);
       }
@@ -193,23 +186,23 @@ const Timesheet = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
-  // Auto-refresh timesheet after clock-out
+  // Auto-refresh timesheet after clock-out immediately
   useEffect(() => {
     const handleClockOut = () => {
-      if (user && selectedUserId) {
-        console.log('⏰ Clock-out detected, refreshing timesheet...');
-        setTimeout(() => {
-          loadTimesheet(selectedUserId || user.id);
-        }, 1000); // Small delay to ensure backend has saved the entry
+      const activeId = selectedUserId || user?.id || JSON.parse(localStorage.getItem('user') || '{}').id;
+      if (activeId) {
+        logger.debug('⏰ Clock-out detected, refreshing timesheet instantly...');
+        loadTimesheet(activeId);
       }
     };
 
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'timesheetRefreshTrigger' && user && selectedUserId) {
-        console.log('💾 Storage change detected, refreshing timesheet...');
-        setTimeout(() => {
-          loadTimesheet(selectedUserId || user.id);
-        }, 500);
+      if (event.key === 'timesheetRefreshTrigger') {
+        const activeId = selectedUserId || user?.id || JSON.parse(localStorage.getItem('user') || '{}').id;
+        if (activeId) {
+          logger.debug('Storage change detected, refreshing timesheet instantly...');
+          loadTimesheet(activeId);
+        }
       }
     };
 
@@ -226,7 +219,7 @@ const Timesheet = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && user && selectedUserId) {
-        console.log('📄 Page became visible, reloading timesheet...');
+        logger.debug('Page became visible, reloading timesheet...');
         loadTimesheet(selectedUserId || user.id);
       }
     };
@@ -253,13 +246,12 @@ const Timesheet = () => {
       setLoading(true);
       const weekStartStr = format(weekStart, "yyyy-MM-dd");
       const weekEndStr = format(weekEnd, "yyyy-MM-dd");
-      console.log('🚀 loadTimesheet called for:', userId, 'Week:', weekStartStr);
+      const targetUserId = userId || user?.id;
 
       const apiParams: any = { week_start: weekStartStr };
 
-      if (isAdmin && user && userId && userId !== user.id && userId !== "undefined") {
-        apiParams.user_id = userId;
-        console.log('👑 Admin viewing timesheet for:', userId);
+      if (targetUserId) {
+        apiParams.user_id = targetUserId;
       }
 
       // Load all data in parallel
@@ -270,8 +262,7 @@ const Timesheet = () => {
         api.timesheets.getEntries({
           start_date: weekStartStr,
           end_date: format(addDays(weekEnd, 1), "yyyy-MM-dd"), // inclusive
-          // Only pass user_id if it's a non-empty string and we are admin
-          ...(isAdmin && userId && userId !== "undefined" ? { user_id: userId } : {})
+          user_id: targetUserId,
         }).catch(() => ({ entries: [] })),
         api.timesheets.getCurrent().catch(() => ({ entry: null }))
       ]);
@@ -293,7 +284,8 @@ const Timesheet = () => {
         ? currentEntryResult.value as any
         : { entry: null };
 
-      const clockEntries = clockInResponse?.entries || [];
+      const rawClockEntries = clockInResponse?.entries || [];
+      const clockEntries = rawClockEntries.filter((ce: any) => !ce.user_id || ce.user_id === targetUserId);
       const timingsByDay: any = {};
 
       clockEntries.forEach((entry: any) => {
@@ -305,7 +297,7 @@ const Timesheet = () => {
       setClockInTimings(timingsByDay);
 
       if (timesheetResult.status === 'rejected') {
-        console.error('❌ Error loading timesheet:', timesheetResult.reason);
+        logger.error('❌ Error loading timesheet:', timesheetResult.reason);
         toast({
           title: "Error",
           description: "Failed to load timesheet",
@@ -318,14 +310,14 @@ const Timesheet = () => {
         ? timesheetResponse.timesheets
         : [];
 
-      console.log('📊 Received timesheets:', timesheets.length);
+      logger.debug('📊 Received timesheets:', timesheets.length);
 
       // Find matching timesheet - collect ALL timesheets that overlap with requested week
       let matchedTimesheets: any[] = [];
       const weekStartDate = new Date(weekStartStr + 'T00:00:00');
       const weekEndDate = new Date(weekEndStr + 'T23:59:59');
 
-      console.log('🔍 Looking for timesheets matching week:', weekStartStr, 'to', weekEndStr);
+      logger.debug('🔍 Looking for timesheets matching week:', weekStartStr, 'to', weekEndStr);
 
       for (const t of timesheets) {
         // Normalize week_start
@@ -341,7 +333,7 @@ const Timesheet = () => {
         // Check exact match first
         if (tWeekStart === weekStartStr) {
           matchedTimesheets.push(t);
-          console.log('✅ Found exact match timesheet:', t.id, 'with', Array.isArray(t.entries) ? t.entries.length : 0, 'entries');
+          logger.debug('✅ Found exact match timesheet:', t.id, 'with', Array.isArray(t.entries) ? t.entries.length : 0, 'entries');
           continue;
         }
 
@@ -363,7 +355,7 @@ const Timesheet = () => {
         // Check if weeks overlap
         if (weekStartDate <= tWeekEndDate && weekEndDate >= tWeekStartDate) {
           matchedTimesheets.push(t);
-          console.log('✅ Found overlapping timesheet:', t.id, 'week:', tWeekStart, 'to', tWeekEnd, 'with', Array.isArray(t.entries) ? t.entries.length : 0, 'entries');
+          logger.debug('✅ Found overlapping timesheet:', t.id, 'week:', tWeekStart, 'to', tWeekEnd, 'with', Array.isArray(t.entries) ? t.entries.length : 0, 'entries');
         }
       }
 
@@ -376,72 +368,27 @@ const Timesheet = () => {
         firstTimesheetId = matchedTimesheets[0].id;
         setTimesheetId(firstTimesheetId);
 
-        console.log(`📋 Processing ${matchedTimesheets.length} matched timesheet(s)`);
-
         // Collect entries from ALL matched timesheets
         for (const ts of matchedTimesheets) {
-          console.log(`  Checking timesheet ${ts.id}:`, {
-            entries_type: typeof ts.entries,
-            entries_is_array: Array.isArray(ts.entries),
-            entries_length: Array.isArray(ts.entries) ? ts.entries.length : 'N/A'
-          });
-
           let entries = ts.entries || [];
 
           // Handle string entries
           if (typeof entries === 'string') {
             try {
               entries = JSON.parse(entries);
-              console.log(`  ✅ Parsed entries from JSON string`);
             } catch (e) {
-              console.error(`  ❌ Failed to parse entries:`, e);
+              logger.error('Failed to parse entries:', e);
               entries = [];
             }
           }
 
           // Ensure it's an array
-          if (!Array.isArray(entries)) {
-            console.warn(`  ⚠️ Entries is not an array:`, typeof entries);
-            entries = [];
-          }
-
-          if (entries.length > 0) {
-            console.log(`  📋 Collecting ${entries.length} entries from timesheet ${ts.id}`);
-            entries.forEach((e: any, idx: number) => {
-              const total = (parseFloat(e.mon_hours) || 0) + (parseFloat(e.tue_hours) || 0) +
-                (parseFloat(e.wed_hours) || 0) + (parseFloat(e.thu_hours) || 0) +
-                (parseFloat(e.fri_hours) || 0) + (parseFloat(e.sat_hours) || 0) +
-                (parseFloat(e.sun_hours) || 0);
-              console.log(`    Entry ${idx + 1}: ${e.project || 'N/A'}/${e.task || 'N/A'}`, {
-                source: e.source,
-                total: total,
-                hours: {
-                  mon: e.mon_hours,
-                  tue: e.tue_hours,
-                  wed: e.wed_hours,
-                  thu: e.thu_hours,
-                  fri: e.fri_hours,
-                  sat: e.sat_hours,
-                  sun: e.sun_hours
-                }
-              });
-            });
+          if (Array.isArray(entries) && entries.length > 0) {
             allEntries = [...allEntries, ...entries];
-          } else {
-            console.log(`  ⚠️ Timesheet ${ts.id} has no entries`);
           }
         }
-
-        console.log(`📊 Total entries collected from all timesheets: ${allEntries.length}`);
       } else {
         setTimesheetId(null);
-        console.log('⚠️ No timesheet found for week:', weekStartStr);
-        console.log('Available timesheets:', timesheets.map((t: any) => ({
-          id: t.id,
-          week_start: typeof t.week_start === 'string' ? t.week_start.split('T')[0] : new Date(t.week_start).toISOString().split('T')[0],
-          week_end: typeof t.week_end === 'string' ? t.week_end.split('T')[0] : (t.week_end ? new Date(t.week_end).toISOString().split('T')[0] : 'N/A'),
-          entries_count: Array.isArray(t.entries) ? t.entries.length : 0
-        })));
       }
 
       // Determine which user ID to use for filtering leave requests and issues
@@ -504,7 +451,7 @@ const Timesheet = () => {
           const leaveStartDate = leaveStartStr.split('T')[0];
           const leaveEndDate = leaveEndStr.split('T')[0];
 
-          console.log('🔍 Leave date processing:', {
+          logger.debug('🔍 Leave date processing:', {
             rawStart: leaveStartStr,
             rawEnd: leaveEndStr,
             parsedStart: leaveStartDate,
@@ -517,12 +464,12 @@ const Timesheet = () => {
             const currentDay = addDays(weekStart, i);
             const currentDayStr = format(currentDay, 'yyyy-MM-dd');
 
-            console.log(`🔍 Day ${i}: ${currentDayStr} (${dayMap[i]}) - checking against ${leaveStartDate} to ${leaveEndDate}`);
+            logger.debug(`🔍 Day ${i}: ${currentDayStr} (${dayMap[i]}) - checking against ${leaveStartDate} to ${leaveEndDate}`);
 
             // Compare date strings to avoid timezone issues
             if (currentDayStr >= leaveStartDate && currentDayStr <= leaveEndDate) {
               const dayKey = dayMap[i];
-              console.log(`✅ Match! Setting ${dayKey} = 8 hours`);
+              logger.debug(`✅ Match! Setting ${dayKey} = 8 hours`);
               if (dayKey) {
                 hours[dayKey] = 8; // 8 hours for leave days
               }
@@ -576,51 +523,142 @@ const Timesheet = () => {
         return isNaN(num) ? 0 : num;
       };
 
-      // Process all entries - convert hours to numbers
-      console.log(`🔄 Processing ${allEntries.length} entries for display...`);
-      const regularEntries: TimesheetEntry[] = allEntries.map((entry: any, idx: number) => {
-        const processed = {
-          id: entry.id || `entry-${firstTimesheetId || 'new'}-${idx}-${Date.now()}`,
-          project: entry.project || '',
-          task: entry.task || '',
-          mon_hours: toNumber(entry.mon_hours),
-          tue_hours: toNumber(entry.tue_hours),
-          wed_hours: toNumber(entry.wed_hours),
-          thu_hours: toNumber(entry.thu_hours),
-          fri_hours: toNumber(entry.fri_hours),
-          sat_hours: toNumber(entry.sat_hours),
-          sun_hours: toNumber(entry.sun_hours),
-          source: entry.source || 'manual',
-        };
+      // 1. Group and accumulate all completed clockEntries by project + task into single rows
+      const timeClockMap = new Map<string, { entry: TimesheetEntry; latestTimestamp: number }>();
+      const completedClockEntries = clockEntries.filter((ce: any) => ce.clock_out || ce.status === 'clocked_out');
 
-        const total = processed.mon_hours + processed.tue_hours + processed.wed_hours +
-          processed.thu_hours + processed.fri_hours + processed.sat_hours + processed.sun_hours;
-        if (total > 0) {
-          console.log(`  ✅ Processed entry ${idx + 1}: ${processed.project}/${processed.task} - Total: ${total}`, {
-            thu: processed.thu_hours,
-            fri: processed.fri_hours,
-            source: processed.source
-          });
+      completedClockEntries.forEach((ce: any, idx: number) => {
+        const clockDate = new Date(ce.clock_in);
+        const clockDateStr = format(clockDate, 'yyyy-MM-dd');
+        let dayIdx = -1;
+        for (let i = 0; i < 7; i++) {
+          if (format(addDays(weekStart, i), 'yyyy-MM-dd') === clockDateStr) {
+            dayIdx = i;
+            break;
+          }
+        }
+        if (dayIdx === -1) return; // Not within the currently viewed week
+
+        let pName = (ce.project_name || ce.issue_project || 'Human Resources (HR)').trim();
+        let tName = (ce.notes || ce.issue_title || '-').trim();
+
+        // 1. Clean combined project/task names: "Project - [Story/Task/Bug] ..."
+        if (pName.includes(' - [Story') || pName.includes(' - [Task') || pName.includes(' - [Bug') || pName.includes(' - Story') || pName.includes(' - Task') || pName.includes(' - Bug')) {
+          const splitIndex = pName.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+          if (splitIndex !== -1) {
+            const projectPart = pName.substring(0, splitIndex).trim();
+            const topicPart = pName.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+            pName = projectPart;
+            if (!tName || tName === '-' || tName === 'General Work' || tName === 'Task') {
+              tName = topicPart;
+            }
+          }
+        } else if (pName.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
+          const match = pName.match(/^\[([A-Za-z0-9_-]+)-Story/i);
+          const prefix = match ? match[1].toUpperCase() : '';
+          if (!tName || tName === '-' || tName === 'General Work' || tName === 'Task') {
+            tName = pName;
+            pName = prefix ? `${prefix} Project` : 'Project';
+          } else {
+            pName = prefix ? `${prefix} Project` : 'Project';
+          }
         }
 
-        return processed;
+        pName = pName.replace(/:\s*undefined/g, '').trim();
+        tName = tName.replace(/:\s*undefined/g, '').trim();
+        if (!tName || tName === 'General Work' || tName === 'Task') {
+          tName = '-';
+        }
+
+        const hrs = toNumber(ce.total_hours);
+        const ceTimestamp = new Date(ce.clock_out || ce.clock_in).getTime();
+        const key = `${pName.toLowerCase()}|${tName.toLowerCase()}`;
+
+        const existing = timeClockMap.get(key);
+        if (existing) {
+          const dayKeys = ['mon_hours', 'tue_hours', 'wed_hours', 'thu_hours', 'fri_hours', 'sat_hours', 'sun_hours'] as const;
+          const targetDayKey = dayKeys[dayIdx];
+          if (targetDayKey) {
+            existing.entry[targetDayKey] = Math.round(((existing.entry[targetDayKey] || 0) + hrs) * 100) / 100;
+          }
+          if (ceTimestamp > existing.latestTimestamp) {
+            existing.latestTimestamp = ceTimestamp;
+          }
+        } else {
+          const newEntry: TimesheetEntry = {
+            id: `time_clock-${ce.id || idx}`,
+            project: pName || 'Project',
+            task: tName || '-',
+            mon_hours: dayIdx === 0 ? hrs : 0,
+            tue_hours: dayIdx === 1 ? hrs : 0,
+            wed_hours: dayIdx === 2 ? hrs : 0,
+            thu_hours: dayIdx === 3 ? hrs : 0,
+            fri_hours: dayIdx === 4 ? hrs : 0,
+            sat_hours: dayIdx === 5 ? hrs : 0,
+            sun_hours: dayIdx === 6 ? hrs : 0,
+            source: 'time_clock',
+          };
+          timeClockMap.set(key, { entry: newEntry, latestTimestamp: ceTimestamp });
+        }
       });
 
-      console.log(`✅ Processed ${regularEntries.length} regular entries`);
+      const timeClockRows = Array.from(timeClockMap.values())
+        .sort((a, b) => a.latestTimestamp - b.latestTimestamp)
+        .map(v => v.entry);
+
+      // 2. Extract and group manual entries from allEntries
+      const manualMap = new Map<string, TimesheetEntry>();
+      allEntries
+        .filter((entry: any) => entry.source !== 'time_clock' && entry.source !== 'leave')
+        .forEach((entry: any, idx: number) => {
+          const p = (entry.project || '').trim();
+          const t = (entry.task || '').trim() || '-';
+          const key = `${p.toLowerCase()}|${t.toLowerCase()}`;
+          const existing = manualMap.get(key);
+          if (existing) {
+            existing.mon_hours = Math.round((existing.mon_hours + toNumber(entry.mon_hours)) * 100) / 100;
+            existing.tue_hours = Math.round((existing.tue_hours + toNumber(entry.tue_hours)) * 100) / 100;
+            existing.wed_hours = Math.round((existing.wed_hours + toNumber(entry.wed_hours)) * 100) / 100;
+            existing.thu_hours = Math.round((existing.thu_hours + toNumber(entry.thu_hours)) * 100) / 100;
+            existing.fri_hours = Math.round((existing.fri_hours + toNumber(entry.fri_hours)) * 100) / 100;
+            existing.sat_hours = Math.round((existing.sat_hours + toNumber(entry.sat_hours)) * 100) / 100;
+            existing.sun_hours = Math.round((existing.sun_hours + toNumber(entry.sun_hours)) * 100) / 100;
+          } else {
+            manualMap.set(key, {
+              id: entry.id || `manual-${idx}-${Date.now()}`,
+              project: p,
+              task: t,
+              mon_hours: toNumber(entry.mon_hours),
+              tue_hours: toNumber(entry.tue_hours),
+              wed_hours: toNumber(entry.wed_hours),
+              thu_hours: toNumber(entry.thu_hours),
+              fri_hours: toNumber(entry.fri_hours),
+              sat_hours: toNumber(entry.sat_hours),
+              sun_hours: toNumber(entry.sun_hours),
+              source: 'manual',
+            });
+          }
+        });
+      const manualEntries = Array.from(manualMap.values());
+
+      // Combine time_clock rows and manual rows
+      const finalRegularEntries: TimesheetEntry[] = [...timeClockRows, ...manualEntries];
 
       // Check which assigned issues are already in the timesheet
       const existingProjectsTasks = new Set(
-        regularEntries.map((e: TimesheetEntry) => `${e.project}|${e.task}`)
+        finalRegularEntries.map((e: TimesheetEntry) => `${e.project.toLowerCase()}|${e.task.toLowerCase()}`)
       );
       const newAssignedEntries = assignedIssueEntries.filter(
-        (entry: TimesheetEntry) => !existingProjectsTasks.has(`${entry.project}|${entry.task}`)
+        (entry: TimesheetEntry) => !existingProjectsTasks.has(`${entry.project.toLowerCase()}|${entry.task.toLowerCase()}`)
       );
 
       // Combine all entries
-      const finalEntries: any[] = [...regularEntries, ...leaveEntries, ...newAssignedEntries];
+      const finalEntries: any[] = [...finalRegularEntries, ...leaveEntries, ...newAssignedEntries];
 
-      // Inject active time clock entry if running
-      const activeEntry = currentEntryResponse?.entry || clockEntries.find((e: any) => !e.clock_out && e.status !== 'clocked_out');
+      // Inject active time clock entry if running for the target user
+      const activeEntry = (currentEntryResponse?.entry && (!currentEntryResponse.entry.user_id || currentEntryResponse.entry.user_id === targetUserIdForData))
+        ? currentEntryResponse.entry
+        : clockEntries.find((e: any) => (!e.user_id || e.user_id === targetUserIdForData) && !e.clock_out && e.status !== 'clocked_out');
       if (activeEntry) {
         const clockInDate = new Date(activeEntry.clock_in);
         const activeDayStr = format(clockInDate, 'yyyy-MM-dd');
@@ -629,25 +667,77 @@ const Timesheet = () => {
           if (format(addDays(weekStart, i), 'yyyy-MM-dd') === activeDayStr) dayIdx = i;
         }
         if (dayIdx !== -1) {
-          const activeProject = activeEntry.project_name || (activeEntry.issue?.project_name) || '';
-          const activeTask = activeEntry.issue?.title ? `Issue #${activeEntry.issue_id}: ${activeEntry.issue.title}` : `Issue #${activeEntry.issue_id}`;
+          let activeProject = (activeEntry.project_name || activeEntry.issue?.project_name || 'Project').trim();
+          let activeTask = (activeEntry.notes || activeEntry.issue?.title || '-').trim();
+          if (activeProject.includes(' - [Story') || activeProject.includes(' - [Task') || activeProject.includes(' - [Bug') || activeProject.includes(' - Story') || activeProject.includes(' - Task') || activeProject.includes(' - Bug')) {
+            const splitIndex = activeProject.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+            if (splitIndex !== -1) {
+              const projectPart = activeProject.substring(0, splitIndex).trim();
+              const topicPart = activeProject.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+              activeProject = projectPart;
+              if (activeTask === 'General Work' || activeTask === 'Task' || !activeTask || activeTask === '-') {
+                activeTask = topicPart;
+              }
+            }
+          } else if (activeProject.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
+            const match = activeProject.match(/^\[([A-Za-z0-9_-]+)-Story/i);
+            const prefix = match ? match[1].toUpperCase() : '';
+            if (activeTask === 'General Work' || activeTask === 'Task' || !activeTask || activeTask === '-') {
+              activeTask = activeProject;
+              activeProject = prefix ? `${prefix} Project` : 'Project';
+            } else {
+              activeProject = prefix ? `${prefix} Project` : 'Project';
+            }
+          }
+          activeProject = activeProject.replace(/:\s*undefined/g, '').trim();
+          activeTask = activeTask.replace(/:\s*undefined/g, '').trim();
 
-          let existingRow = finalEntries.find(r => r.project === activeProject && (r.task === activeTask || r.task?.includes(`Issue #${activeEntry.issue_id}`)));
+          if (activeTask.includes(' - [Story') || activeTask.includes(' - [Task') || activeTask.includes(' - [Bug') || activeTask.includes(' - Story') || activeTask.includes(' - Task') || activeTask.includes(' - Bug')) {
+            const splitIndex = activeTask.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+            if (splitIndex !== -1) {
+              const projectPart = activeTask.substring(0, splitIndex).trim();
+              const topicPart = activeTask.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+              if (!activeProject || activeProject === 'Project' || activeProject === 'General') {
+                activeProject = projectPart;
+              }
+              activeTask = topicPart;
+            }
+          }
 
-          if (existingRow) {
+          if (!activeTask || activeTask === 'General Work' || activeTask === 'Task') {
+            activeTask = '-';
+          }
+
+          // Check if this project & task already exists in finalEntries
+          const existingIndex = finalEntries.findIndex(r =>
+            r.project.toLowerCase() === activeProject.toLowerCase() &&
+            r.task.toLowerCase() === activeTask.toLowerCase()
+          );
+
+          if (existingIndex !== -1) {
+            // Remove from current position and attach active session details, then move to the LAST position!
+            const [existingRow] = finalEntries.splice(existingIndex, 1);
             existingRow.activeClockIn = activeEntry.clock_in;
             existingRow.activeDayIndex = dayIdx;
-            existingRow.source = 'time_clock';
+            finalEntries.push(existingRow); // Always in the last row!
           } else {
-            finalEntries.push({
-              id: `active-clock-${Date.now()}`,
+            // Append as new active row to the LAST position of the table!
+            const newActiveRow: any = {
+              id: `active-${activeEntry.id || Date.now()}`,
               project: activeProject,
               task: activeTask,
-              mon_hours: 0, tue_hours: 0, wed_hours: 0, thu_hours: 0, fri_hours: 0, sat_hours: 0, sun_hours: 0,
+              mon_hours: 0,
+              tue_hours: 0,
+              wed_hours: 0,
+              thu_hours: 0,
+              fri_hours: 0,
+              sat_hours: 0,
+              sun_hours: 0,
               source: 'time_clock',
               activeClockIn: activeEntry.clock_in,
-              activeDayIndex: dayIdx
-            });
+              activeDayIndex: dayIdx,
+            };
+            finalEntries.push(newActiveRow); // Always in the last row!
           }
         }
       }
@@ -670,44 +760,51 @@ const Timesheet = () => {
         });
       }
 
-      console.log('📊 Final entries summary:', {
-        regular: regularEntries.length,
-        leave: leaveEntries.length,
-        assigned: newAssignedEntries.length,
-        total: finalEntries.length,
-        withHours: finalEntries.filter(e =>
-          e.mon_hours > 0 || e.tue_hours > 0 || e.wed_hours > 0 ||
-          e.thu_hours > 0 || e.fri_hours > 0 || e.sat_hours > 0 || e.sun_hours > 0
-        ).length
-      });
+      // Sort entries chronologically by latest activity so the most recent / last clocked task is ALWAYS at the bottom/last row
+      const getLatestActivityTimestamp = (row: any): number => {
+        if (row.activeClockIn) {
+          return Date.now() + 1000000000; // Live in-progress task is ALWAYS the absolute last row!
+        }
+        if (row.source === 'leave') {
+          return 0; // Leave rows stay at top
+        }
 
-      // Log all final entries with details
-      console.log('📋 All final entries being set:');
-      finalEntries.forEach((e, idx) => {
-        const total = e.mon_hours + e.tue_hours + e.wed_hours + e.thu_hours +
-          e.fri_hours + e.sat_hours + e.sun_hours;
-        console.log(`  Entry ${idx + 1}:`, {
-          id: e.id,
-          project: e.project,
-          task: e.task,
-          source: e.source,
-          total: total,
-          hours: {
-            mon: e.mon_hours,
-            tue: e.tue_hours,
-            wed: e.wed_hours,
-            thu: e.thu_hours,
-            fri: e.fri_hours,
-            sat: e.sat_hours,
-            sun: e.sun_hours
-          }
+        const pLower = (row.project || '').toLowerCase().trim();
+        const tLower = (row.task || '').toLowerCase().trim();
+
+        // Match against clockEntries to find the most recent clock_in / clock_out / updated_at
+        const matchingClocks = clockEntries.filter((ce: any) => {
+          const ceProject = (ce.project_name || ce.issue_project || '').toLowerCase().trim();
+          const ceNotes = (ce.notes || ce.issue_title || '').toLowerCase().trim();
+          const pMatch = !pLower || ceProject.includes(pLower) || pLower.includes(ceProject);
+          const tMatch = !tLower || tLower === '-' || ceNotes.includes(tLower) || tLower.includes(ceNotes);
+          return pMatch && tMatch;
         });
+
+        if (matchingClocks.length > 0) {
+          const timestamps = matchingClocks.map((ce: any) => {
+            const dt = ce.clock_out || ce.clock_in || ce.updated_at || ce.created_at;
+            return dt ? new Date(dt).getTime() : 0;
+          });
+          return Math.max(...timestamps, 0);
+        }
+
+        if (row.updated_at || row.created_at) {
+          return new Date(row.updated_at || row.created_at).getTime();
+        }
+
+        return 1;
+      };
+
+      finalEntries.sort((a, b) => {
+        const timeA = getLatestActivityTimestamp(a);
+        const timeB = getLatestActivityTimestamp(b);
+        return timeA - timeB; // Ascending: earliest at top, most recent at bottom
       });
 
-      console.log('✅ Setting entries state with', finalEntries.length, 'entries');
       setEntries(finalEntries);
     } catch (error: any) {
-      console.error("Error loading timesheet:", error);
+      logger.error("Error loading timesheet:", error);
       const errorMessage = error?.message || "Failed to load timesheet";
       toast({
         title: "Error",
@@ -915,7 +1012,7 @@ const Timesheet = () => {
       return;
     }
 
-    const shareUrl = `${window.location.origin}/timesheet/${currentTimesheetId}`;
+    const shareUrl = `${window.location.origin}/time-sheet/${currentTimesheetId}`;
 
     if (navigator.share) {
       try {
@@ -1161,14 +1258,10 @@ const Timesheet = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Timesheet</h1>
-        </div>
-
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle>Weekly Timesheet</CardTitle>
+              <CardTitle>Weekly Time Sheet</CardTitle>
               <div className="flex flex-wrap gap-2 sm:gap-4">
                 <Button variant="outline" size="sm" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />
@@ -1235,23 +1328,28 @@ const Timesheet = () => {
               <TimesheetSkeleton />
             ) : (
               <>
-                {/* Compact Late Clock-in Warning */}
-                {Object.entries(clockInTimings).some(([_, entry]: [any, any]) => new Date(entry.clock_in).getHours() >= 11) && (
-                  <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 rounded-r-md flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                    <div className="text-sm font-medium text-red-900">
-                      <span className="font-bold">Late Attendance Warning:</span> First-shift absence recorded for{' '}
-                      {Object.entries(clockInTimings)
-                        .filter(([_, entry]: [any, any]) => new Date(entry.clock_in).getHours() >= 11)
-                        .map(([date, entry]: [any, any]) => (
-                          <span key={date} className="inline-flex items-center bg-red-100 px-2 py-0.5 rounded text-[11px] font-bold mx-0.5">
-                            {format(new Date(date + 'T12:00:00'), "EEE, MMM dd")} ({format(new Date(entry.clock_in), "hh:mm a")})
+                {/* Compact Late Clock-in Warning (Evaluated for Today) */}
+                {(() => {
+                  const todayStr = format(new Date(), "yyyy-MM-dd");
+                  const todayEntry = clockInTimings[todayStr];
+                  const isLateToday = todayEntry && new Date(todayEntry.clock_in).getHours() >= 11;
+
+                  if (isLateToday) {
+                    return (
+                      <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 rounded-r-md flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                        <div className="text-sm font-medium text-red-900">
+                          <span className="font-bold">Late Attendance Warning:</span> First-shift absence recorded for Today,{' '}
+                          <span className="inline-flex items-center bg-red-100 px-2 py-0.5 rounded text-[11px] font-bold mx-0.5">
+                            {format(new Date(todayStr + 'T12:00:00'), "EEE, MMM dd")} ({format(new Date(todayEntry.clock_in), "hh:mm a")})
                           </span>
-                        ))}
-                      . (Clock-in required before 11:00 AM)
-                    </div>
-                  </div>
-                )}
+                          . (Clock-in required before 11:00 AM)
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
@@ -1316,16 +1414,16 @@ const Timesheet = () => {
                             <td className="border border-border p-1">
                               {isReadOnly ? (
                                 <div className="px-2 py-1 text-sm flex items-center gap-2">
-                                  {entry.task}
+                                  {entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : '-'}
                                   {isTimeClock && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">Auto</span>}
                                   {isLeave && <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">Leave</span>}
                                 </div>
                               ) : (
                                 <Input
-                                  value={entry.task}
+                                  value={entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : (isTimeClock ? '-' : entry.task)}
                                   onChange={(e) => updateEntry(index, "task", e.target.value)}
                                   className="h-8 border-0 bg-transparent"
-                                  placeholder="Task"
+                                  placeholder="-"
                                   disabled={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                                   readOnly={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                                 />
@@ -1364,7 +1462,7 @@ const Timesheet = () => {
                                       {holiday && dayHours === 0 ? 'Holiday' : (displayValue === '0' && isWeekend ? '-' : displayValue)}
                                     </div>
                                   ) : (
-                                    <div className="relative">
+                                    <div className="relative flex items-center justify-center">
                                       <Input
                                         type="number"
                                         step="0.5"
@@ -1382,16 +1480,11 @@ const Timesheet = () => {
                                             num
                                           );
                                         }}
-                                        className={`h-8 border-0 bg-transparent text-center ${holiday ? 'text-green-600 placeholder:text-green-600/50' : (isWeekend ? 'text-gray-500' : '')}`}
+                                        className={`h-8 border-0 bg-transparent text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${holiday ? 'text-green-600 placeholder:text-green-600 placeholder:font-medium' : (isWeekend ? 'text-gray-500' : '')}`}
                                         placeholder={holiday && dayHours === 0 ? "Holiday" : ""}
                                         disabled={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                                         readOnly={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                                       />
-                                      {holiday && dayHours === 0 && (
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-[9px] font-bold text-green-600/20 uppercase">
-                                          Holiday
-                                        </div>
-                                      )}
                                     </div>
                                   )}
                                 </td>

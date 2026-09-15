@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
@@ -14,6 +15,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useIssues } from "@/hooks/useIssues";
 import { useProjects } from "@/hooks/useProjects";
 import { useActiveTimesheet, useTimesheetEntries, useTimesheetMutation } from "@/hooks/useTimesheets";
+import { useFjtBoardData } from "@/sdk/features/fjt-board/hooks";
 import { formatHours } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 
@@ -21,6 +23,20 @@ interface Issue {
   id: number;
   title: string;
   project_name?: string;
+  status: string;
+}
+
+interface ProjectOption {
+  id: string;
+  key: string;
+  name: string;
+}
+
+interface TopicOption {
+  id: number | string;
+  key: string;
+  title: string;
+  type: 'story' | 'task' | 'bug';
   status: string;
 }
 
@@ -44,9 +60,8 @@ interface TimeEntry {
 }
 
 const TimeClock = () => {
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
-  const [selectedIssueId, setSelectedIssueId] = useState<string>("");
-  const [projectName, setProjectName] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [selectedTopicId, setSelectedTopicId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   const [pauseReason, setPauseReason] = useState("");
@@ -56,13 +71,91 @@ const TimeClock = () => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: user, isLoading: userLoading } = useCurrentUser();
+  const { data: fjtBoardData, isLoading: fjtLoading } = useFjtBoardData();
   const { data: issuesData = [], isLoading: issuesLoading } = useIssues();
   const { data: projectsData = [], isLoading: projectsLoading } = useProjects();
   const { data: currentEntry, isLoading: activeLoading } = useActiveTimesheet();
-  const { data: timeEntries = [], isLoading: entriesLoading } = useTimesheetEntries({ limit: 10, user_id: user?.id });
+  const { data: timeEntries = [], isLoading: entriesLoading, refetch: refetchEntries } = useTimesheetEntries({ limit: 200, user_id: user?.id });
   const timesheetMutation = useTimesheetMutation();
 
   const [chartView, setChartView] = useState<'Month' | 'Year'>('Month');
+
+  // Dynamic Projects created in Task Board
+  const projectsList = useMemo<ProjectOption[]>(() => {
+    const fjtProjects = fjtBoardData?.projects || [];
+    if (fjtProjects.length > 0) {
+      return fjtProjects.map((p: any) => ({
+        id: p.id,
+        key: p.key,
+        name: p.name,
+      }));
+    }
+    if (fjtBoardData?.project?.key) {
+      return [
+        {
+          id: fjtBoardData.currentProjectId || 'default-project',
+          key: fjtBoardData.project.key,
+          name: fjtBoardData.project.name || 'Standard Agile Project Workspace',
+        },
+      ];
+    }
+    return [];
+  }, [fjtBoardData]);
+
+  // Dynamic Stories, Tasks, and Bugs for the selected project (only To Do & In Progress)
+  const availableTopics = useMemo<TopicOption[]>(() => {
+    if (!selectedProjectId) return [];
+
+    const fjtIssues = fjtBoardData?.issues || [];
+    const selectedProject = projectsList.find((p) => p.id === selectedProjectId);
+
+    return fjtIssues
+      .filter((i: any) => {
+        const isTopicType = i.type === 'story' || i.type === 'task' || i.type === 'bug';
+        if (!isTopicType) return false;
+
+        const statusLower = String(i.status || '').toLowerCase();
+        const isActionable = statusLower === 'to_do' || statusLower === 'in_progress' || (statusLower !== 'done' && statusLower !== 'completed' && statusLower !== 'closed');
+        if (!isActionable) return false;
+
+        if (selectedProject) {
+          if (i.projectId && (i.projectId === selectedProject.id || i.projectId === selectedProjectId)) {
+            return true;
+          }
+          if (i.projectKey && selectedProject.key && i.projectKey.toUpperCase() === selectedProject.key.toUpperCase()) {
+            return true;
+          }
+          if (i.projectName && selectedProject.name && i.projectName.toLowerCase() === selectedProject.name.toLowerCase()) {
+            return true;
+          }
+          if (i.key && selectedProject.key && i.key.toUpperCase().startsWith(`${selectedProject.key.toUpperCase()}-`)) {
+            return true;
+          }
+        }
+
+        if (projectsList.length === 1) {
+          return true;
+        }
+
+        return false;
+      })
+      .map((i: any, index: number) => ({
+        id: i.numericId || i.id || (index + 1),
+        key: i.key,
+        title: i.summary || i.title || '',
+        type: i.type as 'story' | 'task' | 'bug',
+        status: i.status || 'to_do',
+      }));
+  }, [selectedProjectId, fjtBoardData, projectsList]);
+
+  // Auto-refresh entries when timesheetClockOut event occurs
+  useEffect(() => {
+    const handleRefresh = () => {
+      refetchEntries();
+    };
+    window.addEventListener('timesheetClockOut', handleRefresh);
+    return () => window.removeEventListener('timesheetClockOut', handleRefresh);
+  }, [refetchEntries]);
 
   // Live elapsed timer
   useEffect(() => {
@@ -110,8 +203,8 @@ const TimeClock = () => {
         data.push({
           name: format(d, 'dd MMM'),
           dateStr: format(d, 'yyyy-MM-dd'),
-          Projects: 0,
-          Issues: 0
+          Stories: 0,
+          TasksAndBugs: 0
         });
       }
     } else {
@@ -121,46 +214,47 @@ const TimeClock = () => {
         data.push({
           name: format(d, 'MMM yyyy'),
           dateStr: format(d, 'yyyy-MM'),
-          Projects: 0,
-          Issues: 0
+          Stories: 0,
+          TasksAndBugs: 0
         });
       }
     }
 
     const getStr = (dateVal: string) => dateVal ? dateVal.substring(0, chartView === 'Month' ? 10 : 7) : '';
 
-    projectsData?.forEach((p: any) => {
-      const pDate = p.created_at || p.created;
-      if (pDate) {
-        const pt = data.find(x => x.dateStr === getStr(pDate));
-        if (pt) pt.Projects++;
+    // Collect all real clock-in entries including active session
+    const allEntries = [...(timeEntries || [])];
+    if (currentEntry && !allEntries.some(e => e.id === currentEntry.id)) {
+      allEntries.push(currentEntry);
+    }
+
+    allEntries.forEach((entry: any) => {
+      const eDate = entry.clock_in || entry.created_at;
+      if (eDate) {
+        const pt = data.find(x => x.dateStr === getStr(eDate));
+        if (pt) {
+          const notesText = (entry.notes || '').toLowerCase();
+          const issueTitle = (entry.issue?.title || '').toLowerCase();
+          const issueType = (entry.issue?.type || '').toLowerCase();
+
+          if (
+            notesText.includes('[story]') ||
+            notesText.startsWith('story:') ||
+            issueType === 'story' ||
+            issueTitle.includes('[story]')
+          ) {
+            pt.Stories += 1;
+          } else {
+            pt.TasksAndBugs += 1;
+          }
+        }
       }
     });
 
-    issuesData?.forEach((i: any) => {
-      const iDate = i.created_at || i.created;
-      if (iDate) {
-        const pt = data.find(x => x.dateStr === getStr(iDate));
-        if (pt) pt.Issues++;
-      }
-    });
-
-    // If completely empty due to no tracking, just to look good!
     return data;
-  }, [projectsData, issuesData, chartView]);
+  }, [timeEntries, currentEntry, chartView]);
 
   const loading = userLoading || issuesLoading || projectsLoading || activeLoading || entriesLoading || timesheetMutation.clockIn.isPending || timesheetMutation.clockOut.isPending || timesheetMutation.pause.isPending || timesheetMutation.resume.isPending;
-
-  const activeIssues = useMemo(() => {
-    return issuesData.filter((issue: any) =>
-      issue.status === 'open' || issue.status === 'in_progress'
-    ).map((issue: any) => ({
-      id: issue.id,
-      title: issue.title,
-      project_name: issue.project_name,
-      status: issue.status,
-    }));
-  }, [issuesData]);
 
   const getUserLocation = (): Promise<{ latitude: number, longitude: number, accuracy?: number } | null> => {
     return new Promise((resolve) => {
@@ -226,10 +320,18 @@ const TimeClock = () => {
 
   const clockIn = async () => {
     if (!user) return;
-    if (!selectedIssueId) {
-      toast({ title: "Issue Required", description: "Please select an issue", variant: "destructive" });
+    if (!selectedProjectId) {
+      toast({ title: "Project Required", description: "Please select a project first.", variant: "destructive" });
       return;
     }
+    const isAdmin = user?.role === 'admin';
+    if (!isAdmin && !selectedTopicId) {
+      toast({ title: "Story / Task / Bug Required", description: "Please select a story, task, or bug.", variant: "destructive" });
+      return;
+    }
+
+    const selectedProject = projectsList.find(p => p.id === selectedProjectId);
+    const selectedTopic = availableTopics.find(t => String(t.id) === String(selectedTopicId));
 
     try {
       toast({ title: "Getting location...", description: "Please wait while we get your accurate location." });
@@ -239,18 +341,26 @@ const TimeClock = () => {
         locationAddress = await getAddressFromCoordinates(location.latitude, location.longitude);
       }
 
-      const issueIdNum = parseInt(selectedIssueId, 10);
+      const projectTitle = selectedProject ? `${selectedProject.name} (${selectedProject.key})` : "Project";
+      const typeLabel = selectedTopic?.type ? (selectedTopic.type.charAt(0).toUpperCase() + selectedTopic.type.slice(1)) : 'Topic';
+      const topicTitle = selectedTopic 
+        ? `[${typeLabel}] ${selectedTopic.key}: ${selectedTopic.title}` 
+        : (notes.trim() || null);
+
       await timesheetMutation.clockIn.mutateAsync({
-        issue_id: issueIdNum,
-        project_name: projectName || null,
+        issue_id: null,
+        project_name: projectTitle,
+        notes: topicTitle,
         latitude: location?.latitude || null,
         longitude: location?.longitude || null,
         location_address: locationAddress || null,
       });
 
-      setSelectedIssueId("");
-      setProjectName("");
+      setSelectedProjectId("");
+      setSelectedTopicId("");
       setNotes("");
+
+      await refetchEntries();
 
       let locationMsg = "";
       if (locationAddress) {
@@ -263,7 +373,10 @@ const TimeClock = () => {
         locationMsg = ` Location captured`;
       }
 
-      toast({ title: "Clocked In Successfully", description: `Time tracking started!${locationMsg}` });
+      toast({ 
+        title: "Clocked In Successfully", 
+        description: `Time tracking started on ${selectedTopic?.key || selectedProject?.name || 'Project'}!${locationMsg}` 
+      });
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to clock in", variant: "destructive" });
     }
@@ -278,6 +391,8 @@ const TimeClock = () => {
 
       setShowClockOutDialog(false);
       setClockOutComment("");
+
+      await refetchEntries();
 
       window.dispatchEvent(new CustomEvent('timesheetClockOut', { detail: { totalHours, timestamp: Date.now() } }));
       localStorage.setItem('timesheetRefreshTrigger', Date.now().toString());
@@ -319,6 +434,62 @@ const TimeClock = () => {
     }
   };
 
+  // Helper to format issue display with Project heading and Story/Task/Bug subheading
+  const getEntryDisplay = (entry: TimeEntry | null | any) => {
+    if (!entry) return { projectTitle: "Project", topicTitle: "Story / Task / Bug" };
+
+    let projectTitle = (entry.project_name || "").trim();
+    let topicTitle = (entry.notes || (entry.issue ? (entry.issue.title || `Issue #${entry.issue.id}`) : "")).trim();
+
+    // 1. Check if projectTitle has combined "[Project] - [Story/Task/Bug] ..."
+    if (projectTitle.includes(" - [Story") || projectTitle.includes(" - [Task") || projectTitle.includes(" - [Bug") || projectTitle.includes(" - Story") || projectTitle.includes(" - Task") || projectTitle.includes(" - Bug")) {
+      const splitIdx = projectTitle.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+      if (splitIdx !== -1) {
+        const pPart = projectTitle.substring(0, splitIdx).trim();
+        const tPart = projectTitle.substring(splitIdx).replace(/^\s*-\s*/, '').trim();
+        projectTitle = pPart;
+        if (!topicTitle || topicTitle === 'Active Session' || topicTitle === 'General Work' || topicTitle === 'Time Tracking Session') {
+          topicTitle = tPart;
+        }
+      }
+    }
+
+    // 2. Check if topicTitle has combined "[Project] - [Story/Task/Bug] ..."
+    if (topicTitle.includes(" - [Story") || topicTitle.includes(" - [Task") || topicTitle.includes(" - [Bug") || topicTitle.includes(" - Story") || topicTitle.includes(" - Task") || topicTitle.includes(" - Bug")) {
+      const splitIdx = topicTitle.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+      if (splitIdx !== -1) {
+        const pPart = topicTitle.substring(0, splitIdx).trim();
+        const tPart = topicTitle.substring(splitIdx).replace(/^\s*-\s*/, '').trim();
+        if (!projectTitle || projectTitle === 'General' || projectTitle === 'Project' || projectTitle === 'Project Workspace') {
+          projectTitle = pPart;
+        }
+        topicTitle = tPart;
+      }
+    }
+
+    // 3. If topicTitle starts with projectTitle e.g. "Let Agent Deal (LAD) - [Task]..."
+    if (topicTitle && projectTitle && topicTitle.toLowerCase().startsWith(projectTitle.toLowerCase())) {
+      const stripped = topicTitle.substring(projectTitle.length).replace(/^[\s\-–:]+/, '').trim();
+      if (stripped) {
+        topicTitle = stripped;
+      }
+    }
+
+    if (!projectTitle) {
+      projectTitle = "Project";
+    }
+
+    if (!topicTitle || topicTitle === 'Active Session' || topicTitle === 'General Work' || topicTitle === 'Time Tracking Session') {
+      topicTitle = entry.notes || (entry.issue ? (entry.issue.title || `Issue #${entry.issue.id}`) : "-");
+    }
+
+    if (!topicTitle) {
+      topicTitle = "-";
+    }
+
+    return { projectTitle, topicTitle };
+  };
+
   if (userLoading || activeLoading) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
@@ -344,7 +515,7 @@ const TimeClock = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Clock In/Out Card — premium design */}
+          {/* Clock In/Out Card */}
           <Card className="flex flex-col h-[460px]">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -367,13 +538,18 @@ const TimeClock = () => {
                         {currentEntry.status === 'paused' ? 'Session Paused' : 'Currently Clocked In'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-blue-700 font-semibold text-sm">
-                      <FolderKanban className="h-4 w-4 flex-shrink-0" />
-                      {currentEntry.project_name || 'Project'}
+
+                    {/* Heading: Project in Black */}
+                    <div className="flex items-center gap-2 text-gray-900 font-bold text-base">
+                      <FolderKanban className="h-4 w-4 text-gray-800 flex-shrink-0" />
+                      <span className="truncate">{getEntryDisplay(currentEntry).projectTitle}</span>
                     </div>
-                    <p className="font-bold text-gray-900 text-base leading-snug">
-                      {currentEntry.issue ? `#${currentEntry.issue.id} – ${currentEntry.issue.title}` : 'No issue selected'}
+
+                    {/* Subheading: Story / Task / Bug in Blue */}
+                    <p className="font-semibold text-blue-600 text-sm leading-snug">
+                      {getEntryDisplay(currentEntry).topicTitle}
                     </p>
+
                     <div className="flex items-center gap-1.5 text-xs text-gray-500">
                       <CalendarIcon className="h-3.5 w-3.5 flex-shrink-0" />
                       Started: {currentEntry.clock_in ? format(new Date(currentEntry.clock_in), 'd MMM yyyy, h:mm aa') : 'Unknown'}
@@ -428,62 +604,75 @@ const TimeClock = () => {
               ) : (
                 <div className="space-y-4">
                   <div className="space-y-4">
+                    {/* Field 1: Project Selection */}
                     <div>
                       <Label className="mb-2 block text-sm font-medium">
                         Select Project <span className="text-red-500">*</span>
                       </Label>
-                      <select
-                        className="w-full p-2 border rounded-md bg-background focus:ring-1 focus:ring-blue-500 outline-none"
+                      <Select
                         value={selectedProjectId}
-                        onChange={(e) => {
-                          const projId = e.target.value;
-                          setSelectedProjectId(projId);
-                          setSelectedIssueId(""); // Reset issue selection
-
-                          const selectedProj = projectsData.find((p: any) => String(p.id) === projId);
-                          if (selectedProj) {
-                            setProjectName(selectedProj.name);
-                          } else {
-                            setProjectName("");
-                          }
+                        onValueChange={(val) => {
+                          setSelectedProjectId(val);
+                          setSelectedTopicId(""); // Reset topic selection
                         }}
                       >
-                        <option value="all">Select a project...</option>
-                        {projectsData.map((project: any) => (
-                          <option key={project.id} value={project.id}>
-                            {project.name}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="w-full text-sm font-medium border-gray-300 focus:border-[#0B1957] focus:ring-[#0B1957]/20 bg-white">
+                          <SelectValue placeholder={projectsList.length === 0 ? "No projects created yet in Task Board" : "Select a project..."} />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white max-h-60">
+                          {projectsList.length === 0 ? (
+                            <div className="py-3 px-4 text-xs text-gray-500 text-center">
+                              No projects created yet in Task Board
+                            </div>
+                          ) : (
+                            projectsList.map((project) => (
+                              <SelectItem key={project.id} value={project.id}>
+                                {project.name} ({project.key})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
+
+                    {/* Field 2: Select Story / Task / Bug */}
                     <div>
                       <Label className="mb-2 block text-sm font-medium">
-                        Select Issue <span className="text-red-500">*</span>
+                        Select Story / Task / Bug {user?.role === 'admin' ? <span className="text-xs text-muted-foreground font-normal">(Optional)</span> : <span className="text-red-500">*</span>}
                       </Label>
-                      <select
-                        className="w-full p-2 border rounded-md bg-background focus:ring-1 focus:ring-blue-500 outline-none"
-                        value={selectedIssueId}
-                        onChange={(e) => {
-                          const issueId = e.target.value;
-                          setSelectedIssueId(issueId);
-
-                          const selectedIssue = activeIssues.find((i: any) => String(i.id) === issueId);
-                          if (selectedIssue?.project_name) {
-                            setProjectName(selectedIssue.project_name);
-                            const proj = projectsData.find((p: any) => p.name === selectedIssue.project_name);
-                            if (proj) setSelectedProjectId(String(proj.id));
-                          }
-                        }}
+                      <Select
+                        disabled={!selectedProjectId || availableTopics.length === 0}
+                        value={selectedTopicId}
+                        onValueChange={(val) => setSelectedTopicId(val)}
                       >
-                        <option value="">Select an issue...</option>
-                        {activeIssues
-                          .filter((issue: any) => selectedProjectId === 'all' || issue.project_name === projectName)
-                          .map((issue: any) => (
-                            <option key={issue.id} value={issue.id}>
-                              #{issue.id} - {issue.title}
-                            </option>
-                          ))}
-                      </select>
+                        <SelectTrigger className="w-full text-sm font-medium border-gray-300 focus:border-[#0B1957] focus:ring-[#0B1957]/20 bg-white disabled:opacity-50 disabled:bg-gray-50">
+                          <SelectValue 
+                            placeholder={
+                              !selectedProjectId 
+                                ? "Select a project first..." 
+                                : availableTopics.length === 0 
+                                ? "No To Do or In Progress topics in this project" 
+                                : "Select a story, task, or bug..."
+                            } 
+                          />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white max-h-60">
+                          {availableTopics.length === 0 ? (
+                            <div className="py-3 px-4 text-xs text-gray-500 text-center">
+                              No To Do or In Progress topics in this project
+                            </div>
+                          ) : (
+                            availableTopics.map((item) => {
+                              const typeLabel = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+                              return (
+                                <SelectItem key={item.id} value={String(item.id)}>
+                                  [{typeLabel}] {item.key}: {item.title}
+                                </SelectItem>
+                              );
+                            })
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div>
@@ -496,7 +685,7 @@ const TimeClock = () => {
                       onChange={(e) => setNotes(e.target.value)}
                     />
                   </div>
-                  <Button onClick={clockIn} disabled={loading} className="w-full" size="lg">
+                  <Button onClick={clockIn} disabled={loading} className="w-full bg-[#0B1957] hover:bg-[#081342] text-white" size="lg">
                     <Play className="mr-2 h-5 w-5" />
                     Clock In
                   </Button>
@@ -517,71 +706,73 @@ const TimeClock = () => {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {timeEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`w-2 h-2 rounded-full ${entry.status === "clocked_in"
-                              ? "bg-green-500"
-                              : entry.status === "paused"
-                                ? "bg-amber-500"
-                                : "bg-gray-400"
-                              }`}
-                          />
-                          <h3 className="font-semibold text-gray-900">
-                            {entry.issue ? `#${entry.issue.id} - ${entry.issue.title}` : "No issue"}
-                          </h3>
+                  {timeEntries.slice(0, 15).map((entry) => {
+                    const { projectTitle, topicTitle } = getEntryDisplay(entry);
+                    return (
+                      <div
+                        key={entry.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex-1 min-w-0">
+                          {/* Heading: Project in Black */}
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`w-2 h-2 rounded-full flex-shrink-0 ${entry.status === "clocked_in"
+                                ? "bg-green-500"
+                                : entry.status === "paused"
+                                  ? "bg-amber-500"
+                                  : "bg-gray-400"
+                                }`}
+                            />
+                            <h3 className="font-semibold text-gray-900 text-sm truncate">
+                              {projectTitle}
+                            </h3>
+                          </div>
+
+                          {/* Subheading: Story / Task / Bug in Blue */}
+                          <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium mt-0.5 ml-4 truncate">
+                            <FolderKanban className="h-3 w-3 flex-shrink-0 text-blue-600" />
+                            <span className="truncate">{topicTitle}</span>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground ml-4 mt-0.5">
+                            {format(new Date(entry.clock_in), "PPp")}
+                            {entry.clock_out &&
+                              ` - ${format(new Date(entry.clock_out), "PPp")}`}
+                          </p>
+                          {Number(entry.paused_duration) > 0 && (
+                            <p className="text-xs text-muted-foreground mt-0.5 ml-4">
+                              Paused: {formatHours(Number(entry.paused_duration))}
+                            </p>
+                          )}
+                          {entry.status === "paused" && entry.pause_reason && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 ml-4">
+                              Pause Reason: {entry.pause_reason}
+                            </p>
+                          )}
+                          {entry.latitude != null && entry.longitude != null && (
+                            <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 ml-4">
+                              📍 {Number(entry.latitude).toFixed(4)}, {Number(entry.longitude).toFixed(4)}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium mt-0.5 ml-4">
-                          <FolderKanban className="h-3 w-3" />
-                          <span>{entry.project_name || "No Project"}</span>
+                        <div className="text-right ml-2 flex-shrink-0">
+                          {entry.total_hours ? (
+                            <p className="text-base font-bold text-gray-900">
+                              {formatHours(entry.total_hours)}
+                            </p>
+                          ) : (
+                            <p className={`text-xs font-semibold ${entry.status === "paused"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-green-600 dark:text-green-400"
+                              }`}>
+                              {entry.status === "paused" ? "Paused" : "In Progress"}
+                            </p>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground ml-4">
-                          {format(new Date(entry.clock_in), "PPp")}
-                          {entry.clock_out &&
-                            ` - ${format(new Date(entry.clock_out), "PPp")}`}
-                        </p>
-                        {Number(entry.paused_duration) > 0 && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Paused: {formatHours(Number(entry.paused_duration))}
-                          </p>
-                        )}
-                        {entry.notes && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Notes: {entry.notes}
-                          </p>
-                        )}
-                        {entry.status === "paused" && entry.pause_reason && (
-                          <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
-                            Pause Reason: {entry.pause_reason}
-                          </p>
-                        )}
-                        {entry.latitude != null && entry.longitude != null && (
-                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                            📍 {Number(entry.latitude).toFixed(4)}, {Number(entry.longitude).toFixed(4)}
-                          </p>
-                        )}
                       </div>
-                      <div className="text-right">
-                        {entry.total_hours ? (
-                          <p className="text-lg font-semibold">
-                            {formatHours(entry.total_hours)}
-                          </p>
-                        ) : (
-                          <p className={`text-sm ${entry.status === "paused"
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-green-600 dark:text-green-400"
-                            }`}>
-                            {entry.status === "paused" ? "Paused" : "In Progress"}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -593,7 +784,7 @@ const TimeClock = () => {
           <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-50/50">
             <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
               <TrendingUp className="h-5 w-5 text-gray-500" />
-              Projects & Issues Tracker
+              Stories & Tasks/Bugs Tracker
             </CardTitle>
             <div className="flex gap-1 items-center bg-gray-50 p-1 rounded-full border border-gray-200 flex-shrink-0">
               <button
@@ -638,8 +829,8 @@ const TimeClock = () => {
                   />
                   <Line
                     type="linear"
-                    dataKey="Projects"
-                    name="Projects"
+                    dataKey="Stories"
+                    name="Stories"
                     stroke="#0B1957"
                     strokeWidth={3}
                     dot={false}
@@ -647,8 +838,8 @@ const TimeClock = () => {
                   />
                   <Line
                     type="linear"
-                    dataKey="Issues"
-                    name="Issues"
+                    dataKey="TasksAndBugs"
+                    name="Tasks & Bugs"
                     stroke="#3B82F6"
                     strokeWidth={3}
                     dot={false}
@@ -663,10 +854,10 @@ const TimeClock = () => {
 
       {/* Pause Reason Dialog */}
       <Dialog open={showPauseDialog} onOpenChange={setShowPauseDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Pause Work</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="w-[calc(100%-2rem)] sm:w-full sm:max-w-lg rounded-xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-left text-lg font-bold">Pause Work</DialogTitle>
+            <DialogDescription className="text-left text-sm text-gray-500">
               Please provide a reason for pausing your work
             </DialogDescription>
           </DialogHeader>
@@ -702,10 +893,10 @@ const TimeClock = () => {
           setClockOutComment("");
         }
       }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Clock Out</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="w-[calc(100%-2rem)] sm:w-full max-w-2xl rounded-xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-left text-lg font-bold">Clock Out</DialogTitle>
+            <DialogDescription className="text-left text-sm text-gray-500">
               Please provide a summary of the work completed or any notes before clocking out.
             </DialogDescription>
           </DialogHeader>

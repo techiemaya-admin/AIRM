@@ -4,7 +4,7 @@
  */
 
 import jwt from 'jsonwebtoken';
-import pool from '../db/connection.js';
+import pool from '../shared/database/connection.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {

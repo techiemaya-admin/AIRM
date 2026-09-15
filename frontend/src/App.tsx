@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthGuard } from "./components/AuthGuard";
 import { Layout } from "./components/Layout";
 import Auth from "./pages/Auth";
@@ -29,6 +29,7 @@ const JoiningFormPage = lazy(() => import("@features/joining-form/page"));
 const RecruitmentPage = lazy(() => import("@features/recruitment/page"));
 const ProjectManagementPage = lazy(() => import("./pages/project-management"));
 const UploadDocsPage = lazy(() => import("@features/recruitment/pages/UploadDocsPage"));
+const FjtBoard = lazy(() => import("@/features/fjt-board"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,9 +68,26 @@ const App = () => (
               path="/"
               element={
                 <AuthGuard>
+                  <Navigate to="/time-clock" replace />
+                </AuthGuard>
+              }
+            />
+
+            <Route
+              path="/time-sheet"
+              element={
+                <AuthGuard>
                   <Layout>
                     <Timesheet />
                   </Layout>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="/timesheet"
+              element={
+                <AuthGuard>
+                  <Navigate to="/time-sheet" replace />
                 </AuthGuard>
               }
             />
@@ -97,6 +115,29 @@ const App = () => (
                 </AuthGuard>
               }
             />
+
+            <Route
+              path="/task-board"
+              element={
+                <AuthGuard>
+                  <Layout>
+                    <FjtBoard />
+                  </Layout>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="/task-board/*"
+              element={
+                <AuthGuard>
+                  <Layout>
+                    <FjtBoard />
+                  </Layout>
+                </AuthGuard>
+              }
+            />
+            <Route path="/fjt-board" element={<Navigate to="/task-board" replace />} />
+            <Route path="/fjt-board/*" element={<Navigate to="/task-board" replace />} />
 
             <Route
               path="/projects/:id"
@@ -239,6 +280,16 @@ const App = () => (
               }
             />
             <Route
+              path="/time_clock"
+              element={
+                <AuthGuard>
+                  <Layout>
+                    <TimeClock />
+                  </Layout>
+                </AuthGuard>
+              }
+            />
+            <Route
               path="/monitoring"
               element={
                 <AuthGuard>
@@ -298,6 +349,7 @@ const App = () => (
                 </AuthGuard>
               }
             />
+            <Route path="/time-sheet/:id" element={<SharedTimesheet />} />
             <Route path="/timesheet/:id" element={<SharedTimesheet />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

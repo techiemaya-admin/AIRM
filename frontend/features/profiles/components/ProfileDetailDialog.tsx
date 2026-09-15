@@ -127,12 +127,12 @@ export const ProfileDetailDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl w-full h-[640px] max-h-[90vh] flex flex-col p-6 overflow-hidden" hideDefaultClose={true}>
-        {/* Close button aligned with user name and directly on top of scrollbar track */}
+      <DialogContent className="w-[calc(100%-2rem)] sm:w-full sm:max-w-4xl h-[580px] sm:h-[640px] max-h-[82vh] sm:max-h-[90vh] flex flex-col p-4 sm:p-6 overflow-hidden rounded-xl" hideDefaultClose={true}>
+        {/* Close button aligned with user name and heading */}
         <DialogClose asChild>
           <button
             type="button"
-            className="absolute right-6 top-6 sm:top-7 z-20 rounded-md p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none flex items-center justify-center cursor-pointer"
+            className="absolute right-3.5 sm:right-6 top-3.5 sm:top-6 z-20 rounded-md p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none flex items-center justify-center cursor-pointer"
             title="Close"
           >
             <X className="h-5 w-5" />

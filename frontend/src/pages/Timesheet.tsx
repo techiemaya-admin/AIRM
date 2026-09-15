@@ -232,15 +232,11 @@ const Timesheet = () => {
       const weekStartStr = format(weekStart, "yyyy-MM-dd");
       const weekEndStr = format(weekEnd, "yyyy-MM-dd");
 
-      // Build API parameters - for admin viewing another user, always pass user_id
+      const targetUserId = userId || user?.id;
       const apiParams: any = { week_start: weekStartStr };
 
-      // If admin and viewing another user, pass user_id to backend
-      if (isAdmin && user && userId !== user.id) {
-        apiParams.user_id = userId;
-        console.log('👑 Admin viewing timesheet for user:', userId);
-      } else {
-        console.log('👤 User viewing own timesheet:', userId);
+      if (targetUserId) {
+        apiParams.user_id = targetUserId;
       }
 
       console.log('📞 API params:', apiParams);
@@ -834,7 +830,7 @@ const Timesheet = () => {
       return;
     }
 
-    const shareUrl = `${window.location.origin}/timesheet/${currentTimesheetId}`;
+    const shareUrl = `${window.location.origin}/time-sheet/${currentTimesheetId}`;
 
     if (navigator.share) {
       try {
@@ -1087,7 +1083,7 @@ const Timesheet = () => {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Weekly Timesheet</CardTitle>
+              <CardTitle>Weekly Time Sheet</CardTitle>
               <div className="flex gap-4">
                 <Button variant="outline" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />
@@ -1251,16 +1247,16 @@ const Timesheet = () => {
                         <td className="border border-border p-1">
                           {isReadOnly ? (
                             <div className="px-2 py-1 text-sm flex items-center gap-2">
-                              {entry.task}
+                              {entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : '-'}
                               {isTimeClock && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">Auto</span>}
                               {isLeave && <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">Leave</span>}
                             </div>
                           ) : (
                             <Input
-                              value={entry.task}
+                              value={entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : (isTimeClock ? '-' : entry.task)}
                               onChange={(e) => updateEntry(index, "task", e.target.value)}
                               className="h-8 border-0 bg-transparent"
-                              placeholder="Task"
+                              placeholder="-"
                               disabled={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                               readOnly={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                             />

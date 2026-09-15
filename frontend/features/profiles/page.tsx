@@ -83,13 +83,6 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
   const { data: profiles = [], isLoading: loading, error: profilesError, refetch: refetchProfiles } = useProfiles();
   const updateProfileMutation = useProfileMutation();
 
-  // Log profiles data for debugging
-  useEffect(() => {
-    console.log('[Profiles Page] Profiles data:', profiles);
-    console.log('[Profiles Page] Loading:', loading);
-    console.log('[Profiles Page] Error:', profilesError);
-  }, [profiles, loading, profilesError]);
-
   // React Query Hooks
   const { data: usersData = [] } = useUsers();
   const { data: currentUser } = useCurrentUser();
@@ -918,7 +911,7 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
               <p className="text-gray-500">No employee profiles found</p>
               <p className="text-sm text-gray-400 mt-2">
                 {profiles.length === 0
-                  ? "The database appears to be empty. Use the '+ Add Employee' button to create profiles."
+                  ? "No profiles created yet. Use the '+ Add Employee' button to create profiles."
                   : "No profiles match your current filters."}
               </p>
               {searchQuery && (

@@ -5,6 +5,7 @@
 
 import { body, validationResult } from 'express-validator';
 import pool from '../../../shared/database/connection.js';
+import logger from '../../../shared/logger.js';
 import * as timeClockService from '../services/time-clock.service.js';
 
 /**
@@ -20,17 +21,14 @@ export async function clockIn(req, res) {
 
     const userId = req.userId;
     const clockInData = req.body;
-    console.log('⏱️ Clock-in request:', { userId, clockInData });
 
     try {
       const entry = await timeClockService.clockIn(userId, clockInData);
-      console.log('✅ Clock-in successful:', entry.id);
       res.status(201).json({
         message: 'Clocked in successfully',
         entry,
       });
     } catch (error) {
-      console.error('❌ Clock-in service error:', error.message);
       if (error.message === 'Already clocked in') {
         return res.status(400).json({
           error: 'Already clocked in',
@@ -40,8 +38,7 @@ export async function clockIn(req, res) {
       throw error;
     }
   } catch (error) {
-    console.error('❌ Clock in error:', error);
-    console.error('❌ Clock in error stack:', error.stack);
+    logger.error('Clock in error:', error);
     res.status(500).json({
       error: 'Failed to clock in',
       message: error.message || 'Internal server error'
