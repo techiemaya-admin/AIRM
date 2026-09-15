@@ -775,76 +775,85 @@ const LeaveCalendar = () => {
                   <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
 
                     {/* Title + Navigation */}
-                    <div className="flex flex-wrap items-center justify-between px-6 py-5 gap-4">
-                      <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-max">
-                        <ClipboardList className="h-5 w-5 text-gray-500" />
-                        {attendanceView === 'filter'
-                          ? `Attendance - ${format(parseISO(filterStartDate), 'dd MMM yyyy')} to ${format(parseISO(filterEndDate), 'dd MMM yyyy')}`
-                          : `Attendance - ${format(attendanceDate, 'MMMM yyyy')}`}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-3 mt-2 sm:mt-0 flex-shrink-0">
-                        <Button
-                          variant={attendanceView === 'month' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => { setAttendanceView('month'); setAttendanceDate(new Date()); }}
-                          className={attendanceView === 'month' ? 'bg-[#0B1957] text-white hover:bg-[#0B1957]/90' : 'bg-white text-gray-700'}
-                        >
-                          This Month
-                        </Button>
-                        <Button
-                          variant={attendanceView === 'week' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => { setAttendanceView('week'); setAttendanceDate(new Date()); }}
-                          className={attendanceView === 'week' ? 'bg-[#0B1957] text-white hover:bg-[#0B1957]/90' : 'bg-white text-gray-700'}
-                        >
-                          This Week
-                        </Button>
-                        <Button
-                          variant={attendanceView === 'filter' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setAttendanceView('filter')}
-                          className={attendanceView === 'filter' ? 'bg-[#0B1957] text-white hover:bg-[#0B1957]/90' : 'bg-white text-gray-700'}
-                        >
-                          Filter
-                        </Button>
+                    <div className="px-4 sm:px-6 py-4 sm:py-5 flex flex-col gap-4 border-b border-gray-100">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
+                          <ClipboardList className="h-5 w-5 text-gray-500 shrink-0" />
+                          <span className="truncate">
+                            {attendanceView === 'filter'
+                              ? `Attendance - ${format(parseISO(filterStartDate), 'dd MMM yyyy')} to ${format(parseISO(filterEndDate), 'dd MMM yyyy')}`
+                              : `Attendance - ${format(attendanceDate, 'MMMM yyyy')}`}
+                          </span>
+                        </h3>
 
-                        {attendanceView === 'filter' && (
-                          <div className="flex items-center gap-2 border-l pl-3 border-gray-200">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-gray-500 font-medium">From:</span>
-                              <Input
-                                type="date"
-                                value={filterStartDate}
-                                onChange={(e) => setFilterStartDate(e.target.value)}
-                                className="h-8 text-xs w-[130px] px-2 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-sm focus:ring-1 focus:ring-[#0B1957]"
-                              />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-gray-500 font-medium">To:</span>
-                              <Input
-                                type="date"
-                                value={filterEndDate}
-                                onChange={(e) => setFilterEndDate(e.target.value)}
-                                className="h-8 text-xs w-[130px] px-2 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-sm focus:ring-1 focus:ring-[#0B1957]"
-                              />
-                            </div>
+                        {/* Controls Row: View Switchers + Download Button */}
+                        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <Button
+                              variant={attendanceView === 'month' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => { setAttendanceView('month'); setAttendanceDate(new Date()); }}
+                              className={`h-8 px-2.5 sm:px-3 text-xs font-medium ${attendanceView === 'month' ? 'bg-[#0B1957] text-white hover:bg-[#0B1957]/90' : 'bg-white text-gray-700'}`}
+                            >
+                              This Month
+                            </Button>
+                            <Button
+                              variant={attendanceView === 'week' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => { setAttendanceView('week'); setAttendanceDate(new Date()); }}
+                              className={`h-8 px-2.5 sm:px-3 text-xs font-medium ${attendanceView === 'week' ? 'bg-[#0B1957] text-white hover:bg-[#0B1957]/90' : 'bg-white text-gray-700'}`}
+                            >
+                              This Week
+                            </Button>
+                            <Button
+                              variant={attendanceView === 'filter' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setAttendanceView('filter')}
+                              className={`h-8 px-2.5 sm:px-3 text-xs font-medium ${attendanceView === 'filter' ? 'bg-[#0B1957] text-white hover:bg-[#0B1957]/90' : 'bg-white text-gray-700'}`}
+                            >
+                              Filter
+                            </Button>
                           </div>
-                        )}
 
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDownloadCSV}
-                          className="bg-green-600 hover:bg-green-700 text-white border-green-600 flex items-center gap-2 px-3 sm:px-4"
-                        >
-                          <Download className="h-4 w-4" />
-                          <span className="hidden sm:inline">Download Excel</span>
-                        </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDownloadCSV}
+                            className="h-8 bg-green-600 hover:bg-green-700 text-white border-green-600 flex items-center gap-1.5 px-3 text-xs font-medium shrink-0 ml-auto sm:ml-0"
+                          >
+                            <Download className="h-3.5 w-3.5 shrink-0" />
+                            <span>Download Excel</span>
+                          </Button>
+                        </div>
                       </div>
+
+                      {/* Filter Date Pickers Row (When Filter is selected) */}
+                      {attendanceView === 'filter' && (
+                        <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50/80 rounded-lg border border-gray-200">
+                          <div className="flex items-center gap-2 flex-1 min-w-[140px] sm:flex-initial">
+                            <span className="text-xs text-gray-600 font-semibold shrink-0">From:</span>
+                            <Input
+                              type="date"
+                              value={filterStartDate}
+                              onChange={(e) => setFilterStartDate(e.target.value)}
+                              className="h-8 text-xs w-full sm:w-[140px] px-2 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-xs focus:ring-1 focus:ring-[#0B1957]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 flex-1 min-w-[140px] sm:flex-initial">
+                            <span className="text-xs text-gray-600 font-semibold shrink-0">To:</span>
+                            <Input
+                              type="date"
+                              value={filterEndDate}
+                              onChange={(e) => setFilterEndDate(e.target.value)}
+                              className="h-8 text-xs w-full sm:w-[140px] px-2 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 shadow-xs focus:ring-1 focus:ring-[#0B1957]"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Stats 2x2 grid */}
-                    <div className="grid grid-cols-2 gap-0 border-t border-gray-100 mx-6 mb-4 rounded-lg overflow-hidden">
+                    <div className="grid grid-cols-2 gap-0 border-t border-gray-100 mx-4 sm:mx-6 mb-4 rounded-lg overflow-hidden">
                       <div className="bg-green-50 py-8 text-center border border-green-100 rounded-tl-lg rounded-bl-lg mr-px mt-0">
                         <p className="text-3xl font-bold text-green-500">{presentCount}</p>
                         <p className="text-sm text-gray-500 mt-1">Present</p>
