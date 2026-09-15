@@ -64,20 +64,20 @@ const ResourceManagement = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="grid min-w-0 grid-cols-2 gap-1 sm:flex sm:flex-wrap border-b mb-6">
+      <div className="flex min-w-0 overflow-x-auto whitespace-nowrap border-b mb-6 custom-scrollbar">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`min-w-0 px-2 sm:px-4 lg:px-6 py-3 text-sm font-medium border-b-2 transition-all flex items-center gap-2 text-left ${activeTab === tab.id
+              className={`shrink-0 min-w-0 px-3 sm:px-4 lg:px-6 py-3 text-sm font-medium border-b-2 transition-all flex items-center gap-2 text-left ${activeTab === tab.id
                 ? "border-[#0B1957] text-[#0B1957]"
                 : "border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300"
                 }`}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              <span className="min-w-0 break-words">{tab.label}</span>
+              <span className="min-w-0 whitespace-nowrap">{tab.label}</span>
             </button>
           );
         })}

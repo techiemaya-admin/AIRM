@@ -33,40 +33,30 @@ import { FjtComment, FjtMember } from '@/sdk/features/fjt-board';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useUsers } from '@/hooks/useUsers';
 
-// Helper: Format GitHub timestamp:
-// If < 24h -> "30 minutes ago" / "3 hours ago" / "just now"
-// If >= 24h -> "Sep 08" or "Sep 08, 2026"
+// Helper: Format GitHub timestamp with Date and Updated Time
+// e.g. "Sep 15 at 5:30 PM" or "Sep 15, 2026 at 5:30 PM"
 export function formatGithubTimestamp(isoString?: string): string {
   if (!isoString) return 'just now';
   try {
     const date = new Date(isoString);
     if (isNaN(date.getTime())) return 'just now';
 
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    if (diffMs < 0) return 'just now';
-
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-    if (diffMinutes < 1) {
-      return 'just now';
-    }
-    if (diffMinutes < 60) {
-      return `${diffMinutes} ${diffMinutes === 1 ? 'minute' : 'minutes'} ago`;
-    }
-    if (diffHours < 24) {
-      return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
-    }
-
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const month = months[date.getMonth()];
-    const day = String(date.getDate()).padStart(2, '0');
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const currentYear = new Date().getFullYear();
 
-    if (date.getFullYear() === now.getFullYear()) {
-      return `${month} ${day}`;
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    if (year === currentYear) {
+      return `${month} ${day} at ${timeStr}`;
     }
-    return `${month} ${day}, ${date.getFullYear()}`;
+    return `${month} ${day}, ${year} at ${timeStr}`;
   } catch {
     return 'just now';
   }
@@ -1138,12 +1128,9 @@ export const GithubIssueTimeline: React.FC<GithubIssueTimelineProps> = ({
       return;
     }
 
-    onSaveDescription(descDraft.trim(), author, createdAt);
+    const nowIso = new Date().toISOString();
+    onSaveDescription(descDraft.trim(), activeUser, nowIso);
     setIsEditingDesc(false);
-    toast({
-      title: 'Description saved',
-      description: 'Your changes have been saved.',
-    });
   };
 
   const handleCancelEditDesc = () => {

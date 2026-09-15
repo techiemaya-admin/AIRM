@@ -144,12 +144,46 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
   // Sync state buffer when issue opens
   const syncStateFromIssue = useCallback(() => {
     if (issue) {
+      let rawData: any = (issue as any).rawData || (issue as any).raw_data || {};
+      if (typeof rawData === 'string') {
+        try {
+          rawData = JSON.parse(rawData);
+        } catch {
+          rawData = {};
+        }
+      }
+
       setSummary(issue.summary || '');
       setDescription(issue.description || '');
-      setDescriptionSaved(issue.descriptionSaved !== undefined ? issue.descriptionSaved : !!(issue.description && issue.description.trim()));
-      setDescriptionCreatedAt(issue.descriptionCreatedAt || issue.createdAt);
-      setDescriptionAuthor(issue.descriptionAuthor || (issue.assignee ? { ...issue.assignee, role: 'Author' } : currentMember));
-      setComments(issue.comments || []);
+      setDescriptionSaved(
+        issue.descriptionSaved !== undefined
+          ? issue.descriptionSaved
+          : (rawData.descriptionSaved !== undefined ? rawData.descriptionSaved : !!(issue.description && issue.description.trim()))
+      );
+      setDescriptionCreatedAt(
+        issue.descriptionCreatedAt || rawData.descriptionCreatedAt || issue.updatedAt || issue.createdAt
+      );
+      setDescriptionAuthor(
+        issue.descriptionAuthor ||
+        rawData.descriptionAuthor ||
+        (issue.reporter?.name
+          ? {
+              id: String(issue.reporter.id || ''),
+              name: issue.reporter.name,
+              email: issue.reporter.email || '',
+              role: 'Author',
+              initials:
+                (issue.reporter.name || '')
+                  .split(' ')
+                  .filter(Boolean)
+                  .map((n: string) => n[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2) || 'AU',
+            }
+          : currentMember)
+      );
+      setComments(issue.comments || rawData.comments || []);
       setStatus(issue.status || 'to_do');
       setPriority(issue.priority || 'medium');
       setLabelsInput(issue.labels && issue.labels.length > 0 ? issue.labels.join(', ') : '');
@@ -204,42 +238,82 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
     return val;
   };
 
+  // Initial start and end dates from the issue when opened
+  const initialStartDate = issue?.startDate || (issue as any)?.rawData?.startDate || '';
+  const initialEndDate = issue?.endDate || (issue as any)?.rawData?.endDate || '';
+
   // Date Logic Validation
   const dateError = useMemo(() => {
+    // 1. Start date year formatting & past date validation (only if changed/new)
     if (startDate) {
       const yearStr = startDate.split('-')[0] || '';
       if (yearStr.length > 4 || parseInt(yearStr, 10) > 9999) {
         return 'Year must be a 4-digit number (YYYY).';
       }
-      if (startDate < todayStr) {
+      if (startDate !== initialStartDate && startDate < todayStr) {
         return 'Start date cannot be in the past.';
       }
     }
+
+    // 2. End date year formatting & past date validation (only if changed/new)
     if (endDate) {
       const yearStr = endDate.split('-')[0] || '';
       if (yearStr.length > 4 || parseInt(yearStr, 10) > 9999) {
         return 'Year must be a 4-digit number (YYYY).';
       }
-      if (endDate < todayStr) {
+      if (endDate !== initialEndDate && endDate < todayStr) {
         return 'End date cannot be in the past.';
       }
     }
+
+    // 3. Compulsory End Date if Start Date is entered
+    if (startDate && !endDate) {
+      return 'End date is required when start date is specified.';
+    }
+
+    // 4. Start Date required if End Date is entered
+    if (!startDate && endDate) {
+      return 'Start date is required when end date is specified.';
+    }
+
+    // 5. End Date must be >= Start Date
     if (startDate && endDate && endDate < startDate) {
       return 'End date must be greater than or equal to Start date.';
     }
+
     return null;
-  }, [startDate, endDate, todayStr]);
+  }, [startDate, endDate, initialStartDate, initialEndDate, todayStr]);
 
   if (!issue) return null;
 
-  // Local state modifications (not persisted until user clicks "Save")
-  const handleSaveDescription = (newDesc: string, author?: FjtMember, createdAt?: string) => {
-    const authorToSave = author || descriptionAuthor || currentMember;
-    const timeToSave = createdAt || descriptionCreatedAt || new Date().toISOString();
+  // Auto-save description on Comment button click
+  const handleSaveDescription = async (newDesc: string, author?: FjtMember, createdAt?: string) => {
+    const authorToSave = author || currentMember;
+    const timeToSave = createdAt || new Date().toISOString();
     setDescription(newDesc);
     setDescriptionSaved(true);
     setDescriptionAuthor(authorToSave);
     setDescriptionCreatedAt(timeToSave);
+
+    try {
+      await updateMutation.mutateAsync({
+        id: issue.id,
+        description: newDesc,
+        descriptionSaved: true,
+        descriptionAuthor: authorToSave,
+        descriptionCreatedAt: timeToSave,
+      } as any);
+      toast({
+        title: 'Description saved',
+        description: 'Your changes have been saved.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error saving description',
+        description: err.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleAddComment = async (comment: FjtComment) => {
@@ -264,8 +338,19 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
   };
 
   const handleUpdateComment = async (commentId: string, newContent: string) => {
+    const nowIso = new Date().toISOString();
     const nextComments = comments.map((c) =>
-      c.id === commentId ? { ...c, content: newContent, updatedAt: new Date().toISOString() } : c
+      c.id === commentId
+        ? {
+            ...c,
+            content: newContent,
+            authorName: currentMember.name,
+            authorEmail: currentMember.email,
+            authorInitials: currentMember.initials,
+            updatedAt: nowIso,
+            createdAt: nowIso,
+          }
+        : c
     );
     setComments(nextComments);
     try {
@@ -341,7 +426,7 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
         summary: summary.trim(),
         description: description.trim(),
         descriptionAuthor: descriptionAuthor || currentMember,
-        descriptionCreatedAt: descriptionCreatedAt || issue.createdAt,
+        descriptionCreatedAt: descriptionCreatedAt || issue.updatedAt || issue.createdAt,
         descriptionSaved,
         comments,
         status,
@@ -354,9 +439,9 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
         epicKey: selectedEpicObj ? selectedEpicObj.key : null,
         epicName: selectedEpicObj ? (selectedEpicObj.epicName || (selectedEpicObj as any).name || selectedEpicObj.summary) : null,
         epicColor: selectedEpicObj ? selectedEpicObj.color : null,
-        storyId: (issue.type === 'task' || issue.type === 'bug') ? (storyId !== 'none' ? storyId : null) : null,
-        storyKey: (issue.type === 'task' || issue.type === 'bug') && selectedStoryObj ? selectedStoryObj.key : null,
-        storySummary: (issue.type === 'task' || issue.type === 'bug') && selectedStoryObj ? selectedStoryObj.summary : null,
+        storyId: (issue.type === 'task' || issue.type === 'bug' || issue.type === 'story') ? (storyId !== 'none' ? storyId : null) : null,
+        storyKey: (issue.type === 'task' || issue.type === 'bug' || issue.type === 'story') && selectedStoryObj ? selectedStoryObj.key : null,
+        storySummary: (issue.type === 'task' || issue.type === 'bug' || issue.type === 'story') && selectedStoryObj ? selectedStoryObj.summary : null,
         linkedTaskId: (issue.type === 'task' || issue.type === 'bug') ? (linkedTaskId !== 'none' ? linkedTaskId : null) : null,
         linkedTaskKey: (issue.type === 'task' || issue.type === 'bug') && selectedLinkedTaskObj ? selectedLinkedTaskObj.key : null,
         linkedTaskSummary: (issue.type === 'task' || issue.type === 'bug') && selectedLinkedTaskObj ? selectedLinkedTaskObj.summary : null,
@@ -513,6 +598,36 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
               </div>
             )}
 
+            {/* Tag Existing Story (Story Link) for Story */}
+            {issue.type === 'story' && (
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  Tag Existing Story (Story Link)
+                </label>
+                <Select value={storyId} onValueChange={setStoryId}>
+                  <SelectTrigger className="w-full bg-white border-gray-300 text-xs overflow-hidden">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white max-h-48">
+                    <SelectItem value="none">
+                      <span className="text-gray-400">None (No linked story)</span>
+                    </SelectItem>
+                    {availableStories.map((story) => (
+                      <SelectItem key={story.id} value={story.id}>
+                        <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                          <IssueTypeIcon type="story" className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="font-semibold text-xs whitespace-nowrap flex-shrink-0 text-gray-900">
+                            {story.key}:
+                          </span>
+                          <span className="font-normal text-xs truncate text-gray-600">{story.summary}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Tag Existing Task (For Task & Bug) */}
             {(issue.type === 'task' || issue.type === 'bug') && (
               <div>
@@ -613,7 +728,7 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
                     <Input
                       type="date"
                       value={startDate}
-                      min={todayStr}
+                      min={initialStartDate && initialStartDate < todayStr ? initialStartDate : todayStr}
                       max="9999-12-31"
                       onChange={(e) => {
                         const val = sanitizeDateInput(e.target.value);
@@ -622,7 +737,14 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
                           setEndDate(val);
                         }
                       }}
-                      className={`bg-white text-xs h-8 ${startDate && (startDate < todayStr || startDate.split('-')[0]?.length > 4 || (endDate && endDate < startDate)) ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`bg-white text-xs h-8 ${
+                        (startDate && ((startDate !== initialStartDate && startDate < todayStr) || startDate.split('-')[0]?.length > 4)) ||
+                        (startDate && !endDate) ||
+                        (!startDate && endDate) ||
+                        (startDate && endDate && endDate < startDate)
+                          ? 'border-red-500'
+                          : 'border-gray-300'
+                      }`}
                     />
                   </div>
                   <div>
@@ -632,10 +754,17 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
                     <Input
                       type="date"
                       value={endDate}
-                      min={startDate || todayStr}
+                      min={startDate || (initialEndDate && initialEndDate < todayStr ? initialEndDate : todayStr)}
                       max="9999-12-31"
                       onChange={(e) => setEndDate(sanitizeDateInput(e.target.value))}
-                      className={`bg-white text-xs h-8 ${endDate && (endDate < todayStr || (startDate && endDate < startDate) || endDate.split('-')[0]?.length > 4) ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`bg-white text-xs h-8 ${
+                        (endDate && ((endDate !== initialEndDate && endDate < todayStr) || endDate.split('-')[0]?.length > 4)) ||
+                        (startDate && !endDate) ||
+                        (!startDate && endDate) ||
+                        (startDate && endDate && endDate < startDate)
+                          ? 'border-red-500'
+                          : 'border-gray-300'
+                      }`}
                     />
                   </div>
                   {dateError && (

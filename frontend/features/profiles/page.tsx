@@ -48,8 +48,7 @@ import {
   Eye,
   EyeOff
 } from "lucide-react";
-import { format } from "date-fns";
-import { PfManagementSection, ProfileCard, ProfileFilters, ProfileSearchModal, ProfileListView, ProfileKanbanView, ProfileDetailDialog } from "./components";
+import { PfManagementSection, ProfileCard, ProfileFilters, ProfileListView, ProfileKanbanView, ProfileDetailDialog } from "./components";
 import { getInitials, getBurnoutLevel, getProfileStatus } from "./utils";
 import { CardSkeleton } from "@/components/PageSkeletons";
 import {
@@ -124,26 +123,10 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState<Partial<EmployeeProfile>>({});
-
-  // Cmd+K global search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSearchOpen(true);
-      }
-      if (e.key === 'Escape' && isSearchOpen) {
-        setIsSearchOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchOpen]);
 
   // Add profile form state
   const [addForm, setAddForm] = useState<Partial<EmployeeProfile>>({
@@ -597,13 +580,6 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
   const isAdmin = currentUser?.role === 'admin';
   const canEdit = isAdmin || (selectedProfile && selectedProfile.id === currentUser?.id) || false;
 
-  // Debug logging
-  useEffect(() => {
-    console.log('🔍 Current User:', currentUser);
-    console.log('🔍 Is Admin:', isAdmin);
-    console.log('🔍 User Role:', currentUser?.role);
-  }, [currentUser, isAdmin]);
-
   if (loading && profiles.length === 0) {
     return (
       <div className={noPadding ? "" : "p-6"}>
@@ -645,210 +621,206 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
             </p>
           </div>
           {!onlyCurrentUser && (
-            <div className="flex w-full min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center [&>button]:h-auto [&>button]:min-h-10 [&>button]:whitespace-normal">
-              {/* Download Template Button */}
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    await downloadTemplate();
-                    toast({
-                      title: "Success",
-                      description: "Template downloaded successfully",
-                    });
-                  } catch (error: any) {
-                    toast({
-                      title: "Error",
-                      description: error.message || "Failed to download template",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Template
-              </Button>
-
-              {/* Upload File Dropdown */}
-              <div className="relative min-w-0">
-                {/* Hidden file inputs for different upload types */}
-                <input
-                  type="file"
-                  id="profile-upload"
-                  className="hidden"
-                  accept=".xls,.xlsx,.csv"
-                  onChange={handleProfileBatchUpload}
-                  disabled={isUploading}
-                />
-
-                {/* Hidden file inputs for HR document templates */}
-                <input
-                  type="file"
-                  id="experience-template-upload"
-                  className="hidden"
-                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    await handleTemplateUpload(file, 'experience_letter', 'Experience Letter');
-                    e.target.value = '';
-                  }}
-                />
-                <input
-                  type="file"
-                  id="payslip-template-upload"
-                  className="hidden"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    await handleTemplateUpload(file, 'payslip', 'Payslip');
-                    e.target.value = '';
-                  }}
-                />
-                <input
-                  type="file"
-                  id="asset-handover-template-upload"
-                  className="hidden"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    await handleTemplateUpload(file, 'asset_handover', 'Asset Handover');
-                    e.target.value = '';
-                  }}
-                />
-                <input
-                  type="file"
-                  id="relieving-letter-template-upload"
-                  className="hidden"
-                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    await handleTemplateUpload(file, 'relieving_letter', 'Relieving Letter');
-                    e.target.value = '';
-                  }}
-                />
-
-                {/* Hidden file inputs for Logo and Signature */}
-                <input
-                  type="file"
-                  id="logo-upload"
-                  className="hidden"
-                  accept=".png,.jpg,.jpeg,.svg,.webp"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    await handleBrandingUpload(file, 'logo');
-                    e.target.value = '';
-                  }}
-                />
-                <input
-                  type="file"
-                  id="signature-upload"
-                  className="hidden"
-                  accept=".png,.jpg,.jpeg,.svg,.webp"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    await handleBrandingUpload(file, 'signature');
-                    e.target.value = '';
-                  }}
-                />
-
+            <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end [&>button]:h-auto [&>button]:min-h-10 [&>button]:whitespace-normal">
+              {/* Row 1 on mobile: Download Template & Import Employees in same line */}
+              <div className="flex w-full min-w-0 flex-row items-center gap-2 sm:w-auto">
+                {/* Download Template Button */}
                 <Button
                   variant="outline"
-                  disabled={isUploading}
-                  className="w-full sm:w-auto h-auto min-h-10 whitespace-normal"
-                  onClick={() => document.getElementById('profile-upload')?.click()}
+                  className="flex-1 sm:flex-initial h-auto min-h-10 whitespace-normal text-xs sm:text-sm px-2 sm:px-4"
+                  onClick={async () => {
+                    try {
+                      await downloadTemplate();
+                      toast({
+                        title: "Success",
+                        description: "Template downloaded successfully",
+                      });
+                    } catch (error: any) {
+                      toast({
+                        title: "Error",
+                        description: error.message || "Failed to download template",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
                 >
-                  {isUploading ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Import Employees
-                    </>
-                  )}
+                  <Download className="h-4 w-4 mr-1.5 shrink-0" />
+                  Download Template
                 </Button>
+
+                {/* Upload File Dropdown */}
+                <div className="relative flex-1 sm:flex-initial min-w-0">
+                  {/* Hidden file inputs for different upload types */}
+                  <input
+                    type="file"
+                    id="profile-upload"
+                    className="hidden"
+                    accept=".xls,.xlsx,.csv"
+                    onChange={handleProfileBatchUpload}
+                    disabled={isUploading}
+                  />
+
+                  {/* Hidden file inputs for HR document templates */}
+                  <input
+                    type="file"
+                    id="experience-template-upload"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      await handleTemplateUpload(file, 'experience_letter', 'Experience Letter');
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    type="file"
+                    id="payslip-template-upload"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      await handleTemplateUpload(file, 'payslip', 'Payslip');
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    type="file"
+                    id="asset-handover-template-upload"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      await handleTemplateUpload(file, 'asset_handover', 'Asset Handover');
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    type="file"
+                    id="relieving-letter-template-upload"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      await handleTemplateUpload(file, 'relieving_letter', 'Relieving Letter');
+                      e.target.value = '';
+                    }}
+                  />
+
+                  {/* Hidden file inputs for Logo and Signature */}
+                  <input
+                    type="file"
+                    id="logo-upload"
+                    className="hidden"
+                    accept=".png,.jpg,.jpeg,.svg,.webp"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      await handleBrandingUpload(file, 'logo');
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    type="file"
+                    id="signature-upload"
+                    className="hidden"
+                    accept=".png,.jpg,.jpeg,.svg,.webp"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      await handleBrandingUpload(file, 'signature');
+                      e.target.value = '';
+                    }}
+                  />
+
+                  <Button
+                    variant="outline"
+                    disabled={isUploading}
+                    className="w-full h-auto min-h-10 whitespace-normal text-xs sm:text-sm px-2 sm:px-4"
+                    onClick={() => document.getElementById('profile-upload')?.click()}
+                  >
+                    {isUploading ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-1.5 animate-spin shrink-0" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-1.5 shrink-0" />
+                        Import Employees
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
 
-              {/* View Mode Toggle */}
-              <div className="flex self-start items-center border rounded-md overflow-hidden sm:self-auto">
+              {/* Row 2 on mobile: View Mode Toggle, Add Employee, and Refresh in same line */}
+              <div className="flex w-full min-w-0 flex-row items-center gap-2 sm:w-auto">
+                {/* View Mode Toggle */}
+                <div className="flex shrink-0 items-center border rounded-md overflow-hidden">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className="rounded-none border-0 px-2 sm:px-3 h-10"
+                  >
+                    <Grid3x3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className="rounded-none border-0 px-2 sm:px-3 h-10"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('kanban')}
+                    className="rounded-none border-0 px-2 sm:px-3 h-10"
+                  >
+                    <Columns className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {(isAdmin || true) && (
+                  <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="flex-1 sm:flex-initial h-auto min-h-10 text-xs sm:text-sm px-2 sm:px-4">
+                        <Plus className="h-4 w-4 mr-1.5 shrink-0" />
+                        Add Employee
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Add Employee Profile</DialogTitle>
+                      </DialogHeader>
+                      <JoiningForm isModal onCancel={() => setIsAddOpen(false)} onComplete={() => { setIsAddOpen(false); refetchProfiles(); }} />
+                    </DialogContent>
+                  </Dialog>
+                )}
+
                 <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="rounded-none border-0"
+                  onClick={async () => {
+                    await queryClient.invalidateQueries({ queryKey: ['profiles'] });
+                    refetchProfiles();
+                  }}
+                  variant="outline"
+                  disabled={loading}
+                  className="flex-1 sm:flex-initial h-auto min-h-10 text-xs sm:text-sm px-2 sm:px-4"
                 >
-                  <Grid3x3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="rounded-none border-0"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'kanban' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('kanban')}
-                  className="rounded-none border-0"
-                >
-                  <Columns className="h-4 w-4" />
+                  <RefreshCw className={`h-4 w-4 mr-1.5 shrink-0 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
                 </Button>
               </div>
-              {(isAdmin || true) && (
-                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Employee
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Add Employee Profile</DialogTitle>
-                    </DialogHeader>
-                    <JoiningForm isModal onCancel={() => setIsAddOpen(false)} onComplete={() => { setIsAddOpen(false); refetchProfiles(); }} />
-                  </DialogContent>
-                </Dialog>
-              )}
-              <Button onClick={async () => {
-                await queryClient.invalidateQueries({ queryKey: ['profiles'] });
-                refetchProfiles();
-              }} variant="outline" disabled={loading}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
             </div>
           )}
         </div>
       )}
-
-      {/* Global Search Modal (Cmd+K) */}
-      {
-        !onlyCurrentUser && (
-          <ProfileSearchModal
-            open={isSearchOpen}
-            onOpenChange={setIsSearchOpen}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            profiles={filteredAndSortedProfiles}
-            onProfileSelect={(profile) => {
-              setSelectedProfileId(profile.id);
-              setIsDetailOpen(true);
-              setIsSearchOpen(false);
-            }}
-          />
-        )
-      }
 
       {/* Search and Filters */}
       {
@@ -856,7 +828,6 @@ const Profiles = ({ onlyCurrentUser = false, hideHeader = false, noPadding = fal
           <ProfileFilters
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            onSearchClick={() => setIsSearchOpen(true)}
             filterDepartment={filterDepartment}
             onDepartmentChange={setFilterDepartment}
             filterRole={filterRole}

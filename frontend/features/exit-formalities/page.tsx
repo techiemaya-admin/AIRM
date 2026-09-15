@@ -424,23 +424,25 @@ const ExitFormalities = () => {
       {/* Exit Detail Dialog with Tabs */}
       {selectedExit && (
         <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-          <DialogContent className="max-w-6xl max-h-[calc(100dvh-2rem)] grid-cols-[minmax(0,1fr)] overflow-y-auto p-4 sm:p-6 [overflow-wrap:anywhere]">
-            <DialogHeader>
-              <DialogTitle className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <span>Exit Request Details</span>
+          <DialogContent className="max-w-6xl h-[85vh] max-h-[85vh] flex flex-col p-4 sm:p-6 overflow-hidden [overflow-wrap:anywhere]">
+            <DialogHeader className="mb-4 shrink-0">
+              <div className="flex flex-col items-start gap-1">
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  Exit Request Details
+                </DialogTitle>
                 {exitRequestDetail?.exit_request.exit_progress_percentage !== undefined && (
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <Percent className="h-4 w-4" />
-                    <span className="text-sm font-normal">
+                  <div className="flex items-center gap-1.5 text-gray-500 text-sm font-medium">
+                    <Percent className="h-3.5 w-3.5 text-gray-400" />
+                    <span>
                       {exitRequestDetail.exit_request.exit_progress_percentage}% Complete
                     </span>
                   </div>
                 )}
-              </DialogTitle>
+              </div>
             </DialogHeader>
 
             {/* Tabs */}
-            <div className="flex min-w-0 max-w-full gap-1 overflow-x-auto border-b">
+            <div className="flex min-w-0 max-w-full gap-1 overflow-x-auto border-b shrink-0 custom-scrollbar">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -462,14 +464,15 @@ const ExitFormalities = () => {
             </div>
 
             {detailLoading || loading ? (
-              <div className="flex items-center justify-center h-64">
+              <div className="flex flex-1 items-center justify-center">
                 <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
               </div>
             ) : exitRequestDetail ? (
-              <div className="min-w-0 space-y-6 mt-4">
-                {/* Overview Tab */}
-                {activeTab === 'overview' && (
-                  <>
+              <div className="flex-1 min-h-0 flex flex-col mt-4">
+                <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 space-y-6">
+                  {/* Overview Tab */}
+                  {activeTab === 'overview' && (
+                    <>
                     {/* Basic Info */}
                     <Card>
                       <CardHeader>
@@ -914,6 +917,7 @@ const ExitFormalities = () => {
                   </Button>
                 </div>
               </div>
+              </div>
             ) : (
               <p className="text-gray-500">Failed to load exit request details</p>
             )}
@@ -923,8 +927,8 @@ const ExitFormalities = () => {
 
       {/* Initiate Exit Dialog */}
       <Dialog open={isInitiateOpen} onOpenChange={setIsInitiateOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="mb-4">
             <DialogTitle>Initiate Exit Request</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -1032,7 +1036,7 @@ const ExitFormalities = () => {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-6 flex flex-row items-center justify-end gap-2">
             <Button variant="outline" onClick={() => setIsInitiateOpen(false)}>
               Cancel
             </Button>

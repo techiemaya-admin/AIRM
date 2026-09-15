@@ -45,30 +45,41 @@ export class FjtService {
         initials: empInitials
       } : undefined;
 
+      // Safely parse raw_data
+      let rawData = i.raw_data;
+      if (typeof rawData === 'string') {
+        try {
+          rawData = JSON.parse(rawData);
+        } catch {
+          rawData = {};
+        }
+      }
+      if (!rawData || typeof rawData !== 'object') {
+        rawData = {};
+      }
+
       // Parse comments from raw_data
       let issueComments = [];
-      if (i.raw_data) {
-        if (Array.isArray(i.raw_data.comments)) {
-          issueComments = i.raw_data.comments;
-        } else if (Array.isArray(i.raw_data)) {
-          issueComments = i.raw_data;
-        } else if (typeof i.raw_data === 'object') {
-          const keys = Object.keys(i.raw_data).filter(k => /^comment\s*\d+/i.test(k)).sort();
-          if (keys.length > 0) {
-            issueComments = keys.map((k, idx) => ({
-              id: `comment-${idx + 1}`,
-              authorName: i.assignee_name || 'User',
-              authorInitials: i.assignee_initials || 'U',
-              content: typeof i.raw_data[k] === 'string' ? i.raw_data[k] : (i.raw_data[k]?.content || JSON.stringify(i.raw_data[k])),
-              createdAt: i.updated_at || i.created_at
-            }));
-          }
+      if (Array.isArray(rawData.comments)) {
+        issueComments = rawData.comments;
+      } else if (Array.isArray(rawData)) {
+        issueComments = rawData;
+      } else {
+        const keys = Object.keys(rawData).filter(k => /^comment\s*\d+/i.test(k)).sort();
+        if (keys.length > 0) {
+          issueComments = keys.map((k, idx) => ({
+            id: `comment-${idx + 1}`,
+            authorName: i.assignee_name || 'User',
+            authorInitials: i.assignee_initials || 'U',
+            content: typeof rawData[k] === 'string' ? rawData[k] : (rawData[k]?.content || JSON.stringify(rawData[k])),
+            createdAt: i.updated_at || i.created_at
+          }));
         }
       }
 
       let assigneesList = [];
-      if (i.raw_data && Array.isArray(i.raw_data.assignees) && i.raw_data.assignees.length > 0) {
-        assigneesList = i.raw_data.assignees.map(a => ({
+      if (Array.isArray(rawData.assignees) && rawData.assignees.length > 0) {
+        assigneesList = rawData.assignees.map(a => ({
           id: String(a.id || a.user_id || ''),
           name: a.name || a.full_name || a.email || 'User',
           email: a.email || '',
@@ -87,8 +98,17 @@ export class FjtService {
         type: i.type,
         summary: i.summary,
         description: i.description,
+        descriptionAuthor: rawData.descriptionAuthor || (i.reporter_user_name ? {
+          id: String(i.reporter_user_id || i.reporter_id || ''),
+          name: i.reporter_user_name,
+          email: i.reporter_user_email,
+          role: 'Author',
+          initials: i.reporter_user_name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AU'
+        } : undefined),
+        descriptionCreatedAt: rawData.descriptionCreatedAt || i.updated_at || i.created_at,
+        descriptionSaved: rawData.descriptionSaved !== undefined ? rawData.descriptionSaved : !!(i.description && i.description.trim()),
         comments: issueComments,
-        raw_data: i.raw_data || {},
+        raw_data: rawData,
         status: i.status,
         priority: i.priority,
         storyPoints: i.story_points,
@@ -181,6 +201,14 @@ export class FjtService {
     if (data.assignees !== undefined) {
       rawData = { ...rawData, assignees: Array.isArray(data.assignees) ? data.assignees : [] };
     }
+    if (data.descriptionAuthor !== undefined || data.descriptionCreatedAt !== undefined || data.descriptionSaved !== undefined) {
+      rawData = {
+        ...rawData,
+        descriptionAuthor: data.descriptionAuthor !== undefined ? data.descriptionAuthor : rawData.descriptionAuthor,
+        descriptionCreatedAt: data.descriptionCreatedAt !== undefined ? data.descriptionCreatedAt : rawData.descriptionCreatedAt,
+        descriptionSaved: data.descriptionSaved !== undefined ? data.descriptionSaved : rawData.descriptionSaved
+      };
+    }
 
     const payload = {
       key,
@@ -244,6 +272,14 @@ export class FjtService {
     }
     if (data.assignees !== undefined) {
       rawData = { ...(rawData || {}), assignees: Array.isArray(data.assignees) ? data.assignees : [] };
+    }
+    if (data.descriptionAuthor !== undefined || data.descriptionCreatedAt !== undefined || data.descriptionSaved !== undefined) {
+      rawData = {
+        ...(rawData || {}),
+        descriptionAuthor: data.descriptionAuthor !== undefined ? data.descriptionAuthor : (rawData?.descriptionAuthor),
+        descriptionCreatedAt: data.descriptionCreatedAt !== undefined ? data.descriptionCreatedAt : (rawData?.descriptionCreatedAt),
+        descriptionSaved: data.descriptionSaved !== undefined ? data.descriptionSaved : (rawData?.descriptionSaved)
+      };
     }
 
     const payload = {

@@ -16,7 +16,7 @@ type SortOption = "name" | "join_date" | "experience" | "department";
 interface ProfileFiltersProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
-  onSearchClick: () => void;
+  onSearchClick?: () => void;
   filterDepartment: string;
   onDepartmentChange: (value: string) => void;
   filterRole: string;
@@ -41,7 +41,6 @@ interface ProfileFiltersProps {
 export const ProfileFilters = ({
   searchQuery,
   onSearchChange,
-  onSearchClick,
   filterDepartment,
   onDepartmentChange,
   filterRole,
@@ -68,15 +67,11 @@ export const ProfileFilters = ({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by name, email, or skill... (Cmd+K)"
+                placeholder="Search by name, email, or skill..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                onClick={onSearchClick}
-                className="pl-10 cursor-pointer border-gray-300 focus:border-[#0B1957] focus:ring-[#0B1957]/20"
+                className="pl-10 border-gray-300 focus:border-[#0B1957] focus:ring-[#0B1957]/20"
               />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 hidden md:block">
-                ⌘K
-              </div>
             </div>
           </div>
 
