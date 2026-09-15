@@ -104,14 +104,23 @@ const Timesheet = () => {
         if (userData.id) {
           setUser(userData);
           setSelectedUserId(userData.id);
-          // Get user role from API
-          const currentUser = await api.auth.getMe() as any;
-          const adminStatus = currentUser?.user?.role === 'admin';
-          setIsAdmin(adminStatus);
-          if (adminStatus) {
-            await loadUsers();
+          const initialAdmin = userData.role === 'admin';
+          setIsAdmin(initialAdmin);
+          if (initialAdmin) {
+            loadUsers();
           }
-          await loadTimesheet(userData.id);
+
+          // Trigger timesheet loading immediately without blocking
+          loadTimesheet(userData.id);
+
+          // Update user status and roles in the background
+          api.auth.getMe().then((currentUser: any) => {
+            const adminStatus = currentUser?.user?.role === 'admin';
+            setIsAdmin(adminStatus);
+            if (adminStatus) {
+              loadUsers();
+            }
+          }).catch(() => {});
         }
       } catch (error) {
         logger.error('Error initializing user:', error);
@@ -133,7 +142,7 @@ const Timesheet = () => {
       })) : [];
       setUsers(userProfiles);
     } catch (err) {
-      console.error("Error in loadUsers:", err);
+      logger.error("Error in loadUsers:", err);
     }
   };
 
@@ -166,10 +175,10 @@ const Timesheet = () => {
     const viewingWeekStartStr = format(weekStart, "yyyy-MM-dd");
 
     if (currentWeekStartStr !== viewingWeekStartStr) {
-      console.log('📅 Not viewing current week. Current:', currentWeekStartStr, 'Viewing:', viewingWeekStartStr);
+      logger.debug('📅 Not viewing current week. Current:', currentWeekStartStr, 'Viewing:', viewingWeekStartStr);
       // Only auto-navigate if viewing a past week (more than 7 days old)
       if (isAfter(today, weekEnd) && (today.getTime() - weekEnd.getTime()) > 7 * 24 * 60 * 60 * 1000) {
-        console.log('📅 Auto-navigating to current week');
+        logger.debug('📅 Auto-navigating to current week');
         setWeekStart(currentWeekStart);
         setWeekEnd(currentWeekEnd);
       }
@@ -177,23 +186,23 @@ const Timesheet = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
-  // Auto-refresh timesheet after clock-out
+  // Auto-refresh timesheet after clock-out immediately
   useEffect(() => {
     const handleClockOut = () => {
-      if (user && selectedUserId) {
-        console.log('⏰ Clock-out detected, refreshing timesheet...');
-        setTimeout(() => {
-          loadTimesheet(selectedUserId || user.id);
-        }, 1000); // Small delay to ensure backend has saved the entry
+      const activeId = selectedUserId || user?.id || JSON.parse(localStorage.getItem('user') || '{}').id;
+      if (activeId) {
+        logger.debug('⏰ Clock-out detected, refreshing timesheet instantly...');
+        loadTimesheet(activeId);
       }
     };
 
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'timesheetRefreshTrigger' && user && selectedUserId) {
-        logger.debug('Storage change detected, refreshing timesheet...');
-        setTimeout(() => {
-          loadTimesheet(selectedUserId || user.id);
-        }, 500);
+      if (event.key === 'timesheetRefreshTrigger') {
+        const activeId = selectedUserId || user?.id || JSON.parse(localStorage.getItem('user') || '{}').id;
+        if (activeId) {
+          logger.debug('Storage change detected, refreshing timesheet instantly...');
+          loadTimesheet(activeId);
+        }
       }
     };
 
@@ -288,7 +297,7 @@ const Timesheet = () => {
       setClockInTimings(timingsByDay);
 
       if (timesheetResult.status === 'rejected') {
-        console.error('❌ Error loading timesheet:', timesheetResult.reason);
+        logger.error('❌ Error loading timesheet:', timesheetResult.reason);
         toast({
           title: "Error",
           description: "Failed to load timesheet",
@@ -301,14 +310,14 @@ const Timesheet = () => {
         ? timesheetResponse.timesheets
         : [];
 
-      console.log('📊 Received timesheets:', timesheets.length);
+      logger.debug('📊 Received timesheets:', timesheets.length);
 
       // Find matching timesheet - collect ALL timesheets that overlap with requested week
       let matchedTimesheets: any[] = [];
       const weekStartDate = new Date(weekStartStr + 'T00:00:00');
       const weekEndDate = new Date(weekEndStr + 'T23:59:59');
 
-      console.log('🔍 Looking for timesheets matching week:', weekStartStr, 'to', weekEndStr);
+      logger.debug('🔍 Looking for timesheets matching week:', weekStartStr, 'to', weekEndStr);
 
       for (const t of timesheets) {
         // Normalize week_start
@@ -324,7 +333,7 @@ const Timesheet = () => {
         // Check exact match first
         if (tWeekStart === weekStartStr) {
           matchedTimesheets.push(t);
-          console.log('✅ Found exact match timesheet:', t.id, 'with', Array.isArray(t.entries) ? t.entries.length : 0, 'entries');
+          logger.debug('✅ Found exact match timesheet:', t.id, 'with', Array.isArray(t.entries) ? t.entries.length : 0, 'entries');
           continue;
         }
 
@@ -346,7 +355,7 @@ const Timesheet = () => {
         // Check if weeks overlap
         if (weekStartDate <= tWeekEndDate && weekEndDate >= tWeekStartDate) {
           matchedTimesheets.push(t);
-          console.log('✅ Found overlapping timesheet:', t.id, 'week:', tWeekStart, 'to', tWeekEnd, 'with', Array.isArray(t.entries) ? t.entries.length : 0, 'entries');
+          logger.debug('✅ Found overlapping timesheet:', t.id, 'week:', tWeekStart, 'to', tWeekEnd, 'with', Array.isArray(t.entries) ? t.entries.length : 0, 'entries');
         }
       }
 
@@ -442,7 +451,7 @@ const Timesheet = () => {
           const leaveStartDate = leaveStartStr.split('T')[0];
           const leaveEndDate = leaveEndStr.split('T')[0];
 
-          console.log('🔍 Leave date processing:', {
+          logger.debug('🔍 Leave date processing:', {
             rawStart: leaveStartStr,
             rawEnd: leaveEndStr,
             parsedStart: leaveStartDate,
@@ -455,12 +464,12 @@ const Timesheet = () => {
             const currentDay = addDays(weekStart, i);
             const currentDayStr = format(currentDay, 'yyyy-MM-dd');
 
-            console.log(`🔍 Day ${i}: ${currentDayStr} (${dayMap[i]}) - checking against ${leaveStartDate} to ${leaveEndDate}`);
+            logger.debug(`🔍 Day ${i}: ${currentDayStr} (${dayMap[i]}) - checking against ${leaveStartDate} to ${leaveEndDate}`);
 
             // Compare date strings to avoid timezone issues
             if (currentDayStr >= leaveStartDate && currentDayStr <= leaveEndDate) {
               const dayKey = dayMap[i];
-              console.log(`✅ Match! Setting ${dayKey} = 8 hours`);
+              logger.debug(`✅ Match! Setting ${dayKey} = 8 hours`);
               if (dayKey) {
                 hours[dayKey] = 8; // 8 hours for leave days
               }
@@ -514,82 +523,126 @@ const Timesheet = () => {
         return isNaN(num) ? 0 : num;
       };
 
-      // Process all entries - convert hours to numbers
-      // Process all entries - convert hours to numbers and clean project/task names
-      const regularEntries: TimesheetEntry[] = allEntries.map((entry: any, idx: number) => {
-        let cleanProject = (entry.project || '').trim();
-        let cleanTask = (entry.task || '').trim();
+      // 1. Group and accumulate all completed clockEntries by project + task into single rows
+      const timeClockMap = new Map<string, { entry: TimesheetEntry; latestTimestamp: number }>();
+      const completedClockEntries = clockEntries.filter((ce: any) => ce.clock_out || ce.status === 'clocked_out');
+
+      completedClockEntries.forEach((ce: any, idx: number) => {
+        const clockDate = new Date(ce.clock_in);
+        const clockDateStr = format(clockDate, 'yyyy-MM-dd');
+        let dayIdx = -1;
+        for (let i = 0; i < 7; i++) {
+          if (format(addDays(weekStart, i), 'yyyy-MM-dd') === clockDateStr) {
+            dayIdx = i;
+            break;
+          }
+        }
+        if (dayIdx === -1) return; // Not within the currently viewed week
+
+        let pName = (ce.project_name || ce.issue_project || 'Human Resources (HR)').trim();
+        let tName = (ce.notes || ce.issue_title || '-').trim();
 
         // 1. Clean combined project/task names: "Project - [Story/Task/Bug] ..."
-        if (cleanProject.includes(' - [Story') || cleanProject.includes(' - [Task') || cleanProject.includes(' - [Bug') || cleanProject.includes(' - Story') || cleanProject.includes(' - Task') || cleanProject.includes(' - Bug')) {
-          const splitIndex = cleanProject.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+        if (pName.includes(' - [Story') || pName.includes(' - [Task') || pName.includes(' - [Bug') || pName.includes(' - Story') || pName.includes(' - Task') || pName.includes(' - Bug')) {
+          const splitIndex = pName.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
           if (splitIndex !== -1) {
-            const projectPart = cleanProject.substring(0, splitIndex).trim();
-            const topicPart = cleanProject.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
-            cleanProject = projectPart;
-            if (cleanTask === 'General Work' || cleanTask === 'Task' || !cleanTask) {
-              cleanTask = topicPart;
+            const projectPart = pName.substring(0, splitIndex).trim();
+            const topicPart = pName.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
+            pName = projectPart;
+            if (!tName || tName === '-' || tName === 'General Work' || tName === 'Task') {
+              tName = topicPart;
             }
           }
-        } else if (cleanProject.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
-          const match = cleanProject.match(/^\[([A-Za-z0-9_-]+)-Story/i);
+        } else if (pName.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
+          const match = pName.match(/^\[([A-Za-z0-9_-]+)-Story/i);
           const prefix = match ? match[1].toUpperCase() : '';
-          if (cleanTask === 'General Work' || cleanTask === 'Task' || !cleanTask) {
-            cleanTask = cleanProject;
-            cleanProject = prefix ? `${prefix} Project` : 'Project';
+          if (!tName || tName === '-' || tName === 'General Work' || tName === 'Task') {
+            tName = pName;
+            pName = prefix ? `${prefix} Project` : 'Project';
           } else {
-            cleanProject = prefix ? `${prefix} Project` : 'Project';
+            pName = prefix ? `${prefix} Project` : 'Project';
           }
         }
 
-        // 2. If cleanTask is still 'General Work' or 'Task', resolve from matching clock entry notes if available
-        if (cleanTask === 'General Work' || cleanTask === 'Task' || !cleanTask) {
-          const matchingClock = clockEntries.find((ce: any) => {
-            const ceProject = (ce.project_name || '').toLowerCase();
-            const cp = cleanProject.toLowerCase();
-            return (ceProject.includes(cp) || cp.includes(ceProject)) && ce.notes && ce.notes !== 'General Work' && ce.notes !== 'Active Session';
-          });
-          if (matchingClock && matchingClock.notes) {
-            cleanTask = matchingClock.notes;
-          }
+        pName = pName.replace(/:\s*undefined/g, '').trim();
+        tName = tName.replace(/:\s*undefined/g, '').trim();
+        if (!tName || tName === 'General Work' || tName === 'Task') {
+          tName = '-';
         }
 
-        cleanProject = cleanProject.replace(/:\s*undefined/g, '').trim();
-        cleanTask = cleanTask.replace(/:\s*undefined/g, '').trim();
+        const hrs = toNumber(ce.total_hours);
+        const ceTimestamp = new Date(ce.clock_out || ce.clock_in).getTime();
+        const key = `${pName.toLowerCase()}|${tName.toLowerCase()}`;
 
-        return {
-          id: entry.id || `entry-${firstTimesheetId || 'new'}-${idx}-${Date.now()}`,
-          project: cleanProject,
-          task: cleanTask,
-          mon_hours: toNumber(entry.mon_hours),
-          tue_hours: toNumber(entry.tue_hours),
-          wed_hours: toNumber(entry.wed_hours),
-          thu_hours: toNumber(entry.thu_hours),
-          fri_hours: toNumber(entry.fri_hours),
-          sat_hours: toNumber(entry.sat_hours),
-          sun_hours: toNumber(entry.sun_hours),
-          source: entry.source || 'manual',
-        };
-      });
-
-      // Merge entries with matching project and task
-      const regularMap = new Map<string, TimesheetEntry>();
-      regularEntries.forEach((entry) => {
-        const key = `${entry.project.toLowerCase()}|${entry.task.toLowerCase()}`;
-        const existing = regularMap.get(key);
+        const existing = timeClockMap.get(key);
         if (existing) {
-          existing.mon_hours = Math.round((existing.mon_hours + entry.mon_hours) * 100) / 100;
-          existing.tue_hours = Math.round((existing.tue_hours + entry.tue_hours) * 100) / 100;
-          existing.wed_hours = Math.round((existing.wed_hours + entry.wed_hours) * 100) / 100;
-          existing.thu_hours = Math.round((existing.thu_hours + entry.thu_hours) * 100) / 100;
-          existing.fri_hours = Math.round((existing.fri_hours + entry.fri_hours) * 100) / 100;
-          existing.sat_hours = Math.round((existing.sat_hours + entry.sat_hours) * 100) / 100;
-          existing.sun_hours = Math.round((existing.sun_hours + entry.sun_hours) * 100) / 100;
+          const dayKeys = ['mon_hours', 'tue_hours', 'wed_hours', 'thu_hours', 'fri_hours', 'sat_hours', 'sun_hours'] as const;
+          const targetDayKey = dayKeys[dayIdx];
+          if (targetDayKey) {
+            existing.entry[targetDayKey] = Math.round(((existing.entry[targetDayKey] || 0) + hrs) * 100) / 100;
+          }
+          if (ceTimestamp > existing.latestTimestamp) {
+            existing.latestTimestamp = ceTimestamp;
+          }
         } else {
-          regularMap.set(key, { ...entry });
+          const newEntry: TimesheetEntry = {
+            id: `time_clock-${ce.id || idx}`,
+            project: pName || 'Project',
+            task: tName || '-',
+            mon_hours: dayIdx === 0 ? hrs : 0,
+            tue_hours: dayIdx === 1 ? hrs : 0,
+            wed_hours: dayIdx === 2 ? hrs : 0,
+            thu_hours: dayIdx === 3 ? hrs : 0,
+            fri_hours: dayIdx === 4 ? hrs : 0,
+            sat_hours: dayIdx === 5 ? hrs : 0,
+            sun_hours: dayIdx === 6 ? hrs : 0,
+            source: 'time_clock',
+          };
+          timeClockMap.set(key, { entry: newEntry, latestTimestamp: ceTimestamp });
         }
       });
-      const finalRegularEntries = Array.from(regularMap.values());
+
+      const timeClockRows = Array.from(timeClockMap.values())
+        .sort((a, b) => a.latestTimestamp - b.latestTimestamp)
+        .map(v => v.entry);
+
+      // 2. Extract and group manual entries from allEntries
+      const manualMap = new Map<string, TimesheetEntry>();
+      allEntries
+        .filter((entry: any) => entry.source !== 'time_clock' && entry.source !== 'leave')
+        .forEach((entry: any, idx: number) => {
+          const p = (entry.project || '').trim();
+          const t = (entry.task || '').trim() || '-';
+          const key = `${p.toLowerCase()}|${t.toLowerCase()}`;
+          const existing = manualMap.get(key);
+          if (existing) {
+            existing.mon_hours = Math.round((existing.mon_hours + toNumber(entry.mon_hours)) * 100) / 100;
+            existing.tue_hours = Math.round((existing.tue_hours + toNumber(entry.tue_hours)) * 100) / 100;
+            existing.wed_hours = Math.round((existing.wed_hours + toNumber(entry.wed_hours)) * 100) / 100;
+            existing.thu_hours = Math.round((existing.thu_hours + toNumber(entry.thu_hours)) * 100) / 100;
+            existing.fri_hours = Math.round((existing.fri_hours + toNumber(entry.fri_hours)) * 100) / 100;
+            existing.sat_hours = Math.round((existing.sat_hours + toNumber(entry.sat_hours)) * 100) / 100;
+            existing.sun_hours = Math.round((existing.sun_hours + toNumber(entry.sun_hours)) * 100) / 100;
+          } else {
+            manualMap.set(key, {
+              id: entry.id || `manual-${idx}-${Date.now()}`,
+              project: p,
+              task: t,
+              mon_hours: toNumber(entry.mon_hours),
+              tue_hours: toNumber(entry.tue_hours),
+              wed_hours: toNumber(entry.wed_hours),
+              thu_hours: toNumber(entry.thu_hours),
+              fri_hours: toNumber(entry.fri_hours),
+              sat_hours: toNumber(entry.sat_hours),
+              sun_hours: toNumber(entry.sun_hours),
+              source: 'manual',
+            });
+          }
+        });
+      const manualEntries = Array.from(manualMap.values());
+
+      // Combine time_clock rows and manual rows
+      const finalRegularEntries: TimesheetEntry[] = [...timeClockRows, ...manualEntries];
 
       // Check which assigned issues are already in the timesheet
       const existingProjectsTasks = new Set(
@@ -614,22 +667,22 @@ const Timesheet = () => {
           if (format(addDays(weekStart, i), 'yyyy-MM-dd') === activeDayStr) dayIdx = i;
         }
         if (dayIdx !== -1) {
-          let activeProject = activeEntry.project_name || (activeEntry.issue?.project_name) || 'Project';
-          let activeTask = activeEntry.notes || (activeEntry.issue?.title) || 'Task';
+          let activeProject = (activeEntry.project_name || activeEntry.issue?.project_name || 'Project').trim();
+          let activeTask = (activeEntry.notes || activeEntry.issue?.title || '-').trim();
           if (activeProject.includes(' - [Story') || activeProject.includes(' - [Task') || activeProject.includes(' - [Bug') || activeProject.includes(' - Story') || activeProject.includes(' - Task') || activeProject.includes(' - Bug')) {
             const splitIndex = activeProject.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
             if (splitIndex !== -1) {
               const projectPart = activeProject.substring(0, splitIndex).trim();
               const topicPart = activeProject.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
               activeProject = projectPart;
-              if (activeTask === 'General Work' || activeTask === 'Task' || !activeTask) {
+              if (activeTask === 'General Work' || activeTask === 'Task' || !activeTask || activeTask === '-') {
                 activeTask = topicPart;
               }
             }
           } else if (activeProject.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
             const match = activeProject.match(/^\[([A-Za-z0-9_-]+)-Story/i);
             const prefix = match ? match[1].toUpperCase() : '';
-            if (activeTask === 'General Work' || activeTask === 'Task' || !activeTask) {
+            if (activeTask === 'General Work' || activeTask === 'Task' || !activeTask || activeTask === '-') {
               activeTask = activeProject;
               activeProject = prefix ? `${prefix} Project` : 'Project';
             } else {
@@ -651,14 +704,18 @@ const Timesheet = () => {
             }
           }
 
+          if (!activeTask || activeTask === 'General Work' || activeTask === 'Task') {
+            activeTask = '-';
+          }
+
           // Check if this project & task already exists in finalEntries
           const existingIndex = finalEntries.findIndex(r =>
             r.project.toLowerCase() === activeProject.toLowerCase() &&
-            (r.task.toLowerCase() === activeTask.toLowerCase() || (activeEntry.issue_id && r.task?.includes(`#${activeEntry.issue_id}`)))
+            r.task.toLowerCase() === activeTask.toLowerCase()
           );
 
           if (existingIndex !== -1) {
-            // Remove from current position and move to the LAST position of the table!
+            // Remove from current position and attach active session details, then move to the LAST position!
             const [existingRow] = finalEntries.splice(existingIndex, 1);
             existingRow.activeClockIn = activeEntry.clock_in;
             existingRow.activeDayIndex = dayIdx;
@@ -706,7 +763,7 @@ const Timesheet = () => {
       // Sort entries chronologically by latest activity so the most recent / last clocked task is ALWAYS at the bottom/last row
       const getLatestActivityTimestamp = (row: any): number => {
         if (row.activeClockIn) {
-          return Date.now() + 100000000; // Live in-progress task is ALWAYS the absolute last row!
+          return Date.now() + 1000000000; // Live in-progress task is ALWAYS the absolute last row!
         }
         if (row.source === 'leave') {
           return 0; // Leave rows stay at top
@@ -717,13 +774,10 @@ const Timesheet = () => {
 
         // Match against clockEntries to find the most recent clock_in / clock_out / updated_at
         const matchingClocks = clockEntries.filter((ce: any) => {
-          const ceProject = (ce.project_name || '').toLowerCase().trim();
-          const ceNotes = (ce.notes || '').toLowerCase().trim();
-          const ceIssue = (ce.issue?.title || '').toLowerCase().trim();
-
+          const ceProject = (ce.project_name || ce.issue_project || '').toLowerCase().trim();
+          const ceNotes = (ce.notes || ce.issue_title || '').toLowerCase().trim();
           const pMatch = !pLower || ceProject.includes(pLower) || pLower.includes(ceProject);
-          const tMatch = !tLower || ceNotes.includes(tLower) || tLower.includes(ceNotes) || (ceIssue && (tLower.includes(ceIssue) || ceIssue.includes(tLower)));
-
+          const tMatch = !tLower || tLower === '-' || ceNotes.includes(tLower) || tLower.includes(ceNotes);
           return pMatch && tMatch;
         });
 
@@ -1360,16 +1414,16 @@ const Timesheet = () => {
                             <td className="border border-border p-1">
                               {isReadOnly ? (
                                 <div className="px-2 py-1 text-sm flex items-center gap-2">
-                                  {entry.task}
+                                  {entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : '-'}
                                   {isTimeClock && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">Auto</span>}
                                   {isLeave && <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">Leave</span>}
                                 </div>
                               ) : (
                                 <Input
-                                  value={entry.task}
+                                  value={entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : (isTimeClock ? '-' : entry.task)}
                                   onChange={(e) => updateEntry(index, "task", e.target.value)}
                                   className="h-8 border-0 bg-transparent"
-                                  placeholder="Task"
+                                  placeholder="-"
                                   disabled={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                                   readOnly={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                                 />
@@ -1408,7 +1462,7 @@ const Timesheet = () => {
                                       {holiday && dayHours === 0 ? 'Holiday' : (displayValue === '0' && isWeekend ? '-' : displayValue)}
                                     </div>
                                   ) : (
-                                    <div className="relative">
+                                    <div className="relative flex items-center justify-center">
                                       <Input
                                         type="number"
                                         step="0.5"
@@ -1426,16 +1480,11 @@ const Timesheet = () => {
                                             num
                                           );
                                         }}
-                                        className={`h-8 border-0 bg-transparent text-center ${holiday ? 'text-green-600 placeholder:text-green-600/50' : (isWeekend ? 'text-gray-500' : '')}`}
+                                        className={`h-8 border-0 bg-transparent text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${holiday ? 'text-green-600 placeholder:text-green-600 placeholder:font-medium' : (isWeekend ? 'text-gray-500' : '')}`}
                                         placeholder={holiday && dayHours === 0 ? "Holiday" : ""}
                                         disabled={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                                         readOnly={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                                       />
-                                      {holiday && dayHours === 0 && (
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-[9px] font-bold text-green-600/20 uppercase">
-                                          Holiday
-                                        </div>
-                                      )}
                                     </div>
                                   )}
                                 </td>

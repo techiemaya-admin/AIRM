@@ -300,7 +300,7 @@ router.post('/clock-out', [
 
         // Determine project and task - REWRITTEN for better reliability
         let project = entry.project_name || 'General';
-        let task = 'General Work';
+        let task = '-';
 
         // Get issue details if issue_id exists
         if (entry.issue_id) {
@@ -327,7 +327,7 @@ router.post('/clock-out', [
         } else {
           // No issue_id - check project_name and notes
           project = entry.project_name || 'General';
-          task = entry.notes || 'General Work';
+          task = entry.notes || '-';
 
           if (project && (project.includes(' - [Story') || project.includes(' - [Task') || project.includes(' - [Bug') || project.includes(' - Story') || project.includes(' - Task') || project.includes(' - Bug'))) {
             const splitIndex = project.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
@@ -335,14 +335,14 @@ router.post('/clock-out', [
               const projectPart = project.substring(0, splitIndex).trim();
               const topicPart = project.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
               project = projectPart || project;
-              if (task === 'General Work' || task === 'Task' || !task) {
+              if (task === 'General Work' || task === 'Task' || !task || task === '-') {
                 task = topicPart || task;
               }
             }
           } else if (project && project.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
             const match = project.match(/^\[([A-Za-z0-9_-]+)-Story/i);
             const prefix = match ? match[1].toUpperCase() : '';
-            if (task === 'General Work' || task === 'Task' || !task) {
+            if (task === 'General Work' || task === 'Task' || !task || task === '-') {
               task = project;
               project = prefix ? `${prefix} Project` : 'Project';
             } else {
@@ -365,7 +365,10 @@ router.post('/clock-out', [
 
         // Normalize project and task (trim whitespace)
         project = (project || 'General').trim();
-        task = (task || 'General Work').trim();
+        task = (task || '-').trim();
+        if (task === 'General Work' || task === 'Task') {
+          task = '-';
+        }
 
         // Get or create timesheet FIRST (before logging)
         let timesheetId;
@@ -411,102 +414,40 @@ router.post('/clock-out', [
           throw new Error(`Invalid day column: ${dayColumn}`);
         }
 
-        // Find or create entry for this project/task - REWRITTEN for reliability
-        console.log(`🔍 Looking for existing entry:`, {
+        // Insert new entry for each clock-out session
+        const hoursArray = {
+          mon_hours: [roundedHours, 0, 0, 0, 0, 0, 0],
+          tue_hours: [0, roundedHours, 0, 0, 0, 0, 0],
+          wed_hours: [0, 0, roundedHours, 0, 0, 0, 0],
+          thu_hours: [0, 0, 0, roundedHours, 0, 0, 0],
+          fri_hours: [0, 0, 0, 0, roundedHours, 0, 0],
+          sat_hours: [0, 0, 0, 0, 0, roundedHours, 0],
+          sun_hours: [0, 0, 0, 0, 0, 0, roundedHours],
+        };
+
+        const hours = hoursArray[dayColumn] || [0, 0, 0, 0, 0, 0, 0];
+
+        console.log(`📝 Inserting new timesheet entry for clock-out session:`, {
           timesheetId,
           project,
           task,
+          dayColumn,
+          hours,
           source: 'time_clock'
         });
 
-        const existingEntry = await pool.query(
-          `SELECT id, ${dayColumn} as current_hours, project, task FROM timesheet_entries 
-           WHERE timesheet_id = $1 AND project = $2 AND task = $3 AND source = 'time_clock'
-           LIMIT 1`,
-          [timesheetId, project, task]
+        const insertResult = await pool.query(
+          `INSERT INTO timesheet_entries 
+           (timesheet_id, project, task, mon_hours, tue_hours, wed_hours, thu_hours, fri_hours, sat_hours, sun_hours, source, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'time_clock', NOW(), NOW())
+           RETURNING id, ${dayColumn}`,
+          [timesheetId, project, task, ...hours]
         );
 
-        console.log(`🔍 Existing entry lookup:`, {
-          found: existingEntry.rows.length > 0,
-          entryId: existingEntry.rows[0]?.id,
-          currentHours: existingEntry.rows[0]?.current_hours,
-          storedProject: existingEntry.rows[0]?.project,
-          storedTask: existingEntry.rows[0]?.task
-        });
-
-        if (existingEntry.rows.length > 0) {
-          // Update: add hours to existing value
-          const entryId = existingEntry.rows[0].id;
-          const currentHours = parseFloat(existingEntry.rows[0].current_hours) || 0;
-          const newHours = Math.round((currentHours + roundedHours) * 100) / 100;
-
-          console.log(`📝 Updating entry ${entryId}:`, {
-            dayColumn,
-            currentHours,
-            adding: roundedHours,
-            newHours
-          });
-
-          const updateResult = await pool.query(
-            `UPDATE timesheet_entries 
-             SET ${dayColumn} = $1, updated_at = NOW()
-             WHERE id = $2
-             RETURNING id, ${dayColumn}`,
-            [newHours, entryId]
-          );
-
-          if (updateResult.rows.length > 0) {
-            console.log(`✅ Successfully updated entry ${entryId}: ${dayColumn} = ${updateResult.rows[0][dayColumn]}`);
-          } else {
-            throw new Error(`Update failed - no rows returned for entry ${entryId}`);
-          }
+        if (insertResult.rows.length > 0) {
+          console.log(`✅ Successfully created entry ${insertResult.rows[0].id}: ${dayColumn} = ${insertResult.rows[0][dayColumn]}`);
         } else {
-          // Insert new entry - REWRITTEN for clarity
-          const hoursArray = {
-            mon_hours: [roundedHours, 0, 0, 0, 0, 0, 0],
-            tue_hours: [0, roundedHours, 0, 0, 0, 0, 0],
-            wed_hours: [0, 0, roundedHours, 0, 0, 0, 0],
-            thu_hours: [0, 0, 0, roundedHours, 0, 0, 0],
-            fri_hours: [0, 0, 0, 0, roundedHours, 0, 0],
-            sat_hours: [0, 0, 0, 0, 0, roundedHours, 0],
-            sun_hours: [0, 0, 0, 0, 0, 0, roundedHours],
-          };
-
-          const hours = hoursArray[dayColumn] || [0, 0, 0, 0, 0, 0, 0];
-
-          console.log(`📝 Inserting new entry:`, {
-            timesheetId,
-            project,
-            task,
-            dayColumn,
-            hours,
-            source: 'time_clock'
-          });
-
-          const insertResult = await pool.query(
-            `INSERT INTO timesheet_entries 
-             (timesheet_id, project, task, mon_hours, tue_hours, wed_hours, thu_hours, fri_hours, sat_hours, sun_hours, source, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'time_clock', NOW(), NOW())
-             RETURNING id, ${dayColumn}`,
-            [timesheetId, project, task, ...hours]
-          );
-
-          if (insertResult.rows.length > 0) {
-            console.log(`✅ Successfully created entry ${insertResult.rows[0].id}: ${dayColumn} = ${insertResult.rows[0][dayColumn]}`);
-
-            // Verify the entry was saved
-            const verifyResult = await pool.query(
-              `SELECT id, project, task, ${dayColumn} FROM timesheet_entries WHERE id = $1`,
-              [insertResult.rows[0].id]
-            );
-            if (verifyResult.rows.length > 0) {
-              console.log(`✅ Verified entry saved:`, verifyResult.rows[0]);
-            } else {
-              throw new Error(`Entry ${insertResult.rows[0].id} not found after insert!`);
-            }
-          } else {
-            throw new Error('Insert failed - no rows returned');
-          }
+          throw new Error(`Failed to insert timesheet entry`);
         }
         console.log('=== TIMESHEET UPDATE COMPLETED SUCCESSFULLY ===');
         timesheetUpdateSuccess = true;

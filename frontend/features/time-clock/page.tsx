@@ -324,7 +324,8 @@ const TimeClock = () => {
       toast({ title: "Project Required", description: "Please select a project first.", variant: "destructive" });
       return;
     }
-    if (!selectedTopicId) {
+    const isAdmin = user?.role === 'admin';
+    if (!isAdmin && !selectedTopicId) {
       toast({ title: "Story / Task / Bug Required", description: "Please select a story, task, or bug.", variant: "destructive" });
       return;
     }
@@ -342,12 +343,14 @@ const TimeClock = () => {
 
       const projectTitle = selectedProject ? `${selectedProject.name} (${selectedProject.key})` : "Project";
       const typeLabel = selectedTopic?.type ? (selectedTopic.type.charAt(0).toUpperCase() + selectedTopic.type.slice(1)) : 'Topic';
-      const topicTitle = selectedTopic ? `[${typeLabel}] ${selectedTopic.key}: ${selectedTopic.title}` : "";
+      const topicTitle = selectedTopic 
+        ? `[${typeLabel}] ${selectedTopic.key}: ${selectedTopic.title}` 
+        : (notes.trim() || null);
 
       await timesheetMutation.clockIn.mutateAsync({
         issue_id: null,
         project_name: projectTitle,
-        notes: topicTitle || notes || null,
+        notes: topicTitle,
         latitude: location?.latitude || null,
         longitude: location?.longitude || null,
         location_address: locationAddress || null,
@@ -370,7 +373,10 @@ const TimeClock = () => {
         locationMsg = ` Location captured`;
       }
 
-      toast({ title: "Clocked In Successfully", description: `Time tracking started on ${selectedTopic?.key || 'topic'}!${locationMsg}` });
+      toast({ 
+        title: "Clocked In Successfully", 
+        description: `Time tracking started on ${selectedTopic?.key || selectedProject?.name || 'Project'}!${locationMsg}` 
+      });
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to clock in", variant: "destructive" });
     }
@@ -474,7 +480,11 @@ const TimeClock = () => {
     }
 
     if (!topicTitle || topicTitle === 'Active Session' || topicTitle === 'General Work' || topicTitle === 'Time Tracking Session') {
-      topicTitle = entry.notes || (entry.issue ? (entry.issue.title || `Issue #${entry.issue.id}`) : "Story / Task / Bug");
+      topicTitle = entry.notes || (entry.issue ? (entry.issue.title || `Issue #${entry.issue.id}`) : "-");
+    }
+
+    if (!topicTitle) {
+      topicTitle = "-";
     }
 
     return { projectTitle, topicTitle };
@@ -628,7 +638,7 @@ const TimeClock = () => {
                     {/* Field 2: Select Story / Task / Bug */}
                     <div>
                       <Label className="mb-2 block text-sm font-medium">
-                        Select Story / Task / Bug <span className="text-red-500">*</span>
+                        Select Story / Task / Bug {user?.role === 'admin' ? <span className="text-xs text-muted-foreground font-normal">(Optional)</span> : <span className="text-red-500">*</span>}
                       </Label>
                       <Select
                         disabled={!selectedProjectId || availableTopics.length === 0}

@@ -1247,16 +1247,16 @@ const Timesheet = () => {
                         <td className="border border-border p-1">
                           {isReadOnly ? (
                             <div className="px-2 py-1 text-sm flex items-center gap-2">
-                              {entry.task}
+                              {entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : '-'}
                               {isTimeClock && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">Auto</span>}
                               {isLeave && <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">Leave</span>}
                             </div>
                           ) : (
                             <Input
-                              value={entry.task}
+                              value={entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : (isTimeClock ? '-' : entry.task)}
                               onChange={(e) => updateEntry(index, "task", e.target.value)}
                               className="h-8 border-0 bg-transparent"
-                              placeholder="Task"
+                              placeholder="-"
                               disabled={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                               readOnly={!!(isTimeClock || isLeave || (isAdmin && selectedUserId && selectedUserId !== user?.id))}
                             />

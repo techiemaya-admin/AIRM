@@ -153,7 +153,7 @@ export async function clockOut(userId, comment) {
 
       // Determine project and task
       let project = activeEntry.project_name || 'General';
-      let task = activeEntry.notes || 'General Work';
+      let task = activeEntry.notes || '-';
 
       // Check if project_name contains combined "[Project] - [Story/Task/Bug] ..."
       if (project && (project.includes(' - [Story') || project.includes(' - [Task') || project.includes(' - [Bug') || project.includes(' - Story') || project.includes(' - Task') || project.includes(' - Bug'))) {
@@ -162,14 +162,14 @@ export async function clockOut(userId, comment) {
           const projectPart = project.substring(0, splitIndex).trim();
           const topicPart = project.substring(splitIndex).replace(/^\s*-\s*/, '').trim();
           project = projectPart || project;
-          if (task === 'General Work' || task === 'Task' || !task) {
+          if (task === 'General Work' || task === 'Task' || !task || task === '-') {
             task = topicPart || task;
           }
         }
       } else if (project && project.match(/^\[([A-Za-z0-9_-]+)-Story/i)) {
         const match = project.match(/^\[([A-Za-z0-9_-]+)-Story/i);
         const prefix = match ? match[1].toUpperCase() : '';
-        if (task === 'General Work' || task === 'Task' || !task) {
+        if (task === 'General Work' || task === 'Task' || !task || task === '-') {
           task = project;
           project = prefix ? `${prefix} Project` : 'Project';
         } else {
@@ -199,7 +199,10 @@ export async function clockOut(userId, comment) {
       }
 
       project = (project || 'General').trim();
-      task = (task || 'General Work').trim();
+      task = (task || '-').trim();
+      if (task === 'General Work' || task === 'Task') {
+        task = '-';
+      }
 
       // Get or create timesheet
       let timesheet = await timesheetModel.getTimesheetByWeek(userId, weekStartStr);
@@ -211,16 +214,8 @@ export async function clockOut(userId, comment) {
         timesheetId = await timesheetModel.createTimesheet(userId, weekStartStr, weekEndStr);
       }
 
-      // Find or create entry
-      const existingEntry = await timesheetModel.getOrCreateTimeClockEntry(timesheetId, project, task);
-
-      if (existingEntry) {
-        const currentHours = parseFloat(existingEntry[dayColumn]) || 0;
-        const newHours = Math.round((currentHours + totalHours) * 100) / 100;
-        await timesheetModel.updateTimesheetEntryHours(existingEntry.id, dayColumn, newHours);
-      } else {
-        await timesheetModel.createTimesheetEntryForDay(timesheetId, project, task, dayColumn, totalHours);
-      }
+      // Always create a new entry for each clock-out session
+      await timesheetModel.createTimesheetEntryForDay(timesheetId, project, task, dayColumn, totalHours);
 
       timesheetUpdateSuccess = true;
     }

@@ -318,7 +318,7 @@ const SharedTimesheet = () => {
                   {timesheet.timesheet_entries.map((entry) => (
                     <tr key={entry.id}>
                       <td className="border border-border p-2">{entry.project}</td>
-                      <td className="border border-border p-2">{entry.task}</td>
+                      <td className="border border-border p-2">{entry.task && entry.task !== 'Task' && entry.task !== 'General Work' ? entry.task : '-'}</td>
                       <td className="border border-border p-2 text-center">{formatHours(entry.mon_hours)}</td>
                       <td className="border border-border p-2 text-center">{formatHours(entry.tue_hours)}</td>
                       <td className="border border-border p-2 text-center">{formatHours(entry.wed_hours)}</td>
