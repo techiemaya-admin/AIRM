@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { TableSkeleton } from "@/components/PageSkeletons";
 import { formatHours } from "@/lib/utils";
 import { logger } from "@/lib/logger";
-import { formatTaskBugDisplay } from "@/lib/timeTrackingData";
+import { formatTaskBugDisplay, getEntryDisplay } from "@/lib/timeTrackingData";
 
 interface Issue {
   id: number;
@@ -259,97 +259,97 @@ const Monitoring = () => {
               </p>
             ) : (
               <div className="space-y-4">
-                {entries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className={`p-4 rounded-lg border ${entry.status === "paused"
-                      ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
-                      : entry.status === "clocked_out"
-                        ? "bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800"
-                        : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                      }`}
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="font-semibold text-lg mb-2">{entry.user_email}</h3>
+                {entries.map((entry) => {
+                  const { projectTitle, topicTitle, hasCustomNotes } = getEntryDisplay(entry);
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`p-4 rounded-lg border ${entry.status === "paused"
+                        ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                        : entry.status === "clocked_out"
+                          ? "bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800"
+                          : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                        }`}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h3 className="font-semibold text-lg mb-2">{entry.user_email}</h3>
 
-                        <div className="space-y-2 text-sm">
-                          {entry.project_name && (
+                          <div className="space-y-2 text-sm">
                             <div className="flex items-center gap-2">
-                              <FolderKanban className="h-4 w-4 text-blue-600" />
-                              <span className="font-medium text-gray-700 dark:text-gray-300">Story:</span>
-                              <span className="font-semibold text-blue-700 dark:text-blue-400">{entry.project_name}</span>
+                              <FolderKanban className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              <span className="font-medium text-gray-700 dark:text-gray-300">Project:</span>
+                              <span className="font-semibold text-blue-700 dark:text-blue-400">{projectTitle}</span>
                             </div>
-                          )}
 
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-gray-500" />
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Task / Bug:</span>
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {formatTaskBugDisplay(entry.issue?.id || (entry as any).issue_id, entry.issue?.title).fullTitle}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Clock In:</span>
-                            <span>{format(new Date(entry.clock_in), "MMM dd, yyyy hh:mm a")}</span>
-                          </div>
-
-                          {entry.clock_out && (
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">Clock Out:</span>
-                              <span>{format(new Date(entry.clock_out), "MMM dd, yyyy hh:mm a")}</span>
+                              <Clock className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                              <span className="font-medium text-gray-700 dark:text-gray-300">Story / Task / Bug:</span>
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {topicTitle}
+                              </span>
                             </div>
-                          )}
 
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{entry.clock_out ? "Total Time:" : "Elapsed Time:"}</span>
-                            <span className="text-blue-600 dark:text-blue-400 font-semibold">
-                              {entry.clock_out
-                                ? formatHours(entry.total_hours || 0)
-                                : getElapsedTime(entry.clock_in, entry.paused_duration || 0)}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Status:</span>
-                            <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "paused"
-                              ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100"
-                              : entry.status === "clocked_out"
-                                ? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                                : "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
-                              }`}>
-                              {entry.status === "paused" ? "⏸ Paused" : entry.status === "clocked_out" ? "⏹ Clocked Out" : "▶ Active"}
-                            </span>
-                          </div>
-
-                          {entry.notes && (
-                            <div>
-                              <span className="font-medium">Notes:</span>
-                              <p className="text-gray-600 dark:text-gray-300 mt-1">{entry.notes}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Clock In:</span>
+                              <span>{format(new Date(entry.clock_in), "MMM dd, yyyy hh:mm a")}</span>
                             </div>
-                          )}
 
-                          {/* Pause Details - Show when paused or has pause history */}
-                          {entry.pause_start && (
-                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                              <div className="flex items-center gap-2 text-sm">
-                                <Pause className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                <span className="font-medium">Pause Started:</span>
-                                <span>{format(new Date(entry.pause_start), "MMM dd, yyyy hh:mm a")}</span>
+                            {entry.clock_out && (
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Clock Out:</span>
+                                <span>{format(new Date(entry.clock_out), "MMM dd, yyyy hh:mm a")}</span>
                               </div>
-                              {entry.paused_duration && entry.paused_duration > 0 && (
-                                <div className="flex items-center gap-2 text-sm mt-1">
-                                  <span className="font-medium">Paused Duration:</span>
-                                  <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                                    {formatHours(Number(entry.paused_duration || 0))}
-                                  </span>
-                                </div>
-                              )}
+                            )}
+
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{entry.clock_out ? "Total Time:" : "Elapsed Time:"}</span>
+                              <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                                {entry.clock_out
+                                  ? formatHours(entry.total_hours || 0)
+                                  : getElapsedTime(entry.clock_in, entry.paused_duration || 0)}
+                              </span>
                             </div>
-                          )}
+
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Status:</span>
+                              <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "paused"
+                                ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100"
+                                : entry.status === "clocked_out"
+                                  ? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                                  : "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
+                                }`}>
+                                {entry.status === "paused" ? "⏸ Paused" : entry.status === "clocked_out" ? "⏹ Clocked Out" : "▶ Active"}
+                              </span>
+                            </div>
+
+                            {hasCustomNotes && (
+                              <div>
+                                <span className="font-medium">Notes:</span>
+                                <p className="text-gray-600 dark:text-gray-300 mt-1">{entry.notes}</p>
+                              </div>
+                            )}
+
+                            {/* Pause Details - Show when paused or has pause history */}
+                            {entry.pause_start && (
+                              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Pause className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                  <span className="font-medium">Pause Started:</span>
+                                  <span>{format(new Date(entry.pause_start), "MMM dd, yyyy hh:mm a")}</span>
+                                </div>
+                                {entry.paused_duration && entry.paused_duration > 0 && (
+                                  <div className="flex items-center gap-2 text-sm mt-1">
+                                    <span className="font-medium">Paused Duration:</span>
+                                    <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                                      {formatHours(Number(entry.paused_duration || 0))}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
                       <div className="space-y-3">
                         {/* Location Information */}
@@ -467,7 +467,8 @@ const Monitoring = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
             )}
           </CardContent>

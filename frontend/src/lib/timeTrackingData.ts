@@ -52,3 +52,99 @@ export function formatTaskBugDisplay(issueId?: number | string | null, fallbackT
       : (issueId ? `Task #${issueId}` : 'Task')
   };
 }
+
+/**
+ * Parses and formats an entry's project and story/task/bug details accurately.
+ */
+export function getEntryDisplay(entry: any): {
+  projectTitle: string;
+  topicTitle: string;
+  hasCustomNotes: boolean;
+} {
+  if (!entry) {
+    return { projectTitle: "Project", topicTitle: "Story / Task / Bug", hasCustomNotes: false };
+  }
+
+  let projectTitle = (entry.project_name || (entry.issue && entry.issue.project_name) || entry.issue_project || "").trim();
+  let topicTitle = (entry.notes || (entry.issue ? (entry.issue.title || `Issue #${entry.issue.id}`) : "")).trim();
+
+  // 1. Check if projectTitle has combined "[Project] - [Story/Task/Bug] ..."
+  if (
+    projectTitle.includes(" - [Story") ||
+    projectTitle.includes(" - [Task") ||
+    projectTitle.includes(" - [Bug") ||
+    projectTitle.includes(" - Story") ||
+    projectTitle.includes(" - Task") ||
+    projectTitle.includes(" - Bug")
+  ) {
+    const splitIdx = projectTitle.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+    if (splitIdx !== -1) {
+      const pPart = projectTitle.substring(0, splitIdx).trim();
+      const tPart = projectTitle.substring(splitIdx).replace(/^\s*-\s*/, '').trim();
+      projectTitle = pPart;
+      if (!topicTitle || topicTitle === 'Active Session' || topicTitle === 'General Work' || topicTitle === 'Time Tracking Session') {
+        topicTitle = tPart;
+      }
+    }
+  }
+
+  // 2. Check if topicTitle has combined "[Project] - [Story/Task/Bug] ..."
+  if (
+    topicTitle.includes(" - [Story") ||
+    topicTitle.includes(" - [Task") ||
+    topicTitle.includes(" - [Bug") ||
+    topicTitle.includes(" - Story") ||
+    topicTitle.includes(" - Task") ||
+    topicTitle.includes(" - Bug")
+  ) {
+    const splitIdx = topicTitle.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
+    if (splitIdx !== -1) {
+      const pPart = topicTitle.substring(0, splitIdx).trim();
+      const tPart = topicTitle.substring(splitIdx).replace(/^\s*-\s*/, '').trim();
+      if (!projectTitle || projectTitle === 'General' || projectTitle === 'Project' || projectTitle === 'Project Workspace') {
+        projectTitle = pPart;
+      }
+      topicTitle = tPart;
+    }
+  }
+
+  // 3. If topicTitle starts with projectTitle e.g. "Let Agent Deal (LAD) - [Task]..."
+  if (topicTitle && projectTitle && topicTitle.toLowerCase().startsWith(projectTitle.toLowerCase())) {
+    const stripped = topicTitle.substring(projectTitle.length).replace(/^[\s\-–:]+/, '').trim();
+    if (stripped) {
+      topicTitle = stripped;
+    }
+  }
+
+  // 4. If topicTitle is generic or empty, format using issue details if available
+  if (!topicTitle || topicTitle === 'Active Session' || topicTitle === 'General Work' || topicTitle === 'Time Tracking Session') {
+    if (entry.issue) {
+      const formatted = formatTaskBugDisplay(entry.issue.id || entry.issue_id, entry.issue.title);
+      topicTitle = formatted.fullTitle;
+    } else if (entry.notes) {
+      topicTitle = entry.notes;
+    } else {
+      topicTitle = "-";
+    }
+  }
+
+  if (!projectTitle) {
+    projectTitle = "Project";
+  }
+
+  if (!topicTitle) {
+    topicTitle = "-";
+  }
+
+  // Check if raw notes has extra details beyond just topicTitle
+  const rawNotes = (entry.notes || '').trim();
+  const hasCustomNotes = Boolean(
+    rawNotes &&
+    rawNotes !== topicTitle &&
+    rawNotes !== '-' &&
+    !topicTitle.includes(rawNotes)
+  );
+
+  return { projectTitle, topicTitle, hasCustomNotes };
+}
+

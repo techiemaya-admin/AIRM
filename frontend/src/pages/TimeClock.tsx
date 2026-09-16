@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { Clock, Play, Square, Pause, FolderKanban } from "lucide-react";
 import { formatHours } from "@/lib/utils";
 import { logger } from "@/lib/logger";
+import { getEntryDisplay } from "@/lib/timeTrackingData";
 
 interface Issue {
   id: number;
@@ -542,10 +543,10 @@ const TimeClock = () => {
                   </p>
                   <p className="text-lg font-semibold flex items-center gap-2">
                     <FolderKanban className="h-4 w-4 text-blue-600" />
-                    {currentEntry.project_name || "Project"}
+                    {getEntryDisplay(currentEntry).projectTitle}
                   </p>
                   <p className="text-base font-medium">
-                    Issue: {currentEntry.issue ? `#${currentEntry.issue.id} - ${currentEntry.issue.title}` : "No issue selected"}
+                    {getEntryDisplay(currentEntry).topicTitle}
                   </p>
                   {currentEntry.issue?.estimated_hours !== undefined && (
                     <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
@@ -700,12 +701,12 @@ const TimeClock = () => {
                             }`}
                         />
                         <h3 className="font-semibold text-gray-900">
-                          {entry.issue ? `#${entry.issue.id} - ${entry.issue.title}` : "No issue"}
+                          {getEntryDisplay(entry).projectTitle}
                         </h3>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium mt-0.5 ml-4">
                         <FolderKanban className="h-3 w-3" />
-                        <span>{entry.project_name || "No Project"}</span>
+                        <span>{getEntryDisplay(entry).topicTitle}</span>
                       </div>
                       <p className="text-sm text-muted-foreground ml-4">
                         {entry.clock_in ? format(new Date(entry.clock_in), "PPp") : "Unknown"}

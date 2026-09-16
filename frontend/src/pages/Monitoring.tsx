@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
-import { Clock, MapPin, Pause, MessageSquare } from "lucide-react";
+import { Clock, MapPin, Pause, MessageSquare, FolderKanban } from "lucide-react";
 import { format } from "date-fns";
 import { formatHours } from "@/lib/utils";
 import { logger } from "@/lib/logger";
+import { getEntryDisplay } from "@/lib/timeTrackingData";
 
 
 
@@ -468,58 +469,66 @@ const Monitoring = () => {
                         <h3 className="font-semibold text-lg mb-2">{entry.user_email}</h3>
 
                         <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            <span className="font-medium">Issue:</span>
-                            <span>{entry.issue?.title || "N/A"}</span>
-                          </div>
+                          {(() => {
+                            const { projectTitle, topicTitle, hasCustomNotes } = getEntryDisplay(entry);
+                            return (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <FolderKanban className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                  <span className="font-medium text-gray-700 dark:text-gray-300">Project:</span>
+                                  <span className="font-semibold text-blue-700 dark:text-blue-400">{projectTitle}</span>
+                                </div>
 
-                          {entry.project_name && (
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">Project:</span>
-                              <span>{entry.project_name}</span>
-                            </div>
-                          )}
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                  <span className="font-medium text-gray-700 dark:text-gray-300">Story / Task / Bug:</span>
+                                  <span className="font-medium text-gray-900 dark:text-white">
+                                    {topicTitle}
+                                  </span>
+                                </div>
 
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Clock In:</span>
-                            <span>{format(new Date(entry.clock_in), "MMM dd, yyyy hh:mm a")}</span>
-                          </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Clock In:</span>
+                                  <span>{format(new Date(entry.clock_in), "MMM dd, yyyy hh:mm a")}</span>
+                                </div>
 
-                          {entry.clock_out && (
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">Clock Out:</span>
-                              <span>{format(new Date(entry.clock_out), "MMM dd, yyyy hh:mm a")}</span>
-                            </div>
-                          )}
+                                {entry.clock_out && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">Clock Out:</span>
+                                    <span>{format(new Date(entry.clock_out), "MMM dd, yyyy hh:mm a")}</span>
+                                  </div>
+                                )}
 
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{entry.clock_out ? "Total Time:" : "Elapsed Time:"}</span>
-                            <span className="text-blue-600 dark:text-blue-400 font-semibold">
-                              {entry.clock_out
-                                ? formatHours(entry.total_hours || 0)
-                                : getElapsedTime(entry.clock_in, entry.paused_duration || 0)}
-                            </span>
-                          </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{entry.clock_out ? "Total Time:" : "Elapsed Time:"}</span>
+                                  <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                                    {entry.clock_out
+                                      ? formatHours(entry.total_hours || 0)
+                                      : getElapsedTime(entry.clock_in, entry.paused_duration || 0)}
+                                  </span>
+                                </div>
 
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Status:</span>
-                            <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "paused"
-                              ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100"
-                              : entry.status === "clocked_out"
-                                ? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                                : "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
-                              }`}>
-                              {entry.status === "paused" ? "⏸ Paused" : entry.status === "clocked_out" ? "⏹ Clocked Out" : "▶ Active"}
-                            </span>
-                          </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Status:</span>
+                                  <span className={`px-2 py-1 rounded text-xs font-semibold ${entry.status === "paused"
+                                    ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100"
+                                    : entry.status === "clocked_out"
+                                      ? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                                      : "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
+                                    }`}>
+                                    {entry.status === "paused" ? "⏸ Paused" : entry.status === "clocked_out" ? "⏹ Clocked Out" : "▶ Active"}
+                                  </span>
+                                </div>
 
-                          {entry.notes && (
-                            <div>
-                              <span className="font-medium">Notes:</span>
-                              <p className="text-gray-600 dark:text-gray-300 mt-1">{entry.notes}</p>
-                            </div>
-                          )}
+                                {hasCustomNotes && (
+                                  <div>
+                                    <span className="font-medium">Notes:</span>
+                                    <p className="text-gray-600 dark:text-gray-300 mt-1">{entry.notes}</p>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
 
                           {/* Pause Details - Show when paused or has pause history */}
                           {entry.pause_start && (

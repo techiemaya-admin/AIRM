@@ -18,6 +18,7 @@ import { useActiveTimesheet, useTimesheetEntries, useTimesheetMutation } from "@
 import { useFjtBoardData } from "@/sdk/features/fjt-board/hooks";
 import { formatHours } from "@/lib/utils";
 import { logger } from "@/lib/logger";
+import { getEntryDisplay } from "@/lib/timeTrackingData";
 
 interface Issue {
   id: number;
@@ -432,62 +433,6 @@ const TimeClock = () => {
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to resume", variant: "destructive" });
     }
-  };
-
-  // Helper to format issue display with Project heading and Story/Task/Bug subheading
-  const getEntryDisplay = (entry: TimeEntry | null | any) => {
-    if (!entry) return { projectTitle: "Project", topicTitle: "Story / Task / Bug" };
-
-    let projectTitle = (entry.project_name || "").trim();
-    let topicTitle = (entry.notes || (entry.issue ? (entry.issue.title || `Issue #${entry.issue.id}`) : "")).trim();
-
-    // 1. Check if projectTitle has combined "[Project] - [Story/Task/Bug] ..."
-    if (projectTitle.includes(" - [Story") || projectTitle.includes(" - [Task") || projectTitle.includes(" - [Bug") || projectTitle.includes(" - Story") || projectTitle.includes(" - Task") || projectTitle.includes(" - Bug")) {
-      const splitIdx = projectTitle.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
-      if (splitIdx !== -1) {
-        const pPart = projectTitle.substring(0, splitIdx).trim();
-        const tPart = projectTitle.substring(splitIdx).replace(/^\s*-\s*/, '').trim();
-        projectTitle = pPart;
-        if (!topicTitle || topicTitle === 'Active Session' || topicTitle === 'General Work' || topicTitle === 'Time Tracking Session') {
-          topicTitle = tPart;
-        }
-      }
-    }
-
-    // 2. Check if topicTitle has combined "[Project] - [Story/Task/Bug] ..."
-    if (topicTitle.includes(" - [Story") || topicTitle.includes(" - [Task") || topicTitle.includes(" - [Bug") || topicTitle.includes(" - Story") || topicTitle.includes(" - Task") || topicTitle.includes(" - Bug")) {
-      const splitIdx = topicTitle.search(/\s*-\s*\[?(?:Story|Task|Bug)\]?/i);
-      if (splitIdx !== -1) {
-        const pPart = topicTitle.substring(0, splitIdx).trim();
-        const tPart = topicTitle.substring(splitIdx).replace(/^\s*-\s*/, '').trim();
-        if (!projectTitle || projectTitle === 'General' || projectTitle === 'Project' || projectTitle === 'Project Workspace') {
-          projectTitle = pPart;
-        }
-        topicTitle = tPart;
-      }
-    }
-
-    // 3. If topicTitle starts with projectTitle e.g. "Let Agent Deal (LAD) - [Task]..."
-    if (topicTitle && projectTitle && topicTitle.toLowerCase().startsWith(projectTitle.toLowerCase())) {
-      const stripped = topicTitle.substring(projectTitle.length).replace(/^[\s\-–:]+/, '').trim();
-      if (stripped) {
-        topicTitle = stripped;
-      }
-    }
-
-    if (!projectTitle) {
-      projectTitle = "Project";
-    }
-
-    if (!topicTitle || topicTitle === 'Active Session' || topicTitle === 'General Work' || topicTitle === 'Time Tracking Session') {
-      topicTitle = entry.notes || (entry.issue ? (entry.issue.title || `Issue #${entry.issue.id}`) : "-");
-    }
-
-    if (!topicTitle) {
-      topicTitle = "-";
-    }
-
-    return { projectTitle, topicTitle };
   };
 
   if (userLoading || activeLoading) {

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import JoiningForm from "../joining-form/JoiningForm";
 import { api } from "@sdk/api";
 import { toast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 // LAD Architecture: Use SDK instead of direct API calls
 import { useProfiles, useProfile, useProfileMutation, type EmployeeProfile as SDKEmployeeProfile } from "@/sdk/features/profiles";
 import { useExitAssets } from "../exit-formalities/hooks/useExitFeatures";
