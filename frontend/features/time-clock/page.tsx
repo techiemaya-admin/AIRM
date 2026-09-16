@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Clock, Play, Square, Pause, FolderKanban, TrendingUp, MapPin, Calendar as CalendarIcon } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TableSkeleton } from "@/components/PageSkeletons";
+import { TimeClockSkeleton } from "@/components/PageSkeletons";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useIssues } from "@/hooks/useIssues";
 import { useProjects } from "@/hooks/useProjects";
@@ -491,20 +491,7 @@ const TimeClock = () => {
   };
 
   if (userLoading || activeLoading) {
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-8">
-        <div className="mx-auto max-w-4xl space-y-6">
-          <div className="h-10 w-48 bg-gray-200 animate-pulse rounded" />
-          <Card>
-            <CardHeader><div className="h-6 w-32 bg-gray-200 animate-pulse rounded" /></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2"><div className="h-4 w-24 bg-gray-200 animate-pulse rounded" /><div className="h-10 w-full bg-gray-200 animate-pulse rounded" /></div>
-              <div className="h-12 w-full bg-gray-200 animate-pulse rounded" />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+    return <TimeClockSkeleton />;
   }
 
   return (

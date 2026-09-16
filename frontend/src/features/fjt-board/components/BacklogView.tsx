@@ -21,6 +21,7 @@ import {
   Clock,
   AlertTriangle,
 } from 'lucide-react';
+import { TaskBoardSkeleton } from '@/components/PageSkeletons';
 
 export const BacklogView: React.FC = () => {
   const { data: boardData, isLoading } = useFjtBoardData();
@@ -119,11 +120,7 @@ export const BacklogView: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="p-8 flex items-center justify-center">
-        <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full" />
-      </div>
-    );
+    return <TaskBoardSkeleton />;
   }
 
   return (

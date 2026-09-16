@@ -5,6 +5,7 @@ import { ChevronRight, ChevronDown, Plus, Layers, CornerDownRight, Bookmark, Clo
 import { Button } from '@/components/ui/button';
 import { CreateIssueDialog } from './CreateIssueDialog';
 import { IssueDetailDialog } from './IssueDetailDialog';
+import { TaskBoardSkeleton } from '@/components/PageSkeletons';
 
 export const TimelineView: React.FC = () => {
   const { data: boardData, isLoading } = useFjtBoardData();
@@ -153,11 +154,7 @@ export const TimelineView: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="p-8 flex items-center justify-center">
-        <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full" />
-      </div>
-    );
+    return <TaskBoardSkeleton />;
   }
 
   // Stories not assigned to any Epic

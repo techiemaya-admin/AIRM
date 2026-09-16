@@ -92,31 +92,59 @@ export async function updateShiftRoster(shiftData) {
 }
 
 /**
+ * Public Holidays List (IST)
+ */
+const PUBLIC_HOLIDAYS = [
+  '2026-01-01', // New Year's Day
+  '2026-01-12', // Makar Sankranti
+  '2026-01-26', // Republic Day
+  '2026-03-19', // Ugadi
+  '2026-04-03', // Good Friday
+  '2026-09-14', // Ganesh Chaturthi
+  '2026-10-02', // Gandhi Jayanti
+  '2026-10-20', // Dussehra
+  '2026-11-09', // Diwali
+  '2026-12-25', // Christmas Day
+];
+const holidaySet = new Set(PUBLIC_HOLIDAYS);
+
+/**
  * Get attendance records for a date range
  * Fetches from time_clock table and aggregates by date
  */
 export async function getAttendance(startDate, endDate) {
   // Generate all dates in range
   const dateRows = await pool.query(
-    `SELECT generate_series($1::date, $2::date, interval '1 day') AS date`,
+    `SELECT TO_CHAR(d::date, 'YYYY-MM-DD') AS date_str, d::date AS date
+     FROM generate_series($1::date, $2::date, interval '1 day') AS d`,
     [startDate, endDate]
   );
-  const dates = dateRows.rows.map(r => r.date);
+  const dateList = dateRows.rows;
 
-  // Get all employees (active profiles with join_date)
+  // Get all active employees (excluding ex-employees)
   const userRows = await pool.query(`
-    SELECT u.id, u.email, u.full_name
+    SELECT 
+      u.id, 
+      u.email, 
+      COALESCE(p.full_name, u.full_name) as full_name,
+      COALESCE(ur.role, 'employee') as role,
+      p.join_date
     FROM users u
+    LEFT JOIN profiles p ON u.id = p.id
+    LEFT JOIN user_roles ur ON u.id = ur.user_id
+    WHERE COALESCE(ur.role, 'employee') != 'ex-employee'
+    ORDER BY full_name
   `);
   const users = userRows.rows;
 
-  // Build attendance map: { [user_id_date]: attendanceRow }
+  // Build attendance map from time_clock
   const attendanceRows = await pool.query(
     `SELECT 
        tc.user_id,
        u.email,
-       u.full_name,
-       DATE(tc.clock_in) as date,
+       COALESCE(p.full_name, u.full_name) as full_name,
+       TO_CHAR(tc.clock_in AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') as date_str,
+       TO_CHAR(MIN(tc.clock_in) AT TIME ZONE 'Asia/Kolkata', 'HH24:MI:SS') as clock_in_time_ist,
        MIN(tc.clock_in) as clock_in,
        MAX(tc.clock_out) as clock_out,
        COUNT(tc.id) as punch_count,
@@ -126,26 +154,41 @@ export async function getAttendance(startDate, endDate) {
            ELSE COALESCE(tc.total_hours, 0)
          END
        ), 0) as total_hours,
-       sr.shift_type,
-       CASE 
-         WHEN (MIN(tc.clock_in) AT TIME ZONE 'Asia/Kolkata')::time > '11:00:00' THEN 'half_day'
-         WHEN COALESCE(SUM(tc.total_hours), 0) >= 8 THEN 'present'
-         WHEN COALESCE(SUM(tc.total_hours), 0) >= 4 THEN 'half_day'
-         WHEN COALESCE(SUM(tc.total_hours), 0) > 0 THEN 'present'
-         WHEN MAX(tc.clock_out) IS NULL THEN 'present'
-         ELSE 'absent'
-       END as status
+       sr.shift_type
      FROM time_clock tc
      JOIN users u ON tc.user_id = u.id
-     LEFT JOIN shift_roster sr ON tc.user_id = sr.user_id AND DATE(tc.clock_in) = sr.date
-     WHERE DATE(tc.clock_in) BETWEEN $1 AND $2
-     GROUP BY tc.user_id, u.email, u.full_name, DATE(tc.clock_in), sr.shift_type
-     ORDER BY DATE(tc.clock_in) DESC, u.full_name`,
+     LEFT JOIN profiles p ON u.id = p.id
+     LEFT JOIN user_roles ur ON u.id = ur.user_id
+     LEFT JOIN shift_roster sr ON tc.user_id = sr.user_id AND DATE(tc.clock_in AT TIME ZONE 'Asia/Kolkata') = sr.date
+     WHERE DATE(tc.clock_in AT TIME ZONE 'Asia/Kolkata') BETWEEN $1 AND $2
+       AND COALESCE(ur.role, 'employee') != 'ex-employee'
+     GROUP BY tc.user_id, u.email, COALESCE(p.full_name, u.full_name), TO_CHAR(tc.clock_in AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD'), sr.shift_type
+     ORDER BY date_str DESC, full_name`,
     [startDate, endDate]
   );
+
   const attendanceMap = {};
   for (const row of attendanceRows.rows) {
-    attendanceMap[`${row.user_id}_${row.date.toISOString().slice(0, 10)}`] = row;
+    const hours = Number(row.total_hours) || 0;
+    const isLateLogin = row.clock_in_time_ist > '11:00:00';
+    let status = 'absent';
+    if (holidaySet.has(row.date_str)) {
+      status = 'holiday';
+    } else if (isLateLogin) {
+      status = 'half_day';
+    } else if (row.clock_in && !row.clock_out) {
+      status = 'present';
+    } else if (hours >= 7.0) {
+      status = 'present';
+    } else if (hours >= 4.0) {
+      status = 'half_day';
+    } else if (hours > 0) {
+      status = 'half_day';
+    }
+    attendanceMap[`${row.user_id}_${row.date_str}`] = {
+      ...row,
+      status
+    };
   }
 
   // Get all approved leave requests in the range
@@ -155,60 +198,57 @@ export async function getAttendance(startDate, endDate) {
   );
   const leaveMap = {};
   for (const row of leaveRows.rows) {
-    const leaveDates = [];
     let d = new Date(row.start_date);
     const end = new Date(row.end_date);
     while (d <= end) {
-      leaveDates.push(d.toISOString().slice(0, 10));
+      const ds = d.toISOString().slice(0, 10);
+      leaveMap[`${row.user_id}_${ds}`] = true;
       d = new Date(d.getTime() + 86400000);
-    }
-    for (const ld of leaveDates) {
-      leaveMap[`${row.user_id}_${ld}`] = true;
     }
   }
 
-  // Build full result: all users x all dates
+  // Build full result: active users x all dates
   const result = [];
-  const today = new Date();
-  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const now = new Date();
+  const istTodayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
   for (const user of users) {
-    for (const date of dates) {
-      // Process all dates including future ones
-      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const userJoinDateStr = user.join_date ? new Date(user.join_date).toISOString().slice(0, 10) : null;
 
-      const key = `${user.id}_${date.toISOString().slice(0, 10)}`;
+    for (const dItem of dateList) {
+      const dateStr = dItem.date_str;
+      const dObj = new Date(dateStr + 'T00:00:00Z');
+      const dayOfWeek = dObj.getUTCDay(); // 0 = Sunday, 6 = Saturday
+      const key = `${user.id}_${dateStr}`;
+
       if (attendanceMap[key]) {
-        // Ensure real records have an id (from db or fallback)
         result.push({
-          id: attendanceMap[key].id || key,
+          id: key,
           ...attendanceMap[key],
+          date: dateStr,
         });
       } else {
-        // Only mark as 'absent' for past dates, but check leave
-        const today = new Date();
-        const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-
         let status = '';
         if (leaveMap[key]) {
           status = 'on_leave';
+        } else if (holidaySet.has(dateStr)) {
+          status = 'holiday';
         } else if (dayOfWeek === 0 || dayOfWeek === 6) {
           status = 'week_off';
-        } else if (dateOnly < todayOnly) {
+        } else if (userJoinDateStr && dateStr < userJoinDateStr) {
+          status = 'not_joined';
+        } else if (dateStr < istTodayStr) {
           status = 'absent';
-        } else if (dateOnly.getTime() === todayOnly.getTime()) {
-          status = 'upcoming'; // today
         } else {
-          status = 'upcoming'; // future
+          status = 'upcoming';
         }
+
         result.push({
           id: key,
           user_id: user.id,
           email: user.email,
           full_name: user.full_name,
-          date: date,
+          date: dateStr,
           clock_in: null,
           clock_out: null,
           total_hours: 0,
@@ -218,6 +258,7 @@ export async function getAttendance(startDate, endDate) {
       }
     }
   }
+
   // Sort by date desc, then user name
   result.sort((a, b) => {
     if (a.date > b.date) return -1;
@@ -355,14 +396,18 @@ export async function getMonthlyAttendanceReport(month, year) {
         (make_date($2, $1, 1) + '1 month'::interval - '1 day'::interval)::date,
         '1 day'::interval
       )::date AS date) AS d
-    CROSS JOIN users u
+    CROSS JOIN (
+      SELECT u.id, COALESCE(p.full_name, u.full_name) as full_name, u.email
+      FROM users u
+      LEFT JOIN profiles p ON u.id = p.id
+      LEFT JOIN user_roles ur ON u.id = ur.user_id
+      WHERE COALESCE(ur.role, 'employee') != 'ex-employee'
+    ) u
     LEFT JOIN attendance a ON d.date = a.date AND u.id = a.user_id
     LEFT JOIN leave_requests lr ON u.id = lr.user_id AND d.date BETWEEN lr.start_date AND lr.end_date AND lr.status = 'approved'
     ORDER BY u.id, d.date;
   `;
-  console.log(`[payroll-model] Running report query for ${month}/${year}`);
   const result = await pool.query(query, [month, year]);
-  console.log(`[payroll-model] Query returned ${result.rows.length} rows`);
   return result.rows;
 }
 

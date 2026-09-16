@@ -44,7 +44,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useUsers } from '@/hooks/useUsers';
 import { useLeaveRequests, useLeaveBalances, useLeaveMutation } from '@/hooks/useLeave';
 import { useAttendance, useShifts, useAttendanceMutation } from '@/hooks/useAttendance';
-import { CalendarSkeleton } from '@/components/PageSkeletons';
+import { CalendarSkeleton, AttendanceTabSkeleton, TableSkeleton } from '@/components/PageSkeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatHours } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 
@@ -467,6 +468,22 @@ const LeaveCalendar = () => {
 
             {/* ══════════ LEAVE BALANCE TAB ══════════ */}
             {activeTab === 'balance' && (() => {
+              if (balancesLoading && leaveBalances.length === 0) {
+                return (
+                  <div className="space-y-6">
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+                      <Skeleton className="h-7 w-60 bg-gray-200 rounded" />
+                      <TableSkeleton rows={4} cols={6} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <Skeleton className="h-28 rounded-xl bg-gray-100" />
+                      <Skeleton className="h-28 rounded-xl bg-gray-100" />
+                      <Skeleton className="h-28 rounded-xl bg-gray-100" />
+                    </div>
+                  </div>
+                );
+              }
+
               const totalAvailable = leaveBalances.reduce((s: number, b: any) => s + (Number(b.balance) || 0), 0);
               const totalUsed = leaveBalances.reduce((s: number, b: any) => s + (Number(b.availed) || 0), 0);
               const fmt = (n: number) => Number(n).toString();
@@ -602,6 +619,21 @@ const LeaveCalendar = () => {
 
             {/* ══════════ SHIFTS TAB ══════════ */}
             {activeTab === 'shifts' && (() => {
+              if (shiftsLoading && shiftsData.length === 0) {
+                return (
+                  <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-7 w-64 bg-gray-200 rounded" />
+                      <div className="flex gap-2">
+                        <Skeleton className="h-8 w-24 bg-gray-100 rounded" />
+                        <Skeleton className="h-8 w-24 bg-gray-100 rounded" />
+                      </div>
+                    </div>
+                    <TableSkeleton rows={5} cols={8} />
+                  </div>
+                );
+              }
+
               const weekStart = startOfISOWeek(shiftDate);
               const weekDays = [0, 1, 2, 3, 4, 5, 6].map(i => new Date(weekStart.getTime() + i * 86400000));
               return (
@@ -692,6 +724,10 @@ const LeaveCalendar = () => {
 
             {/* ══════════ ATTENDANCE TAB ══════════ */}
             {activeTab === 'attendance' && (() => {
+              if (attendanceLoading && attendanceData.length === 0) {
+                return <AttendanceTabSkeleton />;
+              }
+
               // Filter by selected user
               const effectiveUserId = !isAdmin ? currentUser?.id : selectedUserId;
               const filteredAttendance = effectiveUserId === 'all' || !effectiveUserId
@@ -707,21 +743,73 @@ const LeaveCalendar = () => {
                 new Date(a.date).getTime() - new Date(b.date).getTime()
               );
 
+              const getStatusText = (status: string, holiday?: any) => {
+                if (status === 'holiday' || holiday) return 'Holiday';
+                if (status === 'present') return 'Present';
+                if (status === 'absent') return 'Absent';
+                if (status === 'half_day') return 'Half Day';
+                if (status === 'on_leave') return 'On Leave';
+                if (status === 'week_off') return 'Week Off';
+                if (status === 'not_joined') return 'Not Joined';
+                if (status === 'upcoming') return 'Upcoming';
+                return status || '-';
+              };
+
+              const getTimeZoneAbbreviation = () => {
+                try {
+                  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                  const knownMap: Record<string, string> = {
+                    'Asia/Kolkata': 'IST',
+                    'Asia/Calcutta': 'IST',
+                    'Asia/Dubai': 'GST',
+                    'Asia/Muscat': 'GST',
+                    'Asia/Riyadh': 'AST',
+                    'Asia/Singapore': 'SGT',
+                    'Asia/Tokyo': 'JST',
+                    'Europe/London': 'GMT',
+                    'Europe/Paris': 'CET',
+                    'America/New_York': 'EST',
+                    'America/Chicago': 'CST',
+                    'America/Denver': 'MST',
+                    'America/Los_Angeles': 'PST',
+                    'UTC': 'UTC',
+                  };
+
+                  if (knownMap[tz]) return knownMap[tz];
+
+                  const offsetMinutes = -new Date().getTimezoneOffset();
+                  if (offsetMinutes === 330) return 'IST';
+                  if (offsetMinutes === 240) return 'GST';
+                  if (offsetMinutes === 0) return 'UTC';
+
+                  const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(new Date());
+                  const tzName = parts.find(p => p.type === 'timeZoneName')?.value;
+                  if (tzName && !tzName.startsWith('GMT') && !tzName.startsWith('UTC')) {
+                    return tzName;
+                  }
+                  return 'IST';
+                } catch {
+                  return 'IST';
+                }
+              };
+              const tzAbbr = getTimeZoneAbbreviation();
+
               const handleDownloadCSV = () => {
                 try {
                   const headers = ['"Date"', '"Employee"', '"Status"', '"Shift"', '"Clock In"', '"Clock Out"', '"Total Hours"'];
                   const csvRows = sortedAttendance.map(rec => {
                     const user = usersData.find((u: any) => u.id === rec.user_id);
-                    const dayStr = format(new Date(rec.date), 'yyyy-MM-dd');
-                    const holiday = HOLIDAYS_LIST.find(h => h.date === dayStr);
+                    const dateStr = typeof rec.date === 'string' ? rec.date.slice(0, 10) : format(new Date(rec.date), 'yyyy-MM-dd');
+                    const holiday = HOLIDAYS_LIST.find(h => h.date === dateStr);
+                    const parsedDate = parseISO(dateStr);
                     
                     return [
-                      `"${format(new Date(rec.date), 'dd/MM/yyyy')}"`,
-                      `"${user?.name || user?.email?.split('@')[0] || user?.email || 'Unknown'}"`,
-                      `"${holiday ? 'HOLIDAY' : (rec.status || '-')}"`,
-                      `"General"`,
-                      `"${rec.clock_in ? format(new Date(rec.clock_in), "HH:mm 'IST'") : '-'}"`,
-                      `"${rec.clock_out ? format(new Date(rec.clock_out), "HH:mm 'IST'") : '-'}"`,
+                      `"${format(parsedDate, 'dd/MM/yyyy')}"`,
+                      `"${user?.name || user?.full_name || rec.full_name || user?.email?.split('@')[0] || 'Unknown'}"`,
+                      `"${getStatusText(rec.status, holiday)}"`,
+                      `"${rec.shift_type || 'General'}"`,
+                      `"${rec.clock_in ? format(new Date(rec.clock_in), 'HH:mm') + ' ' + tzAbbr : '-'}"`,
+                      `"${rec.clock_out ? format(new Date(rec.clock_out), 'HH:mm') + ' ' + tzAbbr : '-'}"`,
                       `"${formatHours(Number(rec.total_hours) || 0)}"`
                     ].join(',');
                   });
@@ -732,7 +820,7 @@ const LeaveCalendar = () => {
                   const link = document.createElement('a');
                   link.href = url;
                   const selectedUser = usersData.find((u: any) => String(u.id) === String(selectedUserId));
-                  const userName = selectedUserId === 'all' || !selectedUserId ? 'All_Employees' : (selectedUser?.name || selectedUser?.email?.split('@')[0] || 'Employee');
+                  const userName = selectedUserId === 'all' || !selectedUserId ? 'All_Employees' : (selectedUser?.name || selectedUser?.full_name || selectedUser?.email?.split('@')[0] || 'Employee');
                   const safeUserName = userName.replace(/[^a-z0-9]/gi, '_');
 
                   const dateSuffix = attendanceView === 'filter'
@@ -763,7 +851,7 @@ const LeaveCalendar = () => {
                           <SelectContent className="bg-white max-h-60">
                             <SelectItem value="all">All Employees</SelectItem>
                             {usersData.map((u: any) => (
-                              <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>
+                              <SelectItem key={u.id} value={u.id}>{u.name || u.full_name || u.email}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -891,24 +979,47 @@ const LeaveCalendar = () => {
                             </tr>
                           ) : sortedAttendance.map((rec: any, i: number) => {
                             const user = usersData.find((u: any) => u.id === rec.user_id);
-                            const dayStr = format(new Date(rec.date), 'yyyy-MM-dd');
-                            const holiday = HOLIDAYS_LIST.find(h => h.date === dayStr);
+                            const dateStr = typeof rec.date === 'string' ? rec.date.slice(0, 10) : format(new Date(rec.date), 'yyyy-MM-dd');
+                            const holiday = HOLIDAYS_LIST.find(h => h.date === dateStr);
+                            const parsedDate = parseISO(dateStr);
                             
                             return (
                               <tr key={i} className="hover:bg-gray-50 transition">
-                                <td className="px-6 py-4 text-gray-600">{format(new Date(rec.date), 'EEE, MMM d')}</td>
-                                <td className="px-6 py-4 font-medium text-gray-800">{user?.name || user?.email?.split('@')[0] || 'Unknown'}</td>
+                                <td className="px-6 py-4 text-gray-600">{format(parsedDate, 'EEE, MMM d')}</td>
+                                <td className="px-6 py-4 font-medium text-gray-800">{user?.name || user?.full_name || rec.full_name || user?.email?.split('@')[0] || 'Unknown'}</td>
                                 <td className="px-6 py-4">
-                                  {holiday ? (
-                                    <span className="text-[10px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-full uppercase border border-green-200">Holiday</span>
+                                  {rec.status === 'holiday' || holiday ? (
+                                    <span className="text-xs font-semibold text-green-700 bg-green-100 px-2.5 py-0.5 rounded-full uppercase border border-green-200">
+                                      {holiday ? holiday.name : 'Holiday'}
+                                    </span>
+                                  ) : rec.status === 'present' ? (
+                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+                                      Present
+                                    </span>
+                                  ) : rec.status === 'absent' ? (
+                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+                                      Absent
+                                    </span>
+                                  ) : rec.status === 'half_day' ? (
+                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                      Half Day
+                                    </span>
+                                  ) : rec.status === 'on_leave' ? (
+                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                                      On Leave
+                                    </span>
+                                  ) : rec.status === 'week_off' ? (
+                                    <span className="text-xs font-medium text-gray-400">
+                                      Week Off
+                                    </span>
                                   ) : (
-                                    <span className="text-gray-400">{rec.status || '-'}</span>
+                                    <span className="text-gray-400">—</span>
                                   )}
                                 </td>
-                                <td className="px-6 py-4 text-gray-400">-</td>
-                                <td className="px-6 py-4 text-gray-500">{rec.clock_in ? format(new Date(rec.clock_in), "HH:mm 'IST'") : '-'}</td>
-                                <td className="px-6 py-4 text-gray-500">{rec.clock_out ? format(new Date(rec.clock_out), "HH:mm 'IST'") : '-'}</td>
-                                <td className="px-6 py-4 text-gray-700">{formatHours(Number(rec.total_hours) || 0)}</td>
+                                <td className="px-6 py-4 text-gray-600 text-xs">{rec.shift_type || 'General'}</td>
+                                <td className="px-6 py-4 text-gray-500">{rec.clock_in ? format(new Date(rec.clock_in), 'HH:mm') + ' ' + tzAbbr : '-'}</td>
+                                <td className="px-6 py-4 text-gray-500">{rec.clock_out ? format(new Date(rec.clock_out), 'HH:mm') + ' ' + tzAbbr : '-'}</td>
+                                <td className="px-6 py-4 text-gray-700 font-medium">{formatHours(Number(rec.total_hours) || 0)}</td>
                               </tr>
                             );
                           })}
