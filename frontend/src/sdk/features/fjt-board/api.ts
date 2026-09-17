@@ -266,6 +266,45 @@ export const fjtBoardApi = {
     }
   },
 
+  // Update Epic in Database
+  updateEpic: async (
+    epicId: string,
+    input: {
+      epicName?: string;
+      summary?: string;
+      color?: string;
+      status?: FjtStatus;
+      startDate?: string;
+      dueDate?: string;
+    }
+  ): Promise<FjtEpic> => {
+    const resp = await fetch(`${API_BASE}/api/fjt-board/epics/${epicId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        epic_name: input.epicName || input.summary,
+        summary: input.summary || input.epicName,
+        color: input.color,
+        status: input.status,
+        start_date: input.startDate,
+        due_date: input.dueDate,
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update epic');
+    }
+
+    const json = await resp.json();
+    const epicData = json.data || {};
+    return {
+      ...epicData,
+      epicName: epicData.epicName || epicData.epic_name || epicData.name || epicData.summary,
+      name: epicData.name || epicData.epicName || epicData.epic_name || epicData.summary,
+    };
+  },
+
   // Create sprint in Database
   createSprint: async (
     input:

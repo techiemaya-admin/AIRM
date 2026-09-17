@@ -10,6 +10,7 @@ import { IssueCard, IssueTypeIcon } from './IssueCard';
 import { CreateIssueDialog } from './CreateIssueDialog';
 import { IssueDetailDialog } from './IssueDetailDialog';
 import { ProjectsManagementDialog } from './ProjectsManagementDialog';
+import { EpicsManagementDialog } from './EpicsManagementDialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,6 +47,8 @@ export const ActiveBoardView: React.FC = () => {
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [projectsDialogOpen, setProjectsDialogOpen] = useState(false);
+  const [epicsDialogOpen, setEpicsDialogOpen] = useState(false);
+  const [editingEpicId, setEditingEpicId] = useState<string | null>(null);
   const [detailIssue, setDetailIssue] = useState<FjtIssue | null>(null);
   const [draggedIssueId, setDraggedIssueId] = useState<string | null>(null);
   const [mobileStatusTab, setMobileStatusTab] = useState<FjtStatus>('to_do');
@@ -108,6 +111,11 @@ export const ActiveBoardView: React.FC = () => {
     if (!boardData) return [];
 
     return boardData.issues.filter((issue) => {
+      // In Kanban board view, show cards ONLY for story, task, and bug (not epics)
+      if (issue.type !== 'story' && issue.type !== 'task' && issue.type !== 'bug') {
+        return false;
+      }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesKey = issue.key.toLowerCase().includes(q);
@@ -330,44 +338,64 @@ export const ActiveBoardView: React.FC = () => {
             </SelectContent>
           </Select>
 
-          {epics.length > 0 && (
-            <Select
-              value={selectedEpicId || 'all'}
-              onValueChange={(val) => setSelectedEpicId(val === 'all' ? null : val)}
-            >
-              <SelectTrigger className="h-8 w-44 text-xs bg-white border-gray-300 font-medium">
-                <div className="flex items-center gap-2 truncate">
-                  <Layers className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
-                  <span className="truncate">
-                    {selectedEpicId ? (epics.find((e) => e.id === selectedEpicId)?.epicName || (epics.find((e) => e.id === selectedEpicId) as any)?.name || 'Selected Epic') : 'All Epics'}
-                  </span>
+          <Select
+            value={selectedEpicId || 'all'}
+            onValueChange={(val) => {
+              if (val === 'manage_epics') {
+                setEditingEpicId(null);
+                setEpicsDialogOpen(true);
+                return;
+              }
+              setSelectedEpicId(val === 'all' ? null : val);
+            }}
+          >
+            <SelectTrigger className="h-8 w-44 text-xs bg-white border-gray-300 font-medium">
+              <div className="flex items-center gap-2 truncate">
+                <Layers className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                <span className="truncate">
+                  {selectedEpicId
+                    ? epics.find((e) => e.id === selectedEpicId)?.epicName ||
+                      (epics.find((e) => e.id === selectedEpicId) as any)?.name ||
+                      'Selected Epic'
+                    : `All Epics (${epics.length})`}
+                </span>
+              </div>
+            </SelectTrigger>
+            <SelectContent className="bg-white max-h-60">
+              <SelectItem value="all">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-4 h-4 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-[9px] font-bold">
+                    ★
+                  </div>
+                  <span>All Epics</span>
                 </div>
-              </SelectTrigger>
-              <SelectContent className="bg-white max-h-60">
-                <SelectItem value="all">
-                  <div className="flex items-center gap-2 font-medium">
-                    <div className="w-4 h-4 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-[9px] font-bold">
-                      ★
-                    </div>
-                    <span>All Epics</span>
+              </SelectItem>
+              {epics.map((epic) => (
+                <SelectItem key={epic.id} value={epic.id}>
+                  <div className="flex items-center gap-2 py-0.5">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: epic.color }}
+                    />
+                    <span className="font-medium text-gray-900 truncate text-xs">
+                      {epic.epicName || (epic as any).name || epic.summary}
+                    </span>
                   </div>
                 </SelectItem>
-                {epics.map((epic) => (
-                  <SelectItem key={epic.id} value={epic.id}>
-                    <div className="flex items-center gap-2 py-0.5">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: epic.color }}
-                      />
-                      <span className="font-medium text-gray-900 truncate text-xs">
-                        {epic.epicName || (epic as any).name || epic.summary}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+              ))}
+              <div className="border-t border-gray-100 mt-1 pt-1">
+                <SelectItem
+                  value="manage_epics"
+                  className="text-purple-700 font-semibold focus:bg-purple-50 focus:text-purple-800 cursor-pointer"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5" />
+                    <span>Manage Epics ({epics.length})...</span>
+                  </div>
+                </SelectItem>
+              </div>
+            </SelectContent>
+          </Select>
 
           {stories.length > 0 && (
             <Select
@@ -606,6 +634,12 @@ export const ActiveBoardView: React.FC = () => {
       <ProjectsManagementDialog
         open={projectsDialogOpen}
         onOpenChange={setProjectsDialogOpen}
+      />
+
+      <EpicsManagementDialog
+        open={epicsDialogOpen}
+        onOpenChange={setEpicsDialogOpen}
+        initialEditingEpicId={editingEpicId}
       />
 
       {/* Issue Details Modal */}

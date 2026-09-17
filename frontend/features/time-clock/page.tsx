@@ -551,14 +551,18 @@ const TimeClock = () => {
                         <SelectTrigger className="w-full text-sm font-medium border-gray-300 focus:border-[#0B1957] focus:ring-[#0B1957]/20 bg-white">
                           <SelectValue placeholder={projectsList.length === 0 ? "No projects created yet in Task Board" : "Select a project..."} />
                         </SelectTrigger>
-                        <SelectContent className="bg-white max-h-60">
+                        <SelectContent className="bg-white max-h-72 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)]">
                           {projectsList.length === 0 ? (
                             <div className="py-3 px-4 text-xs text-gray-500 text-center">
                               No projects created yet in Task Board
                             </div>
                           ) : (
                             projectsList.map((project) => (
-                              <SelectItem key={project.id} value={project.id}>
+                              <SelectItem
+                                key={project.id}
+                                value={project.id}
+                                className="cursor-pointer py-2 sm:py-1.5 whitespace-normal break-words text-left text-xs sm:text-sm"
+                              >
                                 {project.name} ({project.key})
                               </SelectItem>
                             ))
@@ -588,7 +592,7 @@ const TimeClock = () => {
                             }
                           />
                         </SelectTrigger>
-                        <SelectContent className="bg-white max-h-60">
+                        <SelectContent className="bg-white max-h-72 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)]">
                           {availableTopics.length === 0 ? (
                             <div className="py-3 px-4 text-xs text-gray-500 text-center">
                               No To Do or In Progress topics in this project
@@ -597,8 +601,19 @@ const TimeClock = () => {
                             availableTopics.map((item) => {
                               const typeLabel = item.type.charAt(0).toUpperCase() + item.type.slice(1);
                               return (
-                                <SelectItem key={item.id} value={String(item.id)}>
-                                  [{typeLabel}] {item.key}: {item.title}
+                                <SelectItem
+                                  key={item.id}
+                                  value={String(item.id)}
+                                  className="cursor-pointer py-2.5 sm:py-1.5 whitespace-normal break-words text-left items-start [&>span:first-child]:top-3 sm:[&>span:first-child]:top-2"
+                                >
+                                  <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-1.5 text-left w-full pr-2">
+                                    <span className="font-semibold text-gray-900 shrink-0 text-xs sm:text-sm">
+                                      [{typeLabel}] {item.key}:
+                                    </span>
+                                    <span className="text-gray-600 text-xs sm:text-sm break-words leading-snug">
+                                      {item.title}
+                                    </span>
+                                  </div>
                                 </SelectItem>
                               );
                             })

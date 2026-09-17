@@ -36,6 +36,27 @@ export function useUpdateFjtIssue() {
   });
 }
 
+export function useUpdateFjtEpic() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      epicId,
+      ...input
+    }: {
+      epicId: string;
+      epicName?: string;
+      summary?: string;
+      color?: string;
+      status?: FjtStatus;
+      startDate?: string;
+      dueDate?: string;
+    }) => fjtBoardApi.updateEpic(epicId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
+}
+
 export function useMoveFjtIssueStatus() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -9,3 +9,5 @@ export * from './components/ActiveBoardView';
 export * from './components/BacklogView';
 export * from './components/TimelineView';
 export * from './components/ReportsView';
+export * from './components/ProjectsManagementDialog';
+export * from './components/EpicsManagementDialog';
