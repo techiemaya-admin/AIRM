@@ -709,10 +709,10 @@ router.get('/entries', async (req, res) => {
 });
 
 /**
- * Get all active entries (Admin only)
+ * Get all active entries
  * GET /api/timesheets/active
  */
-router.get('/active', requireAdmin, async (req, res) => {
+router.get('/active', async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT

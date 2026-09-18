@@ -25,6 +25,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { fjtBoardApi } from '@/sdk/features/fjt-board';
+import { Loader2 } from 'lucide-react';
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 // In-memory cache + persistent LocalStorage for clean image asset URLs
 const ASSET_STORAGE_PREFIX = 'airm_asset_';
@@ -50,6 +54,15 @@ export const resolveLocalAsset = (url: string): string => {
       return stored;
     }
   } catch {}
+
+  // If URL is from Google Cloud Storage, proxy it through our backend media streaming endpoint
+  if (url.includes('storage.googleapis.com')) {
+    const match = url.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
+    if (match && match[1]) {
+      return `${API_BASE}/api/fjt-board/media/${match[1]}`;
+    }
+  }
+
   return url;
 };
 
@@ -120,7 +133,7 @@ export const JiraDescriptionEditor: React.FC<JiraDescriptionEditorProps> = ({
     });
   };
 
-  // Insert image directly into markdown at cursor with clean 1-line asset URL (GitHub style)
+  // Upload image or file directly to GCP bucket via backend and insert markdown syntax
   const processFiles = async (files: FileList | File[]) => {
     const fileList = Array.from(files);
     if (fileList.length === 0) return;
@@ -128,25 +141,24 @@ export const JiraDescriptionEditor: React.FC<JiraDescriptionEditorProps> = ({
     setIsUploading(true);
 
     for (const file of fileList) {
-      if (file.type.startsWith('image/')) {
-        const base64 = await fileToBase64(file);
-        // Generate clean unique 1-line asset identifier
-        const assetId = `${Math.random().toString(36).substring(2, 10)}-${Math.random().toString(36).substring(2, 6)}-${Date.now().toString(36)}`;
-        const cleanUrl = `https://airm.assets/images/${assetId}.png`;
-        saveLocalAsset(cleanUrl, base64);
-
+      try {
+        const uploadResult = await fjtBoardApi.uploadAttachment(file);
+        const gcsUrl = uploadResult.url;
         const cleanName = file.name || 'image.png';
-        const imageMarkdown = `\n![${cleanName}](${cleanUrl})\n`;
-        insertText(imageMarkdown, '', '');
-      } else {
-        // Non-image attachments as file links
-        const base64 = await fileToBase64(file);
-        const assetId = `${Math.random().toString(36).substring(2, 10)}-${Date.now().toString(36)}`;
-        const cleanUrl = `https://airm.assets/files/${assetId}/${encodeURIComponent(file.name)}`;
-        saveLocalAsset(cleanUrl, base64);
 
-        const fileMarkdown = `\n[📎 ${file.name}](${cleanUrl})\n`;
-        insertText(fileMarkdown, '', '');
+        if (file.type.startsWith('image/')) {
+          const imageMarkdown = `\n![${cleanName}](${gcsUrl})\n`;
+          insertText(imageMarkdown, '', '');
+        } else {
+          const fileMarkdown = `\n[📎 ${cleanName}](${gcsUrl})\n`;
+          insertText(fileMarkdown, '', '');
+        }
+      } catch (error: any) {
+        toast({
+          title: 'Upload failed',
+          description: error.message || 'Could not upload file to Google Cloud Storage',
+          variant: 'destructive',
+        });
       }
     }
 
@@ -755,12 +767,24 @@ export const JiraDescriptionEditor: React.FC<JiraDescriptionEditorProps> = ({
                 <Table className="h-3.5 w-3.5" />
               </button>
 
-              {/* Attach File / Image Click */}
+              {/* Insert Image */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-1.5 hover:bg-gray-200 rounded text-gray-700"
+                title="Insert Image (PNG, JPG, GIF)"
+                disabled={isUploading}
+              >
+                {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <ImageIcon className="h-3.5 w-3.5" />}
+              </button>
+
+              {/* Attach File */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="p-1.5 hover:bg-gray-200 rounded text-gray-700"
                 title="Attach files (images, documents)"
+                disabled={isUploading}
               >
                 <Paperclip className="h-3.5 w-3.5" />
               </button>

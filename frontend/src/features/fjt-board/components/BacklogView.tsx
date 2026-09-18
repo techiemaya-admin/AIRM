@@ -4,12 +4,21 @@ import {
   useDeleteFjtIssue,
   FjtIssue,
   FjtIssueType,
+  doesIssueMentionUser,
+  hasAnyMentions,
 } from '@/sdk/features/fjt-board';
 import { IssueTypeIcon, PriorityIcon, getDueWarning } from './IssueCard';
 import { CreateIssueDialog } from './CreateIssueDialog';
 import { IssueDetailDialog } from './IssueDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Plus,
   ChevronRight,
@@ -20,15 +29,22 @@ import {
   Calendar,
   Clock,
   AlertTriangle,
+  AtSign,
 } from 'lucide-react';
+import { useUsers } from '@/hooks/useUsers';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { TaskBoardSkeleton } from '@/components/PageSkeletons';
 
 export const BacklogView: React.FC = () => {
   const { data: boardData, isLoading } = useFjtBoardData();
   const deleteMutation = useDeleteFjtIssue();
+  const { data: dbUsers = [] } = useUsers();
+  const { data: currentUser } = useCurrentUser();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEpicFilter, setSelectedEpicFilter] = useState<string | null>(null);
+  const [onlyMentionedMe, setOnlyMentionedMe] = useState(false);
+  const [selectedMentionFilter, setSelectedMentionFilter] = useState<string | null>(null);
   const [showEpicsPanel, setShowEpicsPanel] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createDialogType, setCreateDialogType] = useState<FjtIssueType>('story');
@@ -52,9 +68,110 @@ export const BacklogView: React.FC = () => {
     return boardData?.epics || [];
   }, [boardData?.epics]);
 
+  const resolvedCurrentUserObj = useMemo(() => {
+    let localUser: any = null;
+    try {
+      const raw = localStorage.getItem('user');
+      if (raw) localUser = JSON.parse(raw);
+    } catch {}
+    const u = currentUser || localUser;
+    const name = u?.full_name || u?.name || u?.email?.split('@')[0] || 'User';
+    return {
+      id: String(u?.id || u?.user_id || ''),
+      name,
+      full_name: u?.full_name || u?.name || name,
+      email: u?.email || '',
+      username: u?.username || u?.email?.split('@')[0] || name.toLowerCase().replace(/[^a-zA-Z0-9_-]/g, '-'),
+      initials:
+        name
+          .split(' ')
+          .filter(Boolean)
+          .map((n: string) => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2) || 'U',
+    };
+  }, [currentUser]);
+
+  const availableMembers = useMemo(() => {
+    if (dbUsers && dbUsers.length > 0) {
+      return dbUsers.map((u: any) => {
+        const name = u.full_name || u.name || u.email.split('@')[0];
+        const email = u.email || '';
+        const username = u.username || (email ? email.split('@')[0] : '') || name.toLowerCase().replace(/[^a-zA-Z0-9_-]/g, '-');
+        const initials = name
+          .split(' ')
+          .filter(Boolean)
+          .map((n: string) => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2) || 'U';
+        return {
+          id: String(u.id || u.user_id),
+          name,
+          full_name: u.full_name || u.name || name,
+          email,
+          username,
+          role: u.role || 'employee',
+          initials,
+        };
+      });
+    }
+
+    return [];
+  }, [dbUsers]);
+
+  const selectedMentionMember = useMemo(() => {
+    if (!selectedMentionFilter || selectedMentionFilter === 'all' || selectedMentionFilter === 'any') return null;
+    if (selectedMentionFilter === 'me') return resolvedCurrentUserObj;
+    return (
+      availableMembers.find((m) => m.id === selectedMentionFilter || m.name === selectedMentionFilter) || {
+        name: selectedMentionFilter,
+        full_name: selectedMentionFilter,
+      }
+    );
+  }, [selectedMentionFilter, availableMembers, resolvedCurrentUserObj]);
+
+  const currentUserMentionCount = useMemo(() => {
+    if (!boardData?.issues) return 0;
+    return boardData.issues.filter((issue) => doesIssueMentionUser(issue, resolvedCurrentUserObj)).length;
+  }, [boardData?.issues, resolvedCurrentUserObj]);
+
   const unassignedStoriesCount = useMemo(() => {
     return boardData?.issues?.filter((i) => i.type === 'story' && !i.epicId).length || 0;
   }, [boardData?.issues]);
+
+  const isIssueMatchingMentions = (issue: FjtIssue): boolean => {
+    if (!onlyMentionedMe && (!selectedMentionFilter || selectedMentionFilter === 'all')) {
+      return true;
+    }
+    if (onlyMentionedMe || selectedMentionFilter === 'me') {
+      return doesIssueMentionUser(issue, resolvedCurrentUserObj);
+    }
+    if (selectedMentionFilter === 'any') {
+      return hasAnyMentions(issue);
+    }
+    return doesIssueMentionUser(issue, selectedMentionMember);
+  };
+
+  // Tasks and Bugs grouped by parent storyId
+  const tasksAndBugsByStory = useMemo(() => {
+    const map: Record<string, FjtIssue[]> = {};
+    if (!boardData?.issues) return map;
+
+    boardData.issues.forEach((issue) => {
+      if (issue.type === 'task' || issue.type === 'bug') {
+        if (!isIssueMatchingMentions(issue)) {
+          return;
+        }
+        const key = issue.storyId || 'standalone';
+        if (!map[key]) map[key] = [];
+        map[key].push(issue);
+      }
+    });
+
+    return map;
+  }, [boardData?.issues, onlyMentionedMe, selectedMentionFilter, selectedMentionMember, resolvedCurrentUserObj]);
 
   // Stories
   const stories = useMemo(() => {
@@ -68,35 +185,31 @@ export const BacklogView: React.FC = () => {
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        return (
+        const matchesQuery =
           i.key.toLowerCase().includes(q) ||
           i.summary.toLowerCase().includes(q) ||
-          i.epicName?.toLowerCase().includes(q)
-        );
+          i.epicName?.toLowerCase().includes(q);
+        if (!matchesQuery) return false;
       }
+
+      // Check mention filter: story itself matches OR it has child tasks/bugs that match
+      const isMentionFilterActive = onlyMentionedMe || (selectedMentionFilter && selectedMentionFilter !== 'all');
+      if (isMentionFilterActive) {
+        const storyMatches = isIssueMatchingMentions(i);
+        const hasMatchingChildren = (tasksAndBugsByStory[i.id] || []).length > 0;
+        if (!storyMatches && !hasMatchingChildren) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [boardData?.issues, selectedEpicFilter, searchQuery]);
-
-  // Tasks and Bugs grouped by parent storyId
-  const tasksAndBugsByStory = useMemo(() => {
-    const map: Record<string, FjtIssue[]> = {};
-    if (!boardData?.issues) return map;
-
-    boardData.issues.forEach((issue) => {
-      if (issue.type === 'task' || issue.type === 'bug') {
-        const key = issue.storyId || 'standalone';
-        if (!map[key]) map[key] = [];
-        map[key].push(issue);
-      }
-    });
-
-    return map;
-  }, [boardData?.issues]);
+  }, [boardData?.issues, selectedEpicFilter, searchQuery, onlyMentionedMe, selectedMentionFilter, tasksAndBugsByStory]);
 
   const standaloneTasksAndBugs = useMemo(() => {
     return tasksAndBugsByStory['standalone'] || [];
   }, [tasksAndBugsByStory]);
+
 
   const handleOpenCreateForStory = (story: FjtIssue, type: FjtIssueType = 'task') => {
     setCreateDialogType(type);
@@ -276,19 +389,144 @@ export const BacklogView: React.FC = () => {
       {/* Main Hierarchy & Backlog Area */}
       <div className="flex-1 flex flex-col overflow-y-auto bg-gray-50/30">
         {/* Top Filter Bar */}
-        <div className="p-3 sm:p-4 bg-white border-b border-gray-200 flex items-center justify-between gap-2.5 sm:gap-4">
-          <div className="flex items-center gap-3 flex-1 max-w-full sm:max-w-md">
-            <div className="relative w-full">
+        <div className="p-3 sm:p-4 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
+            <div className="relative w-full sm:w-72">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search backlog stories, tasks, bugs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 text-xs bg-gray-50 border-gray-200 focus:bg-white w-full"
+                className="pl-9 h-8 text-xs bg-gray-50 border-gray-200 focus:bg-white w-full"
               />
             </div>
+
+            {/* Mentioned Me Quick Filter Toggle */}
+            <Button
+              variant={onlyMentionedMe || selectedMentionFilter === 'me' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setOnlyMentionedMe((prev) => {
+                  const next = !prev;
+                  if (next) {
+                    setSelectedMentionFilter('me');
+                  } else {
+                    setSelectedMentionFilter(null);
+                  }
+                  return next;
+                });
+              }}
+              className={`h-8 text-xs font-semibold gap-1.5 transition-all shadow-2xs ${
+                onlyMentionedMe || selectedMentionFilter === 'me'
+                  ? 'bg-[#0B1957] text-white hover:bg-[#071038] border-[#0B1957] shadow-sm'
+                  : 'text-gray-700 border-gray-200 hover:bg-gray-100'
+              }`}
+              title="Show backlog issues where you are mentioned in description or comments"
+            >
+              <AtSign className="h-3.5 w-3.5" />
+              <span>Mentioned Me</span>
+              {currentUserMentionCount > 0 && (
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                    onlyMentionedMe || selectedMentionFilter === 'me'
+                      ? 'bg-white text-[#0B1957]'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}
+                >
+                  {currentUserMentionCount}
+                </span>
+              )}
+            </Button>
+
+            {/* Mentions Dropdown Select */}
+            <Select
+              value={selectedMentionFilter || 'all'}
+              onValueChange={(val) => {
+                if (val === 'all') {
+                  setSelectedMentionFilter(null);
+                  setOnlyMentionedMe(false);
+                } else if (val === 'me') {
+                  setSelectedMentionFilter('me');
+                  setOnlyMentionedMe(true);
+                } else {
+                  setSelectedMentionFilter(val);
+                  setOnlyMentionedMe(false);
+                }
+              }}
+            >
+              <SelectTrigger className="h-8 w-44 text-xs bg-white border-gray-300 font-medium">
+                <div className="flex items-center gap-1.5 truncate">
+                  <AtSign className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                  <span className="truncate">
+                    {selectedMentionFilter === 'me'
+                      ? `Mentioned: Me`
+                      : selectedMentionFilter === 'any'
+                      ? 'Any Mentions'
+                      : selectedMentionMember
+                      ? selectedMentionMember.name
+                      : 'All Mentions'}
+                  </span>
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-white max-h-60">
+                <SelectItem value="all">
+                  <div className="flex items-center gap-2 font-medium">
+                    <div className="w-5 h-5 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-[10px] font-bold">
+                      ★
+                    </div>
+                    <span>All Mentions (No Filter)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="me">
+                  <div className="flex items-center gap-2 py-0.5">
+                    <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                      @
+                    </div>
+                    <span className="font-semibold text-blue-900">
+                      Mentioned Me ({currentUserMentionCount})
+                    </span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="any">
+                  <div className="flex items-center gap-2 py-0.5">
+                    <div className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                      @
+                    </div>
+                    <span className="font-medium text-gray-800">Any Mentioned Issue</span>
+                  </div>
+                </SelectItem>
+                {availableMembers.map((m) => (
+                  <SelectItem key={m.id || m.name} value={m.id || m.name}>
+                    <div className="flex items-center gap-2 py-0.5">
+                      <div className="w-5 h-5 rounded-full bg-[#0B1957] text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0">
+                        {m.initials}
+                      </div>
+                      <span className="font-medium text-gray-900">{m.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+
+            {(searchQuery || selectedEpicFilter || onlyMentionedMe || selectedMentionFilter) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedEpicFilter(null);
+                  setOnlyMentionedMe(false);
+                  setSelectedMentionFilter(null);
+                }}
+                className="h-8 text-xs text-gray-500 hover:text-gray-900"
+              >
+                Clear filters
+              </Button>
+            )}
           </div>
         </div>
+
 
         {/* Stories & Nested Tasks / Bugs Container */}
         <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">

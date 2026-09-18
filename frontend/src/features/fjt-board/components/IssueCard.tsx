@@ -1,6 +1,20 @@
-import React from 'react';
-import { FjtIssue, FjtStatus } from '@/sdk/features/fjt-board';
-import { Bookmark, Check, Bug, Zap, ArrowUp, ArrowDown, Equal, MoreHorizontal, Clock, AlertTriangle, Calendar } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { FjtIssue, FjtStatus, extractMentionsFromText, getAllIssueText } from '@/sdk/features/fjt-board';
+import {
+  Bookmark,
+  Check,
+  Bug,
+  Zap,
+  ArrowUp,
+  ArrowDown,
+  Equal,
+  MoreHorizontal,
+  Clock,
+  AlertTriangle,
+  Calendar,
+  AtSign,
+  ArrowRight,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +27,10 @@ interface IssueCardProps {
   onStatusChange?: (issueId: string, status: FjtStatus) => void;
   onDelete?: (issueId: string) => void;
   onClick?: (issue: FjtIssue) => void;
+  timeSpent?: string;
+  onOpenTimeTracking?: (issue: FjtIssue) => void;
 }
+
 
 export const getDueWarning = (endDateStr?: string, status?: string) => {
   if (!endDateStr) return null;
@@ -176,8 +193,25 @@ export const PriorityIcon: React.FC<{ priority: string; className?: string }> = 
   }
 };
 
-export const IssueCard: React.FC<IssueCardProps> = ({ issue, onStatusChange, onDelete, onClick }) => {
+export const IssueCard: React.FC<IssueCardProps> = ({
+  issue,
+  onStatusChange,
+  onDelete,
+  onClick,
+  timeSpent,
+  onOpenTimeTracking,
+}) => {
   const dueWarning = getDueWarning(issue.endDate, issue.status);
+
+
+  const mentionList = useMemo(() => {
+    const texts = getAllIssueText(issue);
+    const mentions = new Set<string>();
+    texts.forEach((t) => {
+      extractMentionsFromText(t).forEach((m) => mentions.add(m));
+    });
+    return Array.from(mentions);
+  }, [issue]);
 
   return (
     <div
@@ -224,7 +258,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, onStatusChange, onD
         </DropdownMenu>
       </div>
 
-      {/* Hierarchy Badges: Epic Tag, Story Tag, Linked Task Tag & Due Date Warning */}
+      {/* Hierarchy Badges: Epic Tag, Story Tag, Linked Task Tag, Mentions & Due Date Warning */}
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Epic Badge (Highlighted for Story, Task or Bug) */}
         {(issue.epicName || issue.epicKey) && (
@@ -267,6 +301,20 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, onStatusChange, onD
           </span>
         )}
 
+        {/* Mention Badge */}
+        {mentionList.length > 0 && (
+          <span
+            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200/80 flex items-center max-w-[150px] truncate whitespace-nowrap flex-shrink-0 shadow-2xs"
+            title={`Mentioned: ${mentionList.map((m) => `@${m.replace(/^@+/, '')}`).join(', ')}`}
+          >
+            <span className="truncate font-medium">
+              @{mentionList[0].replace(/^@+/, '')}
+              {mentionList.length > 1 ? ` +${mentionList.length - 1}` : ''}
+            </span>
+          </span>
+        )}
+
+
         {/* Due Date Countdown Warning Badge */}
         {dueWarning && (
           <span
@@ -282,6 +330,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, onStatusChange, onD
           </span>
         )}
       </div>
+
 
       {/* Footer Info: Type, Key, Priority, Story Points, Dates, Assignee */}
       <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs text-gray-500">
@@ -347,6 +396,35 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, onStatusChange, onD
           ) : null}
         </div>
       </div>
+
+      {/* Time Spent Row & Time Tracking Analysis Trigger */}
+      <div className="flex items-center justify-between pt-1.5 border-t border-gray-100 text-[11px]">
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenTimeTracking?.(issue);
+          }}
+          className="flex items-center gap-1.5 text-gray-600 hover:text-blue-700 cursor-pointer transition-colors font-medium"
+          title="Click to view time tracking analysis & history"
+        >
+          <Clock className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+          <span>Time Spent:</span>
+          <span className="font-bold text-gray-900">{timeSpent || '0h 00m'}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenTimeTracking?.(issue);
+          }}
+          className="p-1 rounded-md text-gray-400 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer flex items-center justify-center"
+          title="Open time spent analysis modal"
+        >
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   );
 };
+

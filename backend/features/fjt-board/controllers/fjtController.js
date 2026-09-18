@@ -1,6 +1,7 @@
 import { FjtService } from '../services/fjtService.js';
 import { logger } from '../../../shared/logger.js';
 import pool from '../../../shared/database/connection.js';
+import { uploadFileToGCS, getFileFromGCS } from '../../../SDK/storage.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,6 +12,86 @@ const __dirname = path.dirname(__filename);
 export class FjtController {
   static getSchema(req) {
     return req.user?.schema || req.headers['x-tenant-schema'] || 'erp';
+  }
+
+  static async uploadAttachment(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      const { buffer, originalname, mimetype } = req.file;
+      const url = await uploadFileToGCS(buffer, originalname, mimetype, 'task-board');
+      
+      res.json({
+        success: true,
+        data: {
+          url,
+          originalname,
+          mimetype,
+        }
+      });
+    } catch (error) {
+      logger.error('Error in uploadAttachment:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to upload attachment to Google Cloud Storage'
+      });
+    }
+  }
+
+  static async getMedia(req, res) {
+    try {
+      // Extract target file path from wildcard or params
+      const filePath = req.params[0] || (req.params.folder && req.params.filename ? `${req.params.folder}/${req.params.filename}` : '');
+      if (!filePath) {
+        return res.status(400).send('File path required');
+      }
+
+      const file = getFileFromGCS(filePath);
+
+      // Attempt to get metadata for proper Content-Type
+      try {
+        const [metadata] = await file.getMetadata();
+        if (metadata?.contentType) {
+          res.setHeader('Content-Type', metadata.contentType);
+        }
+      } catch (metaErr) {
+        // Fallback mime type based on extension
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeMap = {
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.gif': 'image/gif',
+          '.webp': 'image/webp',
+          '.svg': 'image/svg+xml',
+          '.pdf': 'application/pdf',
+        };
+        if (mimeMap[ext]) {
+          res.setHeader('Content-Type', mimeMap[ext]);
+        }
+      }
+
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache 24h
+
+      const stream = file.createReadStream();
+      stream.on('error', (err) => {
+        logger.error('Error streaming GCS media:', err);
+        if (!res.headersSent) {
+          res.status(404).send('Media not found');
+        } else {
+          res.end();
+        }
+      });
+
+      stream.pipe(res);
+    } catch (error) {
+      logger.error('Error in getMedia:', error);
+      if (!res.headersSent) {
+        res.status(500).send('Failed to stream media');
+      }
+    }
   }
 
   static async getBoard(req, res) {

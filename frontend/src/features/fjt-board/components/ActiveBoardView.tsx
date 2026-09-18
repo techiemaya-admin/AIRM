@@ -1,16 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   useFjtBoardData,
   useMoveFjtIssueStatus,
   useDeleteFjtIssue,
   FjtStatus,
   FjtIssue,
+  doesIssueMentionUser,
+  hasAnyMentions,
+  getIssueTimeTrackingData,
 } from '@/sdk/features/fjt-board';
+
 import { IssueCard, IssueTypeIcon } from './IssueCard';
 import { CreateIssueDialog } from './CreateIssueDialog';
 import { IssueDetailDialog } from './IssueDetailDialog';
+import { IssueTimeTrackingDialog } from './IssueTimeTrackingDialog';
 import { ProjectsManagementDialog } from './ProjectsManagementDialog';
 import { EpicsManagementDialog } from './EpicsManagementDialog';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,9 +32,11 @@ import {
   Layers,
   Users,
   Briefcase,
+  AtSign,
 } from 'lucide-react';
 import { useUsers } from '@/hooks/useUsers';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useActiveTimesheet, useAllActiveTimesheets, useTimesheetEntries } from '@/hooks/useTimesheets';
 import { toast } from '@/hooks/use-toast';
 import { TaskBoardSkeleton } from '@/components/PageSkeletons';
 
@@ -38,10 +46,15 @@ export const ActiveBoardView: React.FC = () => {
   const deleteMutation = useDeleteFjtIssue();
   const { data: dbUsers = [] } = useUsers();
   const { data: currentUser } = useCurrentUser();
+  const { data: timeEntries = [] } = useTimesheetEntries({ limit: 1000 });
+  const { data: currentActiveTimesheet } = useActiveTimesheet();
+  const { data: allActiveTimesheets = [] } = useAllActiveTimesheets();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
   const [onlyMyIssues, setOnlyMyIssues] = useState(false);
+  const [onlyMentionedMe, setOnlyMentionedMe] = useState(false);
+  const [selectedMentionFilter, setSelectedMentionFilter] = useState<string | null>(null);
   const [recentlyUpdated, setRecentlyUpdated] = useState(false);
   const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
@@ -50,8 +63,28 @@ export const ActiveBoardView: React.FC = () => {
   const [epicsDialogOpen, setEpicsDialogOpen] = useState(false);
   const [editingEpicId, setEditingEpicId] = useState<string | null>(null);
   const [detailIssue, setDetailIssue] = useState<FjtIssue | null>(null);
+  const [timeTrackingIssue, setTimeTrackingIssue] = useState<FjtIssue | null>(null);
   const [draggedIssueId, setDraggedIssueId] = useState<string | null>(null);
   const [mobileStatusTab, setMobileStatusTab] = useState<FjtStatus>('to_do');
+
+  const combinedActiveEntries = useMemo(() => {
+    const list = Array.isArray(allActiveTimesheets) ? [...allActiveTimesheets] : [];
+    if (currentActiveTimesheet && !list.some((e: any) => e.id === currentActiveTimesheet.id)) {
+      list.push(currentActiveTimesheet);
+    }
+    return list;
+  }, [allActiveTimesheets, currentActiveTimesheet]);
+
+  const issueTimeSpentMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (!boardData?.issues) return map;
+    boardData.issues.forEach((issue) => {
+      const data = getIssueTimeTrackingData(issue, timeEntries, combinedActiveEntries);
+      map[issue.id] = data.formattedTotal;
+    });
+    return map;
+  }, [boardData?.issues, timeEntries, combinedActiveEntries]);
+
 
   const activeProject = useMemo(() => {
     if (boardData?.projects && boardData.projects.length > 0) {
@@ -68,20 +101,41 @@ export const ActiveBoardView: React.FC = () => {
     };
   }, [boardData]);
 
-  const currentMemberName = useMemo(() => {
+  const resolvedCurrentUserObj = useMemo(() => {
     let localUser: any = null;
     try {
       const raw = localStorage.getItem('user');
       if (raw) localUser = JSON.parse(raw);
     } catch {}
     const u = currentUser || localUser;
-    return u?.full_name || u?.name || u?.email?.split('@')[0] || 'User';
+    const name = u?.full_name || u?.name || u?.email?.split('@')[0] || 'User';
+    return {
+      id: String(u?.id || u?.user_id || ''),
+      name,
+      full_name: u?.full_name || u?.name || name,
+      email: u?.email || '',
+      username: u?.username || u?.email?.split('@')[0] || name.toLowerCase().replace(/[^a-zA-Z0-9_-]/g, '-'),
+      initials:
+        name
+          .split(' ')
+          .filter(Boolean)
+          .map((n: string) => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2) || 'U',
+    };
   }, [currentUser]);
+
+  const currentMemberName = useMemo(() => {
+    return resolvedCurrentUserObj.name;
+  }, [resolvedCurrentUserObj]);
 
   const availableMembers = useMemo(() => {
     if (dbUsers && dbUsers.length > 0) {
       return dbUsers.map((u: any) => {
         const name = u.full_name || u.name || u.email.split('@')[0];
+        const email = u.email || '';
+        const username = u.username || (email ? email.split('@')[0] : '') || name.toLowerCase().replace(/[^a-zA-Z0-9_-]/g, '-');
         const initials = name
           .split(' ')
           .filter(Boolean)
@@ -92,7 +146,9 @@ export const ActiveBoardView: React.FC = () => {
         return {
           id: String(u.id || u.user_id),
           name,
-          email: u.email,
+          full_name: u.full_name || u.name || name,
+          email,
+          username,
           role: u.role || 'employee',
           initials,
         };
@@ -101,6 +157,25 @@ export const ActiveBoardView: React.FC = () => {
 
     return [];
   }, [dbUsers]);
+
+  const selectedMentionMember = useMemo(() => {
+    if (!selectedMentionFilter || selectedMentionFilter === 'all' || selectedMentionFilter === 'any') return null;
+    if (selectedMentionFilter === 'me') return resolvedCurrentUserObj;
+    return (
+      availableMembers.find((m) => m.id === selectedMentionFilter || m.name === selectedMentionFilter) || {
+        name: selectedMentionFilter,
+        full_name: selectedMentionFilter,
+      }
+    );
+  }, [selectedMentionFilter, availableMembers, resolvedCurrentUserObj]);
+
+  const currentUserMentionCount = useMemo(() => {
+    if (!boardData?.issues) return 0;
+    return boardData.issues.filter((issue) => {
+      if (issue.type !== 'story' && issue.type !== 'task' && issue.type !== 'bug') return false;
+      return doesIssueMentionUser(issue, resolvedCurrentUserObj);
+    }).length;
+  }, [boardData?.issues, resolvedCurrentUserObj]);
 
   const epics = boardData?.epics || [];
   const stories = useMemo(() => {
@@ -143,6 +218,21 @@ export const ActiveBoardView: React.FC = () => {
         if (!match) return false;
       }
 
+      // Mention-based filtering
+      if (onlyMentionedMe || selectedMentionFilter === 'me') {
+        if (!doesIssueMentionUser(issue, resolvedCurrentUserObj)) {
+          return false;
+        }
+      } else if (selectedMentionFilter === 'any') {
+        if (!hasAnyMentions(issue)) {
+          return false;
+        }
+      } else if (selectedMentionFilter && selectedMentionFilter !== 'all') {
+        if (!doesIssueMentionUser(issue, selectedMentionMember)) {
+          return false;
+        }
+      }
+
       if (selectedEpicId && issue.epicId !== selectedEpicId) {
         return false;
       }
@@ -167,12 +257,17 @@ export const ActiveBoardView: React.FC = () => {
     searchQuery,
     selectedAssignee,
     onlyMyIssues,
+    onlyMentionedMe,
+    selectedMentionFilter,
+    selectedMentionMember,
+    resolvedCurrentUserObj,
     recentlyUpdated,
     selectedEpicId,
     selectedStoryId,
     currentMemberName,
     currentUser,
   ]);
+
 
   const columns: { id: FjtStatus; title: string; issues: FjtIssue[] }[] = useMemo(() => {
     const sortNewestFirst = (list: FjtIssue[]) => {
@@ -208,6 +303,36 @@ export const ActiveBoardView: React.FC = () => {
       },
     ];
   }, [filteredIssues]);
+
+  // In mobile view: Auto-switch active tab to the column with the highest count when filtering
+  useEffect(() => {
+    if (columns && columns.length > 0) {
+      let maxCol = columns[0];
+      let maxCount = maxCol.issues.length;
+
+      for (let i = 1; i < columns.length; i++) {
+        if (columns[i].issues.length > maxCount) {
+          maxCount = columns[i].issues.length;
+          maxCol = columns[i];
+        }
+      }
+
+      if (maxCount > 0) {
+        const currentCol = columns.find((c) => c.id === mobileStatusTab);
+        const isMentionFilterActive =
+          onlyMentionedMe || (selectedMentionFilter && selectedMentionFilter !== 'all');
+
+        if (
+          !currentCol ||
+          currentCol.issues.length === 0 ||
+          (isMentionFilterActive && currentCol.issues.length < maxCount)
+        ) {
+          setMobileStatusTab(maxCol.id as FjtStatus);
+        }
+      }
+    }
+  }, [onlyMentionedMe, selectedMentionFilter, columns]);
+
 
   const handleStatusChange = async (issueId: string, newStatus: FjtStatus) => {
     try {
@@ -452,6 +577,114 @@ export const ActiveBoardView: React.FC = () => {
             Only My Issues
           </Button>
 
+          {/* Mentioned Me Quick Filter Toggle */}
+          <Button
+            variant={onlyMentionedMe || selectedMentionFilter === 'me' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setOnlyMentionedMe((prev) => {
+                const next = !prev;
+                if (next) {
+                  setSelectedMentionFilter('me');
+                } else {
+                  setSelectedMentionFilter(null);
+                }
+                return next;
+              });
+            }}
+            className={`h-8 text-xs font-semibold gap-1.5 transition-all shadow-2xs ${
+              onlyMentionedMe || selectedMentionFilter === 'me'
+                ? 'bg-[#0B1957] text-white hover:bg-[#071038] border-[#0B1957] shadow-sm'
+                : 'text-gray-700 border-gray-200 hover:bg-gray-100'
+            }`}
+            title="Show all issues where you are mentioned in description or comments"
+          >
+            <AtSign className="h-3.5 w-3.5" />
+            <span>Mentioned Me</span>
+            {currentUserMentionCount > 0 && (
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                  onlyMentionedMe || selectedMentionFilter === 'me'
+                    ? 'bg-white text-[#0B1957]'
+                    : 'bg-blue-100 text-blue-800'
+                }`}
+              >
+                {currentUserMentionCount}
+              </span>
+            )}
+          </Button>
+
+          {/* Mentions Dropdown Select */}
+          <Select
+            value={selectedMentionFilter || 'all'}
+            onValueChange={(val) => {
+              if (val === 'all') {
+                setSelectedMentionFilter(null);
+                setOnlyMentionedMe(false);
+              } else if (val === 'me') {
+                setSelectedMentionFilter('me');
+                setOnlyMentionedMe(true);
+              } else {
+                setSelectedMentionFilter(val);
+                setOnlyMentionedMe(false);
+              }
+            }}
+          >
+            <SelectTrigger className="h-8 w-44 text-xs bg-white border-gray-300 font-medium">
+              <div className="flex items-center gap-1.5 truncate">
+                <AtSign className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                <span className="truncate">
+                  {selectedMentionFilter === 'me'
+                    ? `Mentioned: Me`
+                    : selectedMentionFilter === 'any'
+                    ? 'Any Mentions'
+                    : selectedMentionMember
+                    ? selectedMentionMember.name
+                    : 'All Mentions'}
+                </span>
+              </div>
+            </SelectTrigger>
+            <SelectContent className="bg-white max-h-60">
+              <SelectItem value="all">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-5 h-5 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-[10px] font-bold">
+                    ★
+                  </div>
+                  <span>All Mentions (No Filter)</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="me">
+                <div className="flex items-center gap-2 py-0.5">
+                  <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                    @
+                  </div>
+                  <span className="font-semibold text-blue-900">
+                    Mentioned Me ({currentUserMentionCount})
+                  </span>
+                </div>
+              </SelectItem>
+              <SelectItem value="any">
+                <div className="flex items-center gap-2 py-0.5">
+                  <div className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                    @
+                  </div>
+                  <span className="font-medium text-gray-800">Any Mentioned Issue</span>
+                </div>
+              </SelectItem>
+              {availableMembers.map((m) => (
+                <SelectItem key={m.id || m.name} value={m.id || m.name}>
+                  <div className="flex items-center gap-2 py-0.5">
+                    <div className="w-5 h-5 rounded-full bg-[#0B1957] text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0">
+                      {m.initials}
+                    </div>
+                    <span className="font-medium text-gray-900">{m.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+
           <Button
             variant={recentlyUpdated ? 'default' : 'outline'}
             size="sm"
@@ -463,7 +696,7 @@ export const ActiveBoardView: React.FC = () => {
             Recently Updated
           </Button>
 
-          {(selectedAssignee || selectedEpicId || selectedStoryId || onlyMyIssues || recentlyUpdated || searchQuery) && (
+          {(selectedAssignee || selectedEpicId || selectedStoryId || onlyMyIssues || onlyMentionedMe || selectedMentionFilter || recentlyUpdated || searchQuery) && (
             <Button
               variant="ghost"
               size="sm"
@@ -472,6 +705,8 @@ export const ActiveBoardView: React.FC = () => {
                 setSelectedEpicId(null);
                 setSelectedStoryId(null);
                 setOnlyMyIssues(false);
+                setOnlyMentionedMe(false);
+                setSelectedMentionFilter(null);
                 setRecentlyUpdated(false);
                 setSearchQuery('');
               }}
@@ -482,6 +717,7 @@ export const ActiveBoardView: React.FC = () => {
           )}
         </div>
       </div>
+
 
       {(!boardData?.projects || boardData.projects.length === 0) ? (
         <div className="flex-1 flex flex-col items-center justify-center p-12 bg-gray-50/40 text-center">
@@ -559,6 +795,8 @@ export const ActiveBoardView: React.FC = () => {
                           onStatusChange={handleStatusChange}
                           onDelete={(id) => deleteMutation.mutate(id)}
                           onClick={(item) => setDetailIssue(item)}
+                          timeSpent={issueTimeSpentMap[issue.id] || '0h 00m'}
+                          onOpenTimeTracking={(item) => setTimeTrackingIssue(item)}
                         />
                       </div>
                     ))}
@@ -608,6 +846,8 @@ export const ActiveBoardView: React.FC = () => {
                           onStatusChange={handleStatusChange}
                           onDelete={(id) => deleteMutation.mutate(id)}
                           onClick={(item) => setDetailIssue(item)}
+                          timeSpent={issueTimeSpentMap[issue.id] || '0h 00m'}
+                          onOpenTimeTracking={(item) => setTimeTrackingIssue(item)}
                         />
                       </div>
                     ))}
@@ -648,6 +888,16 @@ export const ActiveBoardView: React.FC = () => {
         open={!!detailIssue}
         onOpenChange={(open) => !open && setDetailIssue(null)}
       />
+
+      {/* Time Tracking Analysis Modal */}
+      <IssueTimeTrackingDialog
+        issue={timeTrackingIssue}
+        open={Boolean(timeTrackingIssue)}
+        onOpenChange={(open) => !open && setTimeTrackingIssue(null)}
+        allTimesheetEntries={timeEntries}
+        activeTimesheetEntry={combinedActiveEntries}
+      />
     </div>
   );
 };
+

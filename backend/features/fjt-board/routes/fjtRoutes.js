@@ -1,8 +1,22 @@
 import express from 'express';
+import multer from 'multer';
 import { FjtController } from '../controllers/fjtController.js';
 import { optionalAuth } from '../../../middleware/auth.js';
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 25 * 1024 * 1024, // 25 MB max limit
+  },
+});
+
 const router = express.Router();
+
+// GCP Storage attachment upload (Images / Documents)
+router.post('/upload', optionalAuth, upload.single('file'), FjtController.uploadAttachment);
+
+// GCP Storage media stream proxy (secure direct viewing for images)
+router.get('/media/*', FjtController.getMedia);
 
 router.get('/board', optionalAuth, FjtController.getBoard);
 router.post('/issues', optionalAuth, FjtController.createIssue);

@@ -436,6 +436,33 @@ export const fjtBoardApi = {
     });
   },
 
+  // Upload image or document attachment to GCP Cloud Storage bucket
+  uploadAttachment: async (file: File): Promise<{ url: string; originalname?: string; mimetype?: string }> => {
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token') || '';
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const resp = await fetch(`${API_BASE}/api/fjt-board/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to upload attachment to storage');
+    }
+
+    const json = await resp.json();
+    if (!json.success || !json.data?.url) {
+      throw new Error(json.message || 'Upload failed');
+    }
+
+    return json.data;
+  },
+
   // Reset helper - no-op now since dummy data is removed
   resetToDefault: async (): Promise<void> => {
     // No mock demo data
