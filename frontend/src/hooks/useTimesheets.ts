@@ -71,10 +71,33 @@ export const useActiveTimesheet = () => {
     return useQuery({
         queryKey: ['active-timesheet'],
         queryFn: async () => {
-            const response = await api.timesheets.getCurrent() as any;
-            return response?.entry || null;
+            try {
+                const response = await api.timesheets.getCurrent() as any;
+                return response?.entry || null;
+            } catch {
+                return null;
+            }
         },
         staleTime: 1000 * 60 * 1, // 1 minute
+    });
+};
+
+export const useAllActiveTimesheets = () => {
+    return useQuery({
+        queryKey: ['all-active-timesheets'],
+        queryFn: async () => {
+            try {
+                const response = await api.timesheets.getActive() as any;
+                if (Array.isArray(response?.entries)) return response.entries;
+                if (Array.isArray(response)) return response;
+                return [];
+            } catch {
+                return [];
+            }
+        },
+        staleTime: 1000 * 30, // 30 seconds
+        refetchInterval: 1000 * 30, // 30 seconds live refresh
+        retry: false,
     });
 };
 
@@ -82,9 +105,16 @@ export const useTimesheetEntries = (params?: any) => {
     return useQuery({
         queryKey: ['timesheet-entries', params],
         queryFn: async () => {
-            const response = await api.timesheets.getEntries(params) as any;
-            return response.entries || response || [];
+            try {
+                const response = await api.timesheets.getEntries(params) as any;
+                if (Array.isArray(response?.entries)) return response.entries;
+                if (Array.isArray(response)) return response;
+                return [];
+            } catch {
+                return [];
+            }
         },
         staleTime: 1000 * 60 * 5, // 5 minutes
+        retry: false,
     });
 };

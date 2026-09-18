@@ -1,10 +1,22 @@
 import { Storage } from '@google-cloud/storage';
 import path from 'path';
+import { logger } from '../shared/logger.js';
+
+// Configure Storage options
+const storageOptions = {
+    projectId: process.env.GCP_PROJECT_ID || 'lad-develop',
+};
+
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    storageOptions.keyFilename = path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+} else if (process.env.GCP_KEY_FILE) {
+    storageOptions.keyFilename = path.resolve(process.env.GCP_KEY_FILE);
+}
 
 // Instantiate the GCP storage client
-const storage = new Storage();
+const storage = new Storage(storageOptions);
 
-// Change this to your preferred bucket name
+// Target bucket name
 const BUCKET_NAME = process.env.GCP_BUCKET_NAME || 'pulse-documents-lad-bucket';
 
 /**
@@ -36,7 +48,7 @@ export async function uploadFileToGCS(buffer, originalName, mimetype, folder = '
 
         return `https://storage.googleapis.com/${BUCKET_NAME}/${destination}`;
     } catch (error) {
-        console.error('[gcp.storage] Error uploading to GCS:', error);
+        logger.error('[gcp.storage] Error uploading to GCS:', error);
         throw new Error('Failed to upload document to cloud storage: ' + error.message);
     }
 }
@@ -62,7 +74,7 @@ export async function deleteFileFromGCS(fileUrl) {
 
         return false;
     } catch (error) {
-        console.error('[gcp.storage] Error deleting from GCS:', error);
+        logger.error('[gcp.storage] Error deleting from GCS:', error);
         return false;
     }
 }
@@ -72,14 +84,23 @@ export async function deleteFileFromGCS(fileUrl) {
  * @param {string} fileUrl - Full URL to the file
  * @returns {import('@google-cloud/storage').File} A GCS File object from which .createReadStream() can be called
  */
-export function getFileFromGCS(fileUrl) {
+export function getFileFromGCS(fileUrlOrPath) {
     const bucket = storage.bucket(BUCKET_NAME);
-    const urlPattern = new RegExp(`https://storage.googleapis.com/${BUCKET_NAME}/(.+)`);
-    const match = fileUrl.match(urlPattern);
-
-    if (match && match[1]) {
-        const filePath = match[1];
-        return bucket.file(filePath);
+    if (!fileUrlOrPath) {
+        throw new Error('Invalid GCS file path');
     }
-    throw new Error('Invalid GCS URL');
+
+    if (fileUrlOrPath.startsWith('http://') || fileUrlOrPath.startsWith('https://')) {
+        const urlPattern = new RegExp(`https?://storage\\.googleapis\\.com/${BUCKET_NAME}/(.+)`);
+        const match = fileUrlOrPath.match(urlPattern);
+        if (match && match[1]) {
+            return bucket.file(match[1]);
+        }
+    } else {
+        // Direct relative path in bucket (e.g. 'task-board/xyz.png')
+        const cleanPath = fileUrlOrPath.replace(/^\/+/, '');
+        return bucket.file(cleanPath);
+    }
+
+    throw new Error('Invalid GCS URL or path: ' + fileUrlOrPath);
 }

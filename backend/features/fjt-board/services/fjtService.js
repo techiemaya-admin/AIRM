@@ -6,6 +6,12 @@ function formatRawData(comments, existingRawData = {}) {
   let result = {};
   if (existingRawData && typeof existingRawData === 'object' && !Array.isArray(existingRawData)) {
     result = { ...existingRawData };
+    // Clear out any old comment keys so deleted comments are removed
+    Object.keys(result).forEach((k) => {
+      if (/^comment\s*\d+/i.test(k)) {
+        delete result[k];
+      }
+    });
   }
 
   let commentList = [];
@@ -24,6 +30,7 @@ function formatRawData(comments, existingRawData = {}) {
   result.comments = commentList;
   return result;
 }
+
 
 export class FjtService {
   static async getBoardData(schema) {

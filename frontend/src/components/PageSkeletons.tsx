@@ -115,61 +115,95 @@ export const TimeClockSkeleton = () => (
   <div className="min-h-screen bg-background p-4 md:p-8">
     <div className="mx-auto max-w-6xl space-y-6">
       {/* Title */}
-      <div className="flex items-center justify-between mb-6">
-        <Skeleton className="h-8 w-44 bg-gray-200 rounded-lg" />
-        <Skeleton className="h-8 w-32 bg-gray-100 rounded-full" />
+      <div className="mb-6">
+        <Skeleton className="h-8 w-36 bg-gray-200 rounded-lg" />
       </div>
 
-      {/* 2-Column Grid */}
+      {/* Top 2-Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Left: Clock In / Active Session Card */}
-        <Card className="h-[460px] border border-gray-200 flex flex-col justify-between p-6">
-          <div className="space-y-5">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-6 w-6 rounded-full bg-blue-100" />
-              <Skeleton className="h-6 w-36 bg-gray-200 rounded" />
+        {/* Left: Clock In Card */}
+        <Card className="h-[460px] border border-gray-200 rounded-xl p-6 flex flex-col justify-between shadow-2xs">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2">
+              <Skeleton className="h-5 w-5 rounded-full bg-blue-100" />
+              <Skeleton className="h-5 w-24 bg-gray-200 rounded" />
             </div>
-            <div className="space-y-3">
+
+            {/* Field 1: Project */}
+            <div className="space-y-2">
               <Skeleton className="h-4 w-28 bg-gray-200 rounded" />
-              <Skeleton className="h-11 w-full bg-gray-100 rounded-lg" />
+              <Skeleton className="h-10 w-full bg-gray-100 rounded-md border border-gray-200" />
             </div>
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-36 bg-gray-200 rounded" />
-              <Skeleton className="h-11 w-full bg-gray-100 rounded-lg" />
+
+            {/* Field 2: Story / Task / Bug */}
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-44 bg-gray-200 rounded" />
+              <Skeleton className="h-10 w-full bg-gray-100 rounded-md border border-gray-200" />
             </div>
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-20 bg-gray-200 rounded" />
-              <Skeleton className="h-16 w-full bg-gray-100 rounded-lg" />
+
+            {/* Field 3: Notes */}
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-28 bg-gray-200 rounded" />
+              <Skeleton className="h-10 w-full bg-gray-100 rounded-md border border-gray-200" />
             </div>
           </div>
-          <Skeleton className="h-12 w-full bg-blue-100/60 rounded-xl mt-4" />
+
+          <Skeleton className="h-11 w-full bg-[#0B1957]/30 rounded-lg mt-4" />
         </Card>
 
-        {/* Right: Analytics / Chart Card */}
-        <Card className="h-[460px] border border-gray-200 p-6 flex flex-col justify-between">
-          <div className="flex justify-between items-center mb-4">
-            <Skeleton className="h-6 w-48 bg-gray-200 rounded" />
-            <Skeleton className="h-8 w-28 bg-gray-100 rounded-full" />
+        {/* Right: Recent Time Entries Card */}
+        <Card className="h-[460px] border border-gray-200 rounded-xl p-6 flex flex-col shadow-2xs">
+          <div className="pb-3 mb-2 border-b border-gray-100">
+            <Skeleton className="h-5 w-40 bg-gray-200 rounded" />
           </div>
-          <div className="flex-1 flex items-end gap-3 pb-4 pt-8">
-            {[40, 65, 80, 50, 90, 75, 85, 60, 95, 70, 80, 60].map((h, i) => (
-              <Skeleton key={i} className="flex-1 rounded-t-md bg-gray-100" style={{ height: `${h}%` }} />
+
+          <div className="space-y-3 overflow-hidden flex-1">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="p-3.5 border border-gray-200 rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="w-2 h-2 rounded-full bg-green-200" />
+                    <Skeleton className="h-4 w-36 bg-gray-300 rounded" />
+                  </div>
+                  <Skeleton className="h-4 w-14 bg-gray-100 rounded" />
+                </div>
+                <div className="flex items-center gap-1.5 ml-4">
+                  <Skeleton className="h-3 w-3 bg-blue-100 rounded" />
+                  <Skeleton className="h-3.5 w-48 bg-blue-100 rounded" />
+                </div>
+                <Skeleton className="h-3 w-32 bg-gray-100 rounded ml-4" />
+              </div>
             ))}
           </div>
-          <div className="flex justify-between pt-2 border-t border-gray-100">
-            <Skeleton className="h-4 w-16 bg-gray-100 rounded" />
-            <Skeleton className="h-4 w-16 bg-gray-100 rounded" />
-          </div>
         </Card>
       </div>
 
-      {/* Bottom: Recent Entries Table */}
-      <Card className="border border-gray-200 p-6 space-y-4">
-        <div className="flex justify-between items-center mb-2">
-          <Skeleton className="h-6 w-48 bg-gray-200 rounded" />
-          <Skeleton className="h-6 w-24 bg-gray-100 rounded-full" />
+      {/* Bottom: Stories & Tasks/Bugs Tracker Card */}
+      <Card className="border border-gray-200 rounded-xl p-6 shadow-2xs space-y-4">
+        <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-5 bg-gray-200 rounded" />
+            <Skeleton className="h-5 w-56 bg-gray-200 rounded" />
+          </div>
+          <Skeleton className="h-8 w-28 bg-gray-100 rounded-full" />
         </div>
-        <TableSkeleton rows={5} cols={6} />
+
+        <Skeleton className="h-4 w-44 bg-gray-100 rounded" />
+
+        {/* Chart representation */}
+        <div className="h-64 w-full flex flex-col justify-between py-4 border-b border-gray-100 relative">
+          <div className="space-y-8 w-full">
+            <Skeleton className="h-0.5 w-full bg-gray-100" />
+            <Skeleton className="h-0.5 w-full bg-gray-100" />
+            <Skeleton className="h-0.5 w-full bg-gray-100" />
+            <Skeleton className="h-0.5 w-full bg-gray-100" />
+          </div>
+          <div className="flex justify-between pt-4">
+            {[...Array(8)].map((_, i) => (
+              <Skeleton key={i} className="h-3 w-8 bg-gray-100 rounded" />
+            ))}
+          </div>
+        </div>
       </Card>
     </div>
   </div>
@@ -206,39 +240,93 @@ export const TimesheetSkeleton = () => (
 );
 
 export const TaskBoardSkeleton = () => (
-  <div className="min-h-screen bg-background p-4 md:p-8">
-    <div className="mx-auto max-w-7xl space-y-6">
-      {/* Top Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-8 w-44 bg-gray-200 rounded-lg" />
-          <Skeleton className="h-8 w-32 bg-gray-100 rounded-lg" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-36 bg-gray-100 rounded-lg" />
-          <Skeleton className="h-9 w-32 bg-blue-100/70 rounded-lg" />
+  <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
+    <div className="mx-auto max-w-7xl space-y-5">
+      {/* Top Header & Tab Navigation */}
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-40 bg-gray-200 rounded-lg" />
+
+        {/* Sub-tabs: Board, Backlog, Timeline, Reports */}
+        <div className="flex items-center gap-6 border-b border-gray-200 pb-2">
+          <Skeleton className="h-6 w-16 bg-[#0B1957]/30 rounded" />
+          <Skeleton className="h-5 w-16 bg-gray-100 rounded" />
+          <Skeleton className="h-5 w-16 bg-gray-100 rounded" />
+          <Skeleton className="h-5 w-16 bg-gray-100 rounded" />
         </div>
       </div>
 
-      {/* Kanban Columns (4 Columns) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {['To Do', 'In Progress', 'In Review', 'Done'].map((col, idx) => (
-          <div key={idx} className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3 min-h-[500px]">
-            <div className="flex justify-between items-center pb-2 border-b border-gray-200">
-              <Skeleton className="h-5 w-24 bg-gray-200 rounded" />
-              <Skeleton className="h-5 w-6 rounded-full bg-gray-200" />
+      {/* Top Action & Project Breadcrumb Row */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4 bg-gray-200 rounded" />
+          <Skeleton className="h-5 w-44 bg-gray-200 rounded" />
+        </div>
+        <Skeleton className="h-9 w-32 bg-[#0B1957]/40 rounded-lg" />
+      </div>
+
+      {/* Filter Bar Controls */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 pb-2">
+        <Skeleton className="h-9 w-44 sm:w-56 bg-gray-100 rounded-lg border border-gray-200" />
+        <Skeleton className="h-9 w-24 bg-gray-100 rounded-lg border border-gray-200" />
+        <Skeleton className="h-9 w-24 bg-gray-100 rounded-lg border border-gray-200" />
+        <Skeleton className="h-9 w-24 bg-gray-100 rounded-lg border border-gray-200" />
+        <Skeleton className="h-9 w-28 bg-gray-100 rounded-lg border border-gray-200" />
+        <Skeleton className="h-9 w-32 bg-gray-100 rounded-lg border border-gray-200" />
+        <Skeleton className="h-9 w-28 bg-gray-100 rounded-lg border border-gray-200" />
+        <Skeleton className="h-9 w-32 bg-gray-100 rounded-lg border border-gray-200" />
+      </div>
+
+      {/* Exactly 3 Kanban Columns: TO DO, IN PROGRESS, DONE */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+        {[
+          { titleWidth: 'w-16', count: '13' },
+          { titleWidth: 'w-24', count: '16' },
+          { titleWidth: 'w-16', count: '34' },
+        ].map((col, idx) => (
+          <div
+            key={idx}
+            className="bg-gray-50/70 border border-gray-200/80 rounded-2xl p-3 sm:p-4 space-y-3 min-h-[560px]"
+          >
+            {/* Column Header */}
+            <div className="flex items-center gap-2 pb-2">
+              <Skeleton className={`h-5 ${col.titleWidth} bg-gray-300/80 rounded-md`} />
+              <Skeleton className="h-5 w-7 bg-gray-200 rounded-full" />
             </div>
+
+            {/* Column Issue Cards */}
             {[...Array(3)].map((_, cIdx) => (
-              <div key={cIdx} className="bg-white border border-gray-200 rounded-lg p-3 space-y-2 shadow-xs">
-                <div className="flex justify-between items-center">
-                  <Skeleton className="h-4 w-16 bg-blue-100 rounded" />
-                  <Skeleton className="h-4 w-12 bg-gray-100 rounded" />
+              <div
+                key={cIdx}
+                className="bg-white border border-gray-200 rounded-xl p-3.5 sm:p-4 space-y-3 shadow-2xs"
+              >
+                {/* Issue Title */}
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-5/6 bg-gray-300 rounded" />
+                  {cIdx === 1 && <Skeleton className="h-4 w-3/5 bg-gray-200 rounded" />}
                 </div>
-                <Skeleton className="h-4 w-full bg-gray-200/80 rounded" />
-                <Skeleton className="h-4 w-3/4 bg-gray-100 rounded" />
-                <div className="flex justify-between items-center pt-2">
-                  <Skeleton className="h-6 w-6 rounded-full bg-gray-200" />
-                  <Skeleton className="h-4 w-10 bg-gray-100 rounded" />
+
+                {/* Epic & Tag Pill */}
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-20 bg-orange-100/70 border border-orange-200/60 rounded" />
+                  {cIdx === 0 && <Skeleton className="h-5 w-16 bg-blue-50 border border-blue-200/60 rounded" />}
+                </div>
+
+                {/* Type Icon + Key on Left, Assignee Avatar on Right */}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <Skeleton className="h-4 w-4 bg-emerald-100 rounded" />
+                    <Skeleton className="h-4 w-24 bg-gray-200 rounded" />
+                  </div>
+                  <Skeleton className="h-6 w-6 rounded-full bg-blue-900/20" />
+                </div>
+
+                {/* Time Spent Bottom Row */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <Skeleton className="h-3.5 w-3.5 rounded-full bg-gray-200" />
+                    <Skeleton className="h-3 w-24 bg-gray-200 rounded" />
+                  </div>
+                  <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200" />
                 </div>
               </div>
             ))}

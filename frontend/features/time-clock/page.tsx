@@ -103,7 +103,25 @@ const TimeClock = () => {
     return [];
   }, [fjtBoardData]);
 
-  // Dynamic Stories, Tasks, and Bugs for the selected project (only To Do & In Progress)
+  // Resolve current logged-in user context
+  const currentUserObj = useMemo(() => {
+    let localUser: any = null;
+    try {
+      const raw = localStorage.getItem('user');
+      if (raw) localUser = JSON.parse(raw);
+    } catch {}
+    const u = user || localUser;
+    const name = (u?.full_name || u?.name || u?.email?.split('@')[0] || '').trim();
+    return {
+      id: String(u?.id || u?.user_id || '').trim().toLowerCase(),
+      name: name.toLowerCase(),
+      full_name: (u?.full_name || u?.name || name).trim().toLowerCase(),
+      email: (u?.email || '').trim().toLowerCase(),
+      username: (u?.username || u?.email?.split('@')[0] || name.toLowerCase().replace(/[^a-zA-Z0-9_-]/g, '-')).trim().toLowerCase(),
+    };
+  }, [user]);
+
+  // Dynamic Stories, Tasks, and Bugs for the selected project (only user's assigned issues in To Do & In Progress)
   const availableTopics = useMemo<TopicOption[]>(() => {
     if (!selectedProjectId) return [];
 
@@ -115,10 +133,64 @@ const TimeClock = () => {
         const isTopicType = i.type === 'story' || i.type === 'task' || i.type === 'bug';
         if (!isTopicType) return false;
 
-        const statusLower = String(i.status || '').toLowerCase();
-        const isActionable = statusLower === 'to_do' || statusLower === 'in_progress' || (statusLower !== 'done' && statusLower !== 'completed' && statusLower !== 'closed');
+        // 1. Status Filter: Only To Do & In Progress (Strictly exclude Done, Completed, Closed)
+        const statusClean = String(i.status || '').toLowerCase().replace(/[\s_-]/g, '');
+        const isActionable = statusClean === 'todo' || statusClean === 'inprogress';
         if (!isActionable) return false;
 
+        // 2. Assignee Filter: Only show issues assigned to current logged-in user
+        let isAssignedToMe = false;
+
+        // Match assignees array
+        if (Array.isArray(i.assignees) && i.assignees.length > 0) {
+          isAssignedToMe = i.assignees.some((a: any) => {
+            if (!a) return false;
+            const aName = (a.name || '').trim().toLowerCase();
+            const aEmail = (a.email || '').trim().toLowerCase();
+            const aId = String(a.id || '').trim().toLowerCase();
+            if (currentUserObj.id && aId && currentUserObj.id === aId) return true;
+            if (currentUserObj.email && aEmail && currentUserObj.email === aEmail) return true;
+            if (currentUserObj.name && aName && (aName.includes(currentUserObj.name) || currentUserObj.name.includes(aName))) return true;
+            if (currentUserObj.full_name && aName && (aName.includes(currentUserObj.full_name) || currentUserObj.full_name.includes(aName))) return true;
+            if (currentUserObj.username && aName && aName.includes(currentUserObj.username)) return true;
+            return false;
+          });
+        }
+
+        // Match single assignee object
+        if (!isAssignedToMe && i.assignee) {
+          const a = i.assignee;
+          const aName = (a.name || '').trim().toLowerCase();
+          const aEmail = (a.email || '').trim().toLowerCase();
+          const aId = String(a.id || '').trim().toLowerCase();
+          if (currentUserObj.id && aId && currentUserObj.id === aId) isAssignedToMe = true;
+          else if (currentUserObj.email && aEmail && currentUserObj.email === aEmail) isAssignedToMe = true;
+          else if (currentUserObj.name && aName && (aName.includes(currentUserObj.name) || currentUserObj.name.includes(aName))) isAssignedToMe = true;
+          else if (currentUserObj.full_name && aName && (aName.includes(currentUserObj.full_name) || currentUserObj.full_name.includes(aName))) isAssignedToMe = true;
+          else if (currentUserObj.username && aName && aName.includes(currentUserObj.username)) isAssignedToMe = true;
+        }
+
+        // Match assigneeName / assigneeId / assigned_to
+        if (!isAssignedToMe) {
+          if (i.assigneeId && currentUserObj.id && String(i.assigneeId).toLowerCase() === currentUserObj.id) {
+            isAssignedToMe = true;
+          } else if (i.assigneeName) {
+            const aName = String(i.assigneeName).trim().toLowerCase();
+            if (currentUserObj.name && (aName.includes(currentUserObj.name) || currentUserObj.name.includes(aName))) {
+              isAssignedToMe = true;
+            } else if (currentUserObj.full_name && (aName.includes(currentUserObj.full_name) || currentUserObj.full_name.includes(aName))) {
+              isAssignedToMe = true;
+            }
+          } else if (i.assignee_id && currentUserObj.id && String(i.assignee_id).toLowerCase() === currentUserObj.id) {
+            isAssignedToMe = true;
+          } else if (i.assigned_to && currentUserObj.id && String(i.assigned_to).toLowerCase() === currentUserObj.id) {
+            isAssignedToMe = true;
+          }
+        }
+
+        if (!isAssignedToMe) return false;
+
+        // 3. Project Filter
         if (selectedProject) {
           if (i.projectId && (i.projectId === selectedProject.id || i.projectId === selectedProjectId)) {
             return true;
@@ -147,7 +219,7 @@ const TimeClock = () => {
         type: i.type as 'story' | 'task' | 'bug',
         status: i.status || 'to_do',
       }));
-  }, [selectedProjectId, fjtBoardData, projectsList]);
+  }, [selectedProjectId, fjtBoardData, projectsList, currentUserObj]);
 
   // Auto-refresh entries when timesheetClockOut event occurs
   useEffect(() => {
@@ -587,7 +659,7 @@ const TimeClock = () => {
                               !selectedProjectId
                                 ? "Select a project first..."
                                 : availableTopics.length === 0
-                                ? "No To Do or In Progress topics in this project"
+                                ? "No To Do or In Progress tasks assigned to you in this project"
                                 : "Select a story, task, or bug..."
                             }
                           />
@@ -595,7 +667,7 @@ const TimeClock = () => {
                         <SelectContent className="bg-white max-h-72 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)]">
                           {availableTopics.length === 0 ? (
                             <div className="py-3 px-4 text-xs text-gray-500 text-center">
-                              No To Do or In Progress topics in this project
+                              No To Do or In Progress tasks assigned to you in this project
                             </div>
                           ) : (
                             availableTopics.map((item) => {

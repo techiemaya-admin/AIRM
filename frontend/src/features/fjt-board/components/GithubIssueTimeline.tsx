@@ -17,9 +17,8 @@ import {
   Check,
   Pencil,
   Trash2,
-  CornerDownRight,
-  Sparkles,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -29,7 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { FjtComment, FjtMember } from '@/sdk/features/fjt-board';
+import { FjtComment, FjtMember, fjtBoardApi } from '@/sdk/features/fjt-board';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useUsers } from '@/hooks/useUsers';
 
@@ -62,6 +61,8 @@ export function formatGithubTimestamp(isoString?: string): string {
   }
 }
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 // In-memory + LocalStorage cache for attachments/images
 const ASSET_STORAGE_PREFIX = 'airm_asset_';
 const memoryAssetCache = new Map<string, string>();
@@ -83,6 +84,15 @@ export const resolveLocalAsset = (url: string): string => {
       return stored;
     }
   } catch {}
+
+  // If URL is from Google Cloud Storage, proxy it through our backend media streaming endpoint
+  if (url.includes('storage.googleapis.com')) {
+    const match = url.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
+    if (match && match[1]) {
+      return `${API_BASE}/api/fjt-board/media/${match[1]}`;
+    }
+  }
+
   return url;
 };
 
@@ -572,6 +582,7 @@ export const MarkdownEditorBox: React.FC<MarkdownEditorBoxProps> = ({
     });
   };
 
+  // Upload image or document to GCP bucket via backend and insert markdown syntax
   const processFiles = async (files: FileList | File[]) => {
     const fileList = Array.from(files);
     if (fileList.length === 0) return;
@@ -579,25 +590,28 @@ export const MarkdownEditorBox: React.FC<MarkdownEditorBoxProps> = ({
     setIsUploading(true);
 
     for (const file of fileList) {
-      if (file.type.startsWith('image/')) {
-        const base64 = await fileToBase64(file);
-        const assetId = `${Math.random().toString(36).substring(2, 10)}-${Date.now().toString(36)}`;
-        const cleanUrl = `https://airm.assets/images/${assetId}.png`;
-        saveLocalAsset(cleanUrl, base64);
-        const imageMarkdown = `\n![${file.name || 'image.png'}](${cleanUrl})\n`;
-        insertText(imageMarkdown, '', '');
-      } else {
-        const base64 = await fileToBase64(file);
-        const assetId = `${Math.random().toString(36).substring(2, 10)}-${Date.now().toString(36)}`;
-        const cleanUrl = `https://airm.assets/files/${assetId}/${encodeURIComponent(file.name)}`;
-        saveLocalAsset(cleanUrl, base64);
-        const fileMarkdown = `\n[📎 ${file.name}](${cleanUrl})\n`;
-        insertText(fileMarkdown, '', '');
+      try {
+        const uploadResult = await fjtBoardApi.uploadAttachment(file);
+        const gcsUrl = uploadResult.url;
+        const cleanName = file.name || 'image.png';
+
+        if (file.type.startsWith('image/')) {
+          const imageMarkdown = `\n![${cleanName}](${gcsUrl})\n`;
+          insertText(imageMarkdown, '', '');
+        } else {
+          const fileMarkdown = `\n[📎 ${cleanName}](${gcsUrl})\n`;
+          insertText(fileMarkdown, '', '');
+        }
+      } catch (error: any) {
+        toast({
+          title: 'Upload failed',
+          description: error.message || 'Could not upload file to Google Cloud Storage',
+          variant: 'destructive',
+        });
       }
     }
 
     setIsUploading(false);
-    toast({ title: 'File attached to markdown' });
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -899,6 +913,29 @@ export const MarkdownEditorBox: React.FC<MarkdownEditorBoxProps> = ({
 
             <span className="w-[1px] h-3.5 bg-gray-300 mx-1" />
 
+            {/* Insert Image */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-1 hover:bg-gray-200 rounded text-gray-700"
+              title="Insert Image (PNG, JPG, GIF)"
+              disabled={isUploading}
+            >
+              {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <ImageIcon className="h-3.5 w-3.5" />}
+            </button>
+
+            {/* Attach File */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-1 hover:bg-gray-200 rounded text-gray-700"
+              title="Attach files (images, documents)"
+              disabled={isUploading}
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+            </button>
+
+            {/* Mention */}
             <button
               type="button"
               onClick={() => {
@@ -1006,12 +1043,38 @@ export const MarkdownEditorBox: React.FC<MarkdownEditorBoxProps> = ({
             </div>
           )}
 
-          {/* Bottom Markdown info */}
+          {/* Hidden File Input for Image / Attachment Upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf,.doc,.docx,.txt"
+            multiple
+            onChange={(e) => e.target.files && processFiles(e.target.files)}
+            className="hidden"
+          />
+
+          {/* Bottom Markdown info & File upload trigger */}
           <div className="px-3 py-1.5 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
             <span className="flex items-center gap-1 font-medium text-gray-600">
               <span className="font-bold border border-gray-300 rounded px-1 py-0.2 text-[9px] bg-gray-100">M↓</span>
               Markdown is supported
             </span>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 text-gray-600 hover:text-blue-600 font-medium cursor-pointer transition-colors"
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+              ) : (
+                <ImageIcon className="h-3.5 w-3.5 text-gray-400" />
+              )}
+              <span>
+                {isUploading ? 'Uploading to storage...' : 'Paste, drop, or click to add files'}
+              </span>
+            </button>
           </div>
         </div>
       ) : (
