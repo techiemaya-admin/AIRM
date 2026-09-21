@@ -653,7 +653,7 @@ const TimeClock = () => {
                         value={selectedTopicId}
                         onValueChange={(val) => setSelectedTopicId(val)}
                       >
-                        <SelectTrigger className="w-full text-sm font-medium border-gray-300 focus:border-[#0B1957] focus:ring-[#0B1957]/20 bg-white disabled:opacity-50 disabled:bg-gray-50">
+                        <SelectTrigger className="w-full text-sm font-medium border-gray-300 focus:border-[#0B1957] focus:ring-[#0B1957]/20 bg-white disabled:opacity-50 disabled:bg-gray-50 min-h-10 h-auto py-2.5 sm:h-10 sm:py-2 [&>span]:text-left [&>span]:block [&>span]:w-full [&>span]:overflow-visible [&>svg]:shrink-0">
                           <SelectValue
                             placeholder={
                               !selectedProjectId

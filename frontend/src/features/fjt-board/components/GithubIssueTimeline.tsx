@@ -834,7 +834,7 @@ export const MarkdownEditorBox: React.FC<MarkdownEditorBoxProps> = ({
   return (
     <div className="rounded-md border border-gray-300 bg-white shadow-xs relative">
       {/* Header Tabs: Write & Preview + Markdown Toolbar */}
-      <div className="bg-[#f6f8fa] border-b border-gray-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 rounded-t-md">
+      <div className="bg-[#f6f8fa] border-b border-gray-200 px-3 py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 rounded-t-md">
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -862,7 +862,7 @@ export const MarkdownEditorBox: React.FC<MarkdownEditorBoxProps> = ({
 
         {/* Toolbar */}
         {activeTab === 'write' && (
-          <div className="flex items-center gap-0.5 text-gray-600 flex-wrap">
+          <div className="flex items-center gap-0.5 text-gray-600 overflow-x-auto max-w-full pb-0.5 sm:pb-0 sm:flex-wrap sm:overflow-visible no-scrollbar">
             <DropdownMenu>
               <DropdownMenuTrigger className="p-1 hover:bg-gray-200 rounded text-gray-700">
                 <Heading className="h-3.5 w-3.5" />
@@ -1261,7 +1261,7 @@ export const GithubIssueTimeline: React.FC<GithubIssueTimelineProps> = ({
         <div className="absolute left-3.5 top-3.5 bottom-[-16px] w-[2px] bg-gray-200 z-0" />
 
         {/* User avatar on the left */}
-        <div className="absolute left-0 top-0 w-7 h-7 rounded-full bg-[#0B1957] text-white flex items-center justify-center text-[10px] font-bold ring-4 ring-white z-10 shadow-2xs">
+        <div className="absolute left-0 top-1.5 sm:top-1 w-7 h-7 rounded-full bg-[#0B1957] text-white flex items-center justify-center text-[10px] font-bold ring-4 ring-white z-10 shadow-2xs">
           {author.initials || author.name.slice(0, 2).toUpperCase()}
         </div>
 
@@ -1285,33 +1285,40 @@ export const GithubIssueTimeline: React.FC<GithubIssueTimelineProps> = ({
           /* SAVED/VIEW MODE: GitHub Issue Description Card */
           <div className="rounded-md border border-gray-300 bg-white overflow-hidden shadow-2xs">
             {/* Header */}
-            <div className="bg-[#f6f8fa] px-3.5 py-1.5 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="font-bold text-gray-900">{author.name}</span>
-                <span className="text-gray-500">
-                  commented {formatGithubTimestamp(createdAt)}
-                </span>
+            <div className="bg-[#f6f8fa] px-3.5 py-1.5 sm:py-1.5 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 text-xs min-w-0">
+                  <span className="font-bold text-gray-900 truncate">{author.name}</span>
+                  <span className="hidden sm:inline text-gray-500 text-xs">
+                    commented {formatGithubTimestamp(createdAt)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <span className="text-[10px] font-semibold border border-gray-300 text-gray-600 px-2 py-0.5 rounded-full bg-white">
+                    Author
+                  </span>
+
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDescDraft(description);
+                        setIsEditingDesc(true);
+                      }}
+                      className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 px-2 py-0.5 rounded hover:bg-gray-200/80 transition-colors"
+                      title="Edit description"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      <span>Edit</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold border border-gray-300 text-gray-600 px-2 py-0.5 rounded-full bg-white">
-                  Author
-                </span>
-
-                {!readOnly && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDescDraft(description);
-                      setIsEditingDesc(true);
-                    }}
-                    className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 px-2 py-0.5 rounded hover:bg-gray-200/80 transition-colors"
-                    title="Edit description"
-                  >
-                    <Pencil className="h-3 w-3" />
-                    <span>Edit</span>
-                  </button>
-                )}
+              {/* Mobile timestamp placed cleanly below author */}
+              <div className="sm:hidden text-gray-500 text-[11px] mt-0.5">
+                commented {formatGithubTimestamp(createdAt)}
               </div>
             </div>
 
@@ -1349,7 +1356,7 @@ export const GithubIssueTimeline: React.FC<GithubIssueTimelineProps> = ({
             <div className="absolute left-3.5 top-3.5 bottom-[-16px] w-[2px] bg-gray-200 z-0" />
 
             {/* User Avatar */}
-            <div className="absolute left-0 top-0 w-7 h-7 rounded-full bg-[#0B1957] text-white flex items-center justify-center text-[10px] font-bold ring-4 ring-white z-10 shadow-2xs">
+            <div className="absolute left-0 top-1.5 sm:top-1 w-7 h-7 rounded-full bg-[#0B1957] text-white flex items-center justify-center text-[10px] font-bold ring-4 ring-white z-10 shadow-2xs">
               {comment.authorInitials || comment.authorName.slice(0, 2).toUpperCase()}
             </div>
 
@@ -1367,42 +1374,49 @@ export const GithubIssueTimeline: React.FC<GithubIssueTimelineProps> = ({
               /* Saved Comment Card */
               <div className="rounded-md border border-gray-300 bg-white overflow-hidden shadow-2xs">
                 {/* Header */}
-                <div className="bg-[#f6f8fa] px-3.5 py-1.5 border-b border-gray-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-bold text-gray-900">{comment.authorName}</span>
-                    <span className="text-gray-500">
-                      commented {formatGithubTimestamp(comment.createdAt)}
-                    </span>
-                  </div>
+                <div className="bg-[#f6f8fa] px-3.5 py-1.5 sm:py-1.5 border-b border-gray-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 text-xs min-w-0">
+                      <span className="font-bold text-gray-900 truncate">{comment.authorName}</span>
+                      <span className="hidden sm:inline text-gray-500 text-xs">
+                        commented {formatGithubTimestamp(comment.createdAt)}
+                      </span>
+                    </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold border border-gray-300 text-gray-600 px-2 py-0.5 rounded-full bg-white">
-                      Collaborator
-                    </span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                      <span className="text-[10px] font-semibold border border-gray-300 text-gray-600 px-2 py-0.5 rounded-full bg-white">
+                        Collaborator
+                      </span>
 
-                    {!readOnly && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditComment(comment)}
-                          className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 px-2 py-0.5 rounded hover:bg-gray-200/80 transition-colors"
-                          title="Edit comment"
-                        >
-                          <Pencil className="h-3 w-3" />
-                          <span>Edit</span>
-                        </button>
-                        {onDeleteComment && (
+                      {!readOnly && (
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => onDeleteComment(comment.id)}
-                            className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
-                            title="Delete comment"
+                            onClick={() => handleStartEditComment(comment)}
+                            className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 px-2 py-0.5 rounded hover:bg-gray-200/80 transition-colors"
+                            title="Edit comment"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Pencil className="h-3 w-3" />
+                            <span>Edit</span>
                           </button>
-                        )}
-                      </div>
-                    )}
+                          {onDeleteComment && (
+                            <button
+                              type="button"
+                              onClick={() => onDeleteComment(comment.id)}
+                              className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                              title="Delete comment"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mobile timestamp placed cleanly below author */}
+                  <div className="sm:hidden text-gray-500 text-[11px] mt-0.5">
+                    commented {formatGithubTimestamp(comment.createdAt)}
                   </div>
                 </div>
 
@@ -1436,12 +1450,12 @@ export const GithubIssueTimeline: React.FC<GithubIssueTimelineProps> = ({
       {!readOnly && onAddComment && (
         <div className="relative pl-8 pt-1">
           {/* User Avatar */}
-          <div className="absolute left-0 top-2 w-7 h-7 rounded-full bg-[#0B1957] text-white flex items-center justify-center text-[10px] font-bold ring-4 ring-white z-10 shadow-2xs">
+          <div className="absolute left-0 top-0.5 w-7 h-7 rounded-full bg-[#0B1957] text-white flex items-center justify-center text-[10px] font-bold ring-4 ring-white z-10 shadow-2xs">
             {activeUser.initials}
           </div>
 
-          <div className="space-y-1">
-            <div className="text-xs font-bold text-gray-800 flex items-center gap-2">
+          <div className="space-y-1.5">
+            <div className="text-xs font-bold text-gray-800 flex items-center h-6">
               <span>Add a comment</span>
             </div>
 
