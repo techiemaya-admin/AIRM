@@ -530,13 +530,13 @@ const Profiles = ({ onlyCurrentUser = false }: ProfilesProps) => {
         filtered = filtered.filter(p => p.role === filterRole);
       }
 
-      // Status filter (simplified - using role or join_date)
+      // Status filter - logic mirrors getProfileStatus() exactly
       if (filterStatus !== "all") {
         filtered = filtered.filter(p => {
-          if (filterStatus === "active") return p.role !== "ex-employee";
-          if (filterStatus === "onboarding") return !p.join_date || new Date(p.join_date) > new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-          if (filterStatus === "ex-employee") return p.role === "ex-employee";
-          return true;
+          if (p.role === 'ex-employee') return filterStatus === 'ex-employee';
+          const isOnboarding = !p.join_date || new Date(p.join_date) > new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+          if (isOnboarding) return filterStatus === 'onboarding';
+          return filterStatus === 'active';
         });
       }
 
