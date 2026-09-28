@@ -38,7 +38,7 @@ import { TaskBoardSkeleton } from '@/components/PageSkeletons';
 export const BacklogView: React.FC = () => {
   const { data: boardData, isLoading } = useFjtBoardData();
   const deleteMutation = useDeleteFjtIssue();
-  const { data: dbUsers = [] } = useUsers();
+  const { data: dbUsers = [] } = useUsers({ includeExEmployees: true });
   const { data: currentUser } = useCurrentUser();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +95,7 @@ export const BacklogView: React.FC = () => {
 
   const availableMembers = useMemo(() => {
     if (dbUsers && dbUsers.length > 0) {
-      return dbUsers.map((u: any) => {
+      const mapped = dbUsers.map((u: any) => {
         const name = u.full_name || u.name || u.email.split('@')[0];
         const email = u.email || '';
         const username = u.username || (email ? email.split('@')[0] : '') || name.toLowerCase().replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -116,10 +116,18 @@ export const BacklogView: React.FC = () => {
           initials,
         };
       });
+      // Active employees first (A→Z), then ex-employees (A→Z)
+      return mapped.sort((a: any, b: any) => {
+        const aIsEx = a.role === 'ex-employee';
+        const bIsEx = b.role === 'ex-employee';
+        if (aIsEx !== bIsEx) return aIsEx ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      });
     }
 
     return [];
   }, [dbUsers]);
+
 
   const selectedMentionMember = useMemo(() => {
     if (!selectedMentionFilter || selectedMentionFilter === 'all' || selectedMentionFilter === 'any') return null;
@@ -498,10 +506,13 @@ export const BacklogView: React.FC = () => {
                 {availableMembers.map((m) => (
                   <SelectItem key={m.id || m.name} value={m.id || m.name}>
                     <div className="flex items-center gap-2 py-0.5">
-                      <div className="w-5 h-5 rounded-full bg-[#0B1957] text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0">
+                      <div className={`w-5 h-5 rounded-full ${m.role === 'ex-employee' ? 'bg-gray-400' : 'bg-[#0B1957]'} text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0`}>
                         {m.initials}
                       </div>
                       <span className="font-medium text-gray-900">{m.name}</span>
+                      {m.role === 'ex-employee' && (
+                        <span className="text-[9px] text-gray-400 font-normal ml-1">(Ex)</span>
+                      )}
                     </div>
                   </SelectItem>
                 ))}

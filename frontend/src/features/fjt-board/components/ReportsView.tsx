@@ -20,7 +20,7 @@ import { TaskBoardSkeleton } from '@/components/PageSkeletons';
 
 export const ReportsView: React.FC = () => {
   const { data: boardData, isLoading } = useFjtBoardData();
-  const { data: dbUsers } = useUsers();
+  const { data: dbUsers } = useUsers({ includeExEmployees: true });
 
   const [searchMember, setSearchMember] = useState('');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
