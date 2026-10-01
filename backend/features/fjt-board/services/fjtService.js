@@ -1,4 +1,6 @@
 import { FjtRepository } from '../repositories/fjtRepository.js';
+import { sendTeamsNotification } from './teamsNotificationService.js';
+import pool from '../../../shared/database/connection.js';
 
 const isValidUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
@@ -31,6 +33,391 @@ function formatRawData(comments, existingRawData = {}) {
   return result;
 }
 
+// --------------------------------------------------
+// Teams @Mention Notifications
+// --------------------------------------------------
+
+function extractMentionsFromText(text) {
+  if (!text || typeof text !== 'string') {
+    return [];
+  }
+
+  const regex = /@([a-zA-Z0-9_.-]+|\[[^\]]+\])/g;
+  const mentions = [];
+
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    const raw = match[1];
+
+    if (raw) {
+      mentions.push(
+        raw.replace(/^\[|\]$/g, '').trim()
+      );
+    }
+  }
+
+  return mentions;
+}
+
+function normalizeMention(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/^@+/, '')
+    .replace(/^\[|\]$/g, '')
+    .replace(/[\s._-]+/g, '');
+}
+
+function getNewMentionsFromComments(
+  oldComments = [],
+  newComments = []
+) {
+  const oldMentionsByComment = new Map();
+
+  for (const comment of oldComments) {
+    const commentId = String(comment?.id || '');
+
+    if (!commentId) {
+      continue;
+    }
+
+    const mentions = extractMentionsFromText(
+      comment?.content || ''
+    ).map(normalizeMention);
+
+    oldMentionsByComment.set(
+      commentId,
+      new Set(mentions)
+    );
+  }
+
+  const newMentions = [];
+
+  for (const comment of newComments) {
+    const commentId = String(comment?.id || '');
+
+    const oldMentions =
+      commentId
+        ? oldMentionsByComment.get(commentId) || new Set()
+        : new Set();
+
+    const currentMentions =
+      extractMentionsFromText(
+        comment?.content || ''
+      ).map(normalizeMention);
+
+    for (const mention of currentMentions) {
+      if (!oldMentions.has(mention)) {
+        newMentions.push(mention);
+      }
+    }
+  }
+
+  return [...new Set(newMentions)];
+}
+
+function getMentionTexts(description, comments) {
+  const texts = [];
+
+  if (typeof description === 'string') {
+    texts.push(description);
+  }
+
+  if (Array.isArray(comments)) {
+    comments.forEach((comment) => {
+      if (typeof comment === 'string') {
+        texts.push(comment);
+      } else if (comment?.content) {
+        texts.push(comment.content);
+      }
+    });
+  }
+
+  return texts;
+}
+
+async function getMentionedUserEmails(
+  schema,
+  description,
+  comments
+) {
+  try {
+    const texts = getMentionTexts(
+      description,
+      comments
+    );
+
+    const mentions = [
+      ...new Set(
+        texts.flatMap((text) =>
+          extractMentionsFromText(text)
+        )
+      ),
+    ];
+
+    if (mentions.length === 0) {
+      return [];
+    }
+
+    console.log(
+      '[TeamsMention] Mentions detected:',
+      mentions
+    );
+
+    const normalizedMentions =
+      new Set(
+        mentions.map(normalizeMention)
+      );
+
+    const query = `
+      SELECT
+        id,
+        email,
+        full_name
+      FROM ${schema}.users
+      WHERE email IS NOT NULL
+    `;
+
+    const result =
+      await pool.query(query);
+
+    const matchedUsers = [];
+
+    for (const user of result.rows) {
+      const email =
+        user.email || '';
+
+      const fullName =
+        user.full_name || '';
+
+      const emailUsername =
+        email.split('@')[0];
+
+      const aliases = [
+        emailUsername,
+        fullName,
+        email,
+      ]
+        .filter(Boolean)
+        .map(normalizeMention);
+
+      const isMentioned =
+        aliases.some((alias) =>
+          normalizedMentions.has(alias)
+        );
+
+      if (
+        isMentioned &&
+        email.toLowerCase().endsWith(
+          '@techiemaya.com'
+        )
+      ) {
+        matchedUsers.push({
+          id: user.id,
+          email,
+          fullName,
+        });
+      }
+    }
+
+    console.log(
+      '[TeamsMention] Matched users:',
+      matchedUsers
+    );
+
+    return matchedUsers;
+  } catch (error) {
+    console.error(
+      '[TeamsMention] Failed to resolve mentioned users:',
+      error
+    );
+
+    return [];
+  }
+}
+
+async function getUsersByMentionNames(schema, mentions) {
+  try {
+    if (!Array.isArray(mentions) || mentions.length === 0) {
+      return [];
+    }
+
+    const normalizedMentions = new Set(
+      mentions.map(normalizeMention)
+    );
+
+    const query = `
+      SELECT
+        id,
+        email,
+        full_name
+      FROM ${schema}.users
+      WHERE email IS NOT NULL
+    `;
+
+    const result = await pool.query(query);
+
+    const matchedUsers = [];
+
+    for (const user of result.rows) {
+      const email = user.email || '';
+      const fullName = user.full_name || '';
+      const emailUsername = email.split('@')[0];
+
+      if (
+        !email.toLowerCase().endsWith('@techiemaya.com')
+      ) {
+        continue;
+      }
+
+      const aliases = [
+        emailUsername,
+        fullName,
+        email,
+      ]
+        .filter(Boolean)
+        .map(normalizeMention);
+
+      const isMentioned = aliases.some((alias) =>
+        normalizedMentions.has(alias)
+      );
+
+      if (isMentioned) {
+        matchedUsers.push({
+          id: user.id,
+          email,
+          fullName,
+        });
+      }
+    }
+
+    console.log(
+      '[TeamsMention] Matched new mention users:',
+      matchedUsers
+    );
+
+    return matchedUsers;
+  } catch (error) {
+    console.error(
+      '[TeamsMention] Failed to resolve new mention users:',
+      error
+    );
+
+    return [];
+  }
+}
+
+async function sendAssignmentNotifications({
+  assignees = [],
+  taskId,
+  taskTitle,
+  taskKey,
+  assignedBy,
+  dueDate,
+}) {
+  const notifiedEmails = new Set();
+
+  for (const assignee of assignees) {
+    const email = assignee?.email;
+
+    if (!email) {
+      continue;
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    if (notifiedEmails.has(normalizedEmail)) {
+      continue;
+    }
+
+    notifiedEmails.add(normalizedEmail);
+
+    try {
+      await sendTeamsNotification({
+        userEmail: email,
+        taskId,
+        taskTitle,
+        taskKey,
+        assignedBy,
+        dueDate,
+        message: `You have been assigned a new task: ${taskTitle} [${taskKey}]`,
+      });
+
+      console.log(
+        '[TeamsAssignment] Notification sent to:',
+        email
+      );
+    } catch (error) {
+      console.error(
+        `[TeamsAssignment] Failed to notify ${email}:`,
+        error
+      );
+    }
+  }
+}
+
+async function sendMentionNotifications({
+  schema,
+  description,
+  comments,
+  mentionNames,
+  taskId,
+  taskTitle,
+  taskKey,
+  assignedBy,
+  dueDate,
+}) {
+  const mentionedUsers =
+    Array.isArray(mentionNames)
+      ? await getUsersByMentionNames(
+          schema,
+          mentionNames
+        )
+      : await getMentionedUserEmails(
+          schema,
+          description,
+          comments
+        );
+
+  if (mentionedUsers.length === 0) {
+    console.log(
+      '[TeamsMention] No TechieMaya users matched in mentions.'
+    );
+
+    return;
+  }
+
+  for (const user of mentionedUsers) {
+    console.log(
+      '[TeamsMention] Sending notification to:',
+      user.email
+    );
+
+    try {
+      const result =
+        await sendTeamsNotification({
+          userEmail: user.email,
+          taskId,
+          taskTitle,
+          taskKey,
+          assignedBy,
+          dueDate,
+          message: `You were mentioned in task: ${taskTitle} [${taskKey}]`,
+        });
+
+      console.log(
+        '[TeamsMention] Notification response:',
+        user.email,
+        result
+      );
+    } catch (error) {
+      console.error(
+        `[TeamsMention] Failed to notify ${user.email}:`,
+        error
+      );
+    }
+  }
+}
 
 export class FjtService {
   static async getBoardData(schema) {
@@ -44,7 +431,7 @@ export class FjtService {
     const formattedIssues = issues.map(i => {
       const empName = i.user_full_name || i.assignee_name || (i.user_email ? i.user_email.split('@')[0] : null);
       const empInitials = i.assignee_initials || (empName ? empName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U');
-      
+
       const assigneeObj = (i.user_id || empName) ? {
         id: String(i.user_id || i.assignee_id || ''),
         name: empName || 'Unassigned',
@@ -194,7 +581,7 @@ export class FjtService {
     const projectName = data.projectName || data.project_name || 'Free Jira Training (FJT)';
     const type = data.type || 'task';
     const key = data.key || await FjtRepository.getNextIssueKey(schema, projectKey, type);
-    
+
     const assignees = Array.isArray(data.assignees) ? data.assignees : (data.assignee ? [data.assignee] : []);
     const assignee = assignees[0] || data.assignee;
     const assigneeName = assignees.length > 0 ? assignees.map(a => a.name || a.full_name).join(', ') : (assignee?.name !== undefined ? assignee.name : (typeof assignee === 'string' ? assignee : data.assigneeName));
@@ -248,14 +635,126 @@ export class FjtService {
     };
 
     const row = await FjtRepository.createIssue(schema, payload);
+
+    // Send Teams notification to the assigned user
+    await sendAssignmentNotifications({
+      assignees,
+      taskId: row.id,
+      taskTitle: row.summary,
+      taskKey: row.key,
+      assignedBy:
+        data.reporterName ||
+        data.reporter_name ||
+        'Pulse',
+      dueDate: row.end_date,
+    });
+
+    // Send Teams notifications to users mentioned
+    // in the task description/comments
+    await sendMentionNotifications({
+      schema,
+      description: data.description,
+      comments: data.comments,
+      taskId: row.id,
+      taskTitle: row.summary,
+      taskKey: row.key,
+      assignedBy:
+        data.reporterName ||
+        data.reporter_name ||
+        'Pulse',
+      dueDate: row.end_date,
+    });
+
     return row;
   }
 
   static async updateIssue(schema, id, data) {
+    const existingIssue = await FjtRepository.getIssueById(
+      schema,
+      id
+    );
+
+    let previousComments = [];
+
+    if (existingIssue?.raw_data) {
+      let existingRawData = existingIssue.raw_data;
+
+      if (typeof existingRawData === 'string') {
+        try {
+          existingRawData = JSON.parse(existingRawData);
+        } catch {
+          existingRawData = {};
+        }
+      }
+
+      if (Array.isArray(existingRawData?.comments)) {
+        previousComments = existingRawData.comments;
+      }
+    }
+
+    const previousAssignees = (() => {
+      let rawData = existingIssue?.raw_data;
+
+      if (typeof rawData === 'string') {
+        try {
+          rawData = JSON.parse(rawData);
+        } catch {
+          rawData = {};
+        }
+      }
+
+      if (Array.isArray(rawData?.assignees)) {
+        return rawData.assignees;
+      }
+
+      if (existingIssue?.assignee_id) {
+        return [{
+          id: existingIssue.assignee_id,
+          email: existingIssue.assignee_email,
+          name: existingIssue.assignee_name,
+        }];
+      }
+
+      return [];
+    })();
+
     const hasAssigneesArray = data.assignees !== undefined;
     const assignees = hasAssigneesArray ? (Array.isArray(data.assignees) ? data.assignees : []) : undefined;
     const assignee = hasAssigneesArray ? (assignees && assignees[0] ? assignees[0] : null) : data.assignee;
-    
+
+    const newAssignees = hasAssigneesArray
+      ? assignees.filter((currentAssignee) => {
+          const currentId = String(
+            currentAssignee?.id ||
+            currentAssignee?.user_id ||
+            ''
+          );
+
+          const currentEmail =
+            currentAssignee?.email?.toLowerCase() || '';
+
+          return !previousAssignees.some((previousAssignee) => {
+            const previousId = String(
+              previousAssignee?.id ||
+              previousAssignee?.user_id ||
+              ''
+            );
+
+            const previousEmail =
+              previousAssignee?.email?.toLowerCase() || '';
+
+            return (
+              (currentId &&
+                previousId &&
+                currentId === previousId) ||
+              (currentEmail &&
+                previousEmail &&
+                currentEmail === previousEmail)
+            );
+          });
+        })
+      : [];
+
     let assigneeName;
     if (hasAssigneesArray) {
       assigneeName = assignees && assignees.length > 0 ? assignees.map(a => a.name || a.full_name).join(', ') : null;
@@ -274,9 +773,52 @@ export class FjtService {
     const assigneeId = rawAssigneeId === null || rawAssigneeId === '' ? null : (isValidUuid(rawAssigneeId) ? rawAssigneeId : undefined);
 
     let rawData = data.raw_data !== undefined ? data.raw_data : undefined;
+
+    let newComments = [];
+
     if (data.comments !== undefined) {
-      rawData = formatRawData(data.comments, rawData || {});
+      newComments = Array.isArray(data.comments)
+        ? data.comments
+        : [];
+
+      rawData = formatRawData(
+        newComments,
+        rawData || {}
+      );
     }
+
+    const newCommentMentions =
+      data.comments !== undefined
+        ? getNewMentionsFromComments(
+            previousComments,
+            newComments
+          )
+        : [];
+
+    const oldDescriptionMentions =
+      extractMentionsFromText(
+        existingIssue?.description || ''
+      ).map(normalizeMention);
+
+    const newDescriptionMentions =
+      data.description !== undefined
+        ? extractMentionsFromText(
+            data.description || ''
+          ).map(normalizeMention)
+        : [];
+
+    const newDescriptionMentionsOnly =
+      newDescriptionMentions.filter(
+        (mention) =>
+          !oldDescriptionMentions.includes(mention)
+      );
+
+    const newMentionNames = [
+      ...new Set([
+        ...newCommentMentions,
+        ...newDescriptionMentionsOnly,
+      ]),
+    ];
     if (data.assignees !== undefined) {
       rawData = { ...(rawData || {}), assignees: Array.isArray(data.assignees) ? data.assignees : [] };
     }
@@ -315,7 +857,44 @@ export class FjtService {
       raw_data: rawData
     };
 
-    return await FjtRepository.updateIssue(schema, id, payload);
+    const row = await FjtRepository.updateIssue(
+      schema,
+      id,
+      payload
+    );
+
+    if (newAssignees.length > 0) {
+      await sendAssignmentNotifications({
+        assignees: newAssignees,
+        taskId: row.id,
+        taskTitle: row.summary,
+        taskKey: row.key,
+        assignedBy:
+          data.reporterName ||
+          data.reporter_name ||
+          'Pulse',
+        dueDate: row.end_date,
+      });
+    }
+
+    // Send Teams notifications to users mentioned
+    // in the updated description/comments
+    await sendMentionNotifications({
+      schema,
+      description: data.description,
+      comments: data.comments,
+      mentionNames: newMentionNames,
+      taskId: id,
+      taskTitle: row.summary,
+      taskKey: row.key,
+      assignedBy:
+        data.reporterName ||
+        data.reporter_name ||
+        'Pulse',
+      dueDate: data.endDate || null,
+    });
+
+    return row;
   }
 
   static async deleteIssue(schema, id) {

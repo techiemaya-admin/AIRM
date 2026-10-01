@@ -159,6 +159,22 @@ export class FjtRepository {
     return res.rows;
   }
 
+  static async getIssueById(schema, id) {
+    const s = this.resolveSchema(schema);
+
+    const query = `
+      SELECT *
+      FROM ${s}.fjt_issues
+      WHERE id = $1
+        AND is_deleted = false
+      LIMIT 1;
+    `;
+
+    const res = await pool.query(query, [id]);
+
+    return res.rows[0] || null;
+  }
+
   static async createIssue(schema, data) {
     const s = this.resolveSchema(schema);
     const query = `
