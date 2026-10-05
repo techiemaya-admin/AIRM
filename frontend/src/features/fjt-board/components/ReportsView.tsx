@@ -95,6 +95,7 @@ export const ReportsView: React.FC = () => {
 
       const totalPoints = assigned.reduce((sum, i) => sum + (i.storyPoints || 0), 0);
       const donePoints = doneList.reduce((sum, i) => sum + (i.storyPoints || 0), 0);
+      const pendingPoints = totalPoints - donePoints;
 
       const storiesCount = assigned.filter((i) => i.type === 'story').length;
       const tasksCount = assigned.filter((i) => i.type === 'task').length;
@@ -107,26 +108,26 @@ export const ReportsView: React.FC = () => {
         border: 'border-emerald-200',
       };
 
-      if (pendingCount >= 4 || totalPoints >= 15) {
+      if (totalAssigned === 0) {
         loadStatus = {
-          label: 'High Load',
-          color: 'text-amber-700',
-          bg: 'bg-amber-50',
-          border: 'border-amber-200',
+          label: 'Available',
+          color: 'text-gray-500',
+          bg: 'bg-gray-50',
+          border: 'border-gray-200',
         };
-      } else if (pendingCount === 0 && totalAssigned > 0) {
+      } else if (pendingCount === 0) {
         loadStatus = {
           label: 'All Done 🎉',
           color: 'text-blue-700',
           bg: 'bg-blue-50',
           border: 'border-blue-200',
         };
-      } else if (totalAssigned === 0) {
+      } else if (pendingCount >= 4 || pendingPoints >= 15) {
         loadStatus = {
-          label: 'Available',
-          color: 'text-gray-500',
-          bg: 'bg-gray-50',
-          border: 'border-gray-200',
+          label: 'High Load',
+          color: 'text-amber-700',
+          bg: 'bg-amber-50',
+          border: 'border-amber-200',
         };
       }
 

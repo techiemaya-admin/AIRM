@@ -340,7 +340,7 @@ async function sendAssignmentNotifications({
         taskKey,
         assignedBy,
         dueDate,
-        message: `You have been assigned a new task: ${taskTitle} [${taskKey}]`,
+        message: `You have been assigned a new task: [${taskTitle} [${taskKey}]](https://airm-frontend-160078175457.us-central1.run.app/task-board)`,
       });
 
       console.log(
@@ -402,7 +402,7 @@ async function sendMentionNotifications({
           taskKey,
           assignedBy,
           dueDate,
-          message: `You were mentioned in task: ${taskTitle} [${taskKey}]`,
+          message: `You were mentioned in task: [${taskTitle} [${taskKey}]](https://airm-frontend-160078175457.us-central1.run.app/task-board)`,
         });
 
       console.log(
