@@ -1,6 +1,5 @@
 const TEAMS_NOTIFICATION_URL =
-  process.env.TEAMS_NOTIFICATION_URL ||
-  'https://alida-glareless-superornamentally.ngrok-free.dev/api/pulse/notify';
+  `${process.env.TEAMS_BOT_URL}/api/pulse/notify`;
 
 export async function sendTeamsNotification({
   userEmail,
@@ -30,11 +29,13 @@ export async function sendTeamsNotification({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-pulse-notify-key': process.env.PULSE_NOTIFY_KEY,
         },
         body: JSON.stringify({
           userEmail,
           taskId,
           taskTitle,
+          taskKey,
           assignedBy,
           dueDate,
           message,
@@ -71,4 +72,3 @@ export async function sendTeamsNotification({
     };
   }
 }
-
