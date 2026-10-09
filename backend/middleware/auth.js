@@ -3,6 +3,7 @@
  * Verifies JWT tokens and attaches user to request
  */
 
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import pool from '../shared/database/connection.js';
 
@@ -136,3 +137,24 @@ export const optionalAuth = async (req, res, next) => {
   }
 };
 
+
+/**
+ * A signed-in user, or a trusted service presenting AIRM_SERVICE_TOKEN as its
+ * bearer token (Mr LAD Debug Assist reads the board and writes task progress
+ * this way — a user JWT would expire under it). The service token is compared
+ * in constant time and only accepted when AIRM_SERVICE_TOKEN is set.
+ */
+export const authenticateUserOrService = async (req, res, next) => {
+  const serviceToken = process.env.AIRM_SERVICE_TOKEN;
+  const authHeader = req.headers.authorization || '';
+  if (serviceToken && authHeader.startsWith('Bearer ')) {
+    const given = Buffer.from(authHeader.substring(7));
+    const expected = Buffer.from(serviceToken);
+    if (given.length === expected.length && crypto.timingSafeEqual(given, expected)) {
+      req.user = { id: null, email: 'service@airm', full_name: 'Service', service: true };
+      req.userId = null;
+      return next();
+    }
+  }
+  return authenticate(req, res, next);
+};
