@@ -1,20 +1,20 @@
 import express from 'express';
 import { FjtController } from '../controllers/fjtController.js';
-import { optionalAuth } from '../../../middleware/auth.js';
+import { authenticate, authenticateUserOrService, requireAdmin } from '../../../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/board', optionalAuth, FjtController.getBoard);
-router.post('/issues', optionalAuth, FjtController.createIssue);
-router.put('/issues/:id', optionalAuth, FjtController.updateIssue);
-router.delete('/issues/:id', optionalAuth, FjtController.deleteIssue);
+router.get('/board', authenticateUserOrService, FjtController.getBoard);
+router.post('/issues', authenticate, FjtController.createIssue);
+router.put('/issues/:id', authenticateUserOrService, FjtController.updateIssue);
+router.delete('/issues/:id', authenticate, FjtController.deleteIssue);
 
-router.post('/epics', optionalAuth, FjtController.createEpic);
-router.put('/epics/:id', optionalAuth, FjtController.updateEpic);
+router.post('/epics', authenticate, FjtController.createEpic);
+router.put('/epics/:id', authenticate, FjtController.updateEpic);
 
-router.post('/sprints', optionalAuth, FjtController.createSprint);
-router.put('/sprints/:id', optionalAuth, FjtController.updateSprint);
+router.post('/sprints', authenticate, FjtController.createSprint);
+router.put('/sprints/:id', authenticate, FjtController.updateSprint);
 
-router.post('/projects', optionalAuth, FjtController.createProject);
+router.post('/projects', authenticate, FjtController.createProject);
 
 export default router;
