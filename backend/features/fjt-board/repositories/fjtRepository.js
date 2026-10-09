@@ -197,8 +197,9 @@ export class FjtRepository {
   /**
    * Appends one comment under a row lock, so two writers commenting at the same
    * moment both land (PUT /issues/:id replaces the whole list and can lose one).
-   * `build(existingRawData)` returns the new raw_data; it runs inside the lock.
-   * Returns { previousComments, rawData } or null when the issue is missing.
+   * `build(rawData, row)` returns the new raw_data; it runs inside the lock and
+   * gets raw_data as stored (parsed, any shape) plus the row's author/time
+   * columns for legacy comments. Returns { rawData } or null when missing.
    */
   static async appendComment(schema, id, build) {
     const s = this.resolveSchema(schema);
@@ -206,26 +207,26 @@ export class FjtRepository {
     try {
       await client.query('BEGIN');
       const cur = await client.query(
-        `SELECT raw_data FROM ${s}.fjt_issues WHERE id = $1 AND is_deleted = false FOR UPDATE`,
+        `SELECT raw_data, assignee_name, assignee_initials, created_at, updated_at
+           FROM ${s}.fjt_issues WHERE id = $1 AND is_deleted = false FOR UPDATE`,
         [id],
       );
       if (!cur.rows.length) {
         await client.query('ROLLBACK');
         return null;
       }
-      let existing = cur.rows[0].raw_data;
+      const row = cur.rows[0];
+      let existing = row.raw_data;
       if (typeof existing === 'string') {
         try { existing = JSON.parse(existing); } catch { existing = {}; }
       }
-      if (!existing || typeof existing !== 'object' || Array.isArray(existing)) existing = {};
-      const previousComments = Array.isArray(existing.comments) ? existing.comments : [];
-      const rawData = build(existing, previousComments);
+      const rawData = build(existing, row);
       await client.query(
         `UPDATE ${s}.fjt_issues SET raw_data = $2::jsonb, updated_at = NOW() WHERE id = $1`,
         [id, JSON.stringify(rawData)],
       );
       await client.query('COMMIT');
-      return { previousComments, rawData };
+      return { rawData };
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
       throw err;
