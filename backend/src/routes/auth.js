@@ -323,10 +323,18 @@ router.post('/verify-magic-link', [
 });
 
 /**
- * Test login - Development only
+ * Test login - local development only
  * POST /api/auth/test-login
+ *
+ * Issues a real login token for any email WITHOUT a password, so it must never
+ * exist on a deployed service. It is only registered when ENABLE_TEST_LOGIN is
+ * exactly 'true' and NODE_ENV is not 'production'; everywhere else the route
+ * does not exist (404).
  */
-router.post('/test-login', [
+const testLoginEnabled =
+  process.env.ENABLE_TEST_LOGIN === 'true' && process.env.NODE_ENV !== 'production';
+
+if (testLoginEnabled) router.post('/test-login', [
   body('email').isEmail(),
 ], async (req, res) => {
   try {
