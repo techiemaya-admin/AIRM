@@ -420,6 +420,27 @@ async function sendMentionNotifications({
 }
 
 /**
+ * The comments an issue shows, from raw_data in any of the shapes it has been
+ * stored in: a `comments` array (current), raw_data itself as an array (old),
+ * or only "comment 1", "comment 2", … keys (oldest). Everything that reads or
+ * appends comments goes through here, so nothing the board shows is dropped.
+ * `row` supplies the defaults the legacy keys lack (author, time).
+ */
+function readComments(rawData, row = {}) {
+  if (Array.isArray(rawData)) return rawData;
+  if (!rawData || typeof rawData !== 'object') return [];
+  if (Array.isArray(rawData.comments)) return rawData.comments;
+  const keys = Object.keys(rawData).filter(k => /^comment\s*\d+/i.test(k)).sort();
+  return keys.map((k, idx) => ({
+    id: `comment-${idx + 1}`,
+    authorName: row.assignee_name || 'User',
+    authorInitials: row.assignee_initials || 'U',
+    content: typeof rawData[k] === 'string' ? rawData[k] : (rawData[k]?.content || JSON.stringify(rawData[k])),
+    createdAt: row.updated_at || row.created_at
+  }));
+}
+
+/**
  * One issue row (FjtRepository.issueSelect) in the shape the board, the
  * filtered list and the single-issue read all return.
  */
@@ -447,24 +468,7 @@ function formatIssue(i) {
     rawData = {};
   }
 
-  // Parse comments from raw_data
-  let issueComments = [];
-  if (Array.isArray(rawData.comments)) {
-    issueComments = rawData.comments;
-  } else if (Array.isArray(rawData)) {
-    issueComments = rawData;
-  } else {
-    const keys = Object.keys(rawData).filter(k => /^comment\s*\d+/i.test(k)).sort();
-    if (keys.length > 0) {
-      issueComments = keys.map((k, idx) => ({
-        id: `comment-${idx + 1}`,
-        authorName: i.assignee_name || 'User',
-        authorInitials: i.assignee_initials || 'U',
-        content: typeof rawData[k] === 'string' ? rawData[k] : (rawData[k]?.content || JSON.stringify(rawData[k])),
-        createdAt: i.updated_at || i.created_at
-      }));
-    }
-  }
+  const issueComments = readComments(rawData, i);
 
   let assigneesList = [];
   if (Array.isArray(rawData.assignees) && rawData.assignees.length > 0) {
@@ -932,12 +936,17 @@ export class FjtService {
       content,
       createdAt: new Date().toISOString(),
     };
-    const out = await FjtRepository.appendComment(schema, id, (existing, previous) =>
-      formatRawData([...previous, comment], existing));
+    let previousComments = [];
+    const out = await FjtRepository.appendComment(schema, id, (rawData, row) => {
+      previousComments = readComments(rawData, row);
+      // An old array-shaped raw_data becomes { comments: [...] } here.
+      const base = rawData && typeof rawData === 'object' && !Array.isArray(rawData) ? rawData : {};
+      return formatRawData([...previousComments, comment], base);
+    });
     if (!out) return null;
 
     const issue = await FjtService.getIssue(schema, id);
-    const newMentionNames = getNewMentionsFromComments(out.previousComments, out.rawData.comments);
+    const newMentionNames = getNewMentionsFromComments(previousComments, out.rawData.comments);
     if (newMentionNames.length) {
       await sendMentionNotifications({
         schema,
