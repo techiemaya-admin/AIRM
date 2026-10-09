@@ -125,9 +125,10 @@ export class FjtRepository {
   }
 
   // --- ISSUES (Matched with erp.users, epics, stories, tasks) ---
-  static async getIssues(schema) {
-    const s = this.resolveSchema(schema);
-    const query = `
+  // One SELECT for every issue read, so the board, the filtered list and the
+  // single-issue read return identical rows (and identical formatting).
+  static issueSelect(s, where = 'i.is_deleted = false') {
+    return `
       SELECT 
         i.id, i.numeric_id, i.key, i.project_key, i.project_name, i.type,
         i.summary, i.description, i.status, i.priority, i.story_points,
@@ -152,11 +153,85 @@ export class FjtRepository {
       LEFT JOIN ${s}.fjt_issues lt ON i.linked_task_id = lt.id
       LEFT JOIN ${s}.users u ON i.assignee_id = u.id
       LEFT JOIN ${s}.users r ON i.reporter_id = r.id
-      WHERE i.is_deleted = false
-      ORDER BY i.created_at ASC;
-    `;
-    const res = await pool.query(query);
+      WHERE ${where}
+      ORDER BY i.created_at ASC`;
+  }
+
+  static async getIssues(schema) {
+    const s = this.resolveSchema(schema);
+    const res = await pool.query(this.issueSelect(s));
     return res.rows;
+  }
+
+  /**
+   * Issues assigned to `assigneeEmail` (case-insensitive), optionally limited to
+   * `statuses`. "Assigned" means what the board shows: the primary assignee
+   * (assignee_id → users.email) or any entry in raw_data.assignees.
+   */
+  static async getIssuesByAssignee(schema, assigneeEmail, statuses = null) {
+    const s = this.resolveSchema(schema);
+    const params = [String(assigneeEmail || '').toLowerCase().trim()];
+    let where = `i.is_deleted = false AND (
+        LOWER(u.email) = $1
+        OR EXISTS (
+          SELECT 1 FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(i.raw_data->'assignees') = 'array' THEN i.raw_data->'assignees' ELSE '[]'::jsonb END
+          ) a
+          WHERE LOWER(a->>'email') = $1
+        )
+      )`;
+    if (Array.isArray(statuses) && statuses.length) {
+      params.push(statuses);
+      where += ` AND i.status = ANY($2::text[])`;
+    }
+    const res = await pool.query(this.issueSelect(s, where), params);
+    return res.rows;
+  }
+
+  static async getIssueRow(schema, id) {
+    const s = this.resolveSchema(schema);
+    const res = await pool.query(this.issueSelect(s, 'i.is_deleted = false AND i.id = $1'), [id]);
+    return res.rows[0] || null;
+  }
+
+  /**
+   * Appends one comment under a row lock, so two writers commenting at the same
+   * moment both land (PUT /issues/:id replaces the whole list and can lose one).
+   * `build(existingRawData)` returns the new raw_data; it runs inside the lock.
+   * Returns { previousComments, rawData } or null when the issue is missing.
+   */
+  static async appendComment(schema, id, build) {
+    const s = this.resolveSchema(schema);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const cur = await client.query(
+        `SELECT raw_data FROM ${s}.fjt_issues WHERE id = $1 AND is_deleted = false FOR UPDATE`,
+        [id],
+      );
+      if (!cur.rows.length) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      let existing = cur.rows[0].raw_data;
+      if (typeof existing === 'string') {
+        try { existing = JSON.parse(existing); } catch { existing = {}; }
+      }
+      if (!existing || typeof existing !== 'object' || Array.isArray(existing)) existing = {};
+      const previousComments = Array.isArray(existing.comments) ? existing.comments : [];
+      const rawData = build(existing, previousComments);
+      await client.query(
+        `UPDATE ${s}.fjt_issues SET raw_data = $2::jsonb, updated_at = NOW() WHERE id = $1`,
+        [id, JSON.stringify(rawData)],
+      );
+      await client.query('COMMIT');
+      return { previousComments, rawData };
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   static async getIssueById(schema, id) {

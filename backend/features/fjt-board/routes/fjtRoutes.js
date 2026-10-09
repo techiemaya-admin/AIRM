@@ -19,6 +19,9 @@ router.post('/upload', authenticate, upload.single('file'), FjtController.upload
 router.get('/media/*', FjtController.getMedia);
 
 router.get('/board', authenticateUserOrService, FjtController.getBoard);
+router.get('/issues', authenticateUserOrService, FjtController.listIssues);
+router.get('/issues/:id', authenticateUserOrService, FjtController.getIssue);
+router.post('/issues/:id/comments', authenticateUserOrService, FjtController.addComment);
 router.post('/issues', authenticate, FjtController.createIssue);
 router.put('/issues/:id', authenticateUserOrService, FjtController.updateIssue);
 router.delete('/issues/:id', authenticate, FjtController.deleteIssue);

@@ -10,8 +10,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export class FjtController {
+  // The schema name is interpolated into SQL, and x-tenant-schema is a request
+  // header, so only a plain identifier is accepted; anything else falls back.
   static getSchema(req) {
-    return req.user?.schema || req.headers['x-tenant-schema'] || 'erp';
+    const candidate = req.user?.schema || req.headers['x-tenant-schema'] || 'erp';
+    return /^[a-z_][a-z0-9_]{0,62}$/i.test(String(candidate)) ? candidate : 'erp';
   }
 
   static async uploadAttachment(req, res) {
@@ -117,6 +120,72 @@ export class FjtController {
       return 'The referenced parent item or project does not exist.';
     }
     return defaultMsg || 'An unexpected error occurred. Please try again.';
+  }
+
+  /**
+   * GET /issues?assignee=<email>&status=to_do,in_progress
+   * `assignee` is required (this is not a second board endpoint); `status` is
+   * an optional comma list of to_do | in_progress | done.
+   */
+  static async listIssues(req, res) {
+    try {
+      const assignee = String(req.query.assignee || '').trim();
+      if (!/^[^\s@]+@[^\s@]+$/.test(assignee)) {
+        return res.status(400).json({ success: false, message: 'assignee (an email address) is required' });
+      }
+      const statuses = req.query.status
+        ? String(req.query.status).split(',').map((v) => v.trim()).filter(Boolean)
+        : null;
+      const allowed = ['to_do', 'in_progress', 'done'];
+      if (statuses && statuses.some((v) => !allowed.includes(v))) {
+        return res.status(400).json({ success: false, message: `status must be one or more of ${allowed.join(', ')}` });
+      }
+      const issues = await FjtService.getIssuesByAssignee(FjtController.getSchema(req), assignee, statuses);
+      res.json({ success: true, data: issues });
+    } catch (error) {
+      logger.error('Error in listIssues:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch issues' });
+    }
+  }
+
+  /** GET /issues/:id */
+  static async getIssue(req, res) {
+    try {
+      const issue = await FjtService.getIssue(FjtController.getSchema(req), req.params.id);
+      if (!issue) return res.status(404).json({ success: false, message: 'Issue not found' });
+      res.json({ success: true, data: issue });
+    } catch (error) {
+      logger.error('Error in getIssue:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch issue' });
+    }
+  }
+
+  /**
+   * POST /issues/:id/comments  { content, authorName? }
+   * A signed-in user comments as themselves; a service (AIRM_SERVICE_TOKEN)
+   * names itself with authorName.
+   */
+  static async addComment(req, res) {
+    try {
+      const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
+      if (!content) return res.status(400).json({ success: false, message: 'content is required' });
+      if (content.length > 10000) return res.status(400).json({ success: false, message: 'content is too long (10,000 characters max)' });
+      const isService = !!req.user?.service;
+      const authorName = isService
+        ? (String(req.body?.authorName || '').trim().slice(0, 100) || 'Service')
+        : (req.user?.full_name || req.user?.email || 'User');
+      const out = await FjtService.addComment(FjtController.getSchema(req), req.params.id, {
+        content,
+        authorName,
+        authorInitials: isService ? String(req.body?.authorInitials || '').trim().slice(0, 3) || undefined : undefined,
+        assignedBy: authorName,
+      });
+      if (!out) return res.status(404).json({ success: false, message: 'Issue not found' });
+      res.status(201).json({ success: true, data: out.comment });
+    } catch (error) {
+      logger.error('Error in addComment:', error);
+      res.status(500).json({ success: false, message: 'Failed to add comment' });
+    }
   }
 
   static async createIssue(req, res) {

@@ -419,6 +419,116 @@ async function sendMentionNotifications({
   }
 }
 
+/**
+ * One issue row (FjtRepository.issueSelect) in the shape the board, the
+ * filtered list and the single-issue read all return.
+ */
+function formatIssue(i) {
+  const empName = i.user_full_name || i.assignee_name || (i.user_email ? i.user_email.split('@')[0] : null);
+  const empInitials = i.assignee_initials || (empName ? empName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U');
+
+  const assigneeObj = (i.user_id || empName) ? {
+    id: String(i.user_id || i.assignee_id || ''),
+    name: empName || 'Unassigned',
+    email: i.user_email || undefined,
+    initials: empInitials
+  } : undefined;
+
+  // Safely parse raw_data
+  let rawData = i.raw_data;
+  if (typeof rawData === 'string') {
+    try {
+      rawData = JSON.parse(rawData);
+    } catch {
+      rawData = {};
+    }
+  }
+  if (!rawData || typeof rawData !== 'object') {
+    rawData = {};
+  }
+
+  // Parse comments from raw_data
+  let issueComments = [];
+  if (Array.isArray(rawData.comments)) {
+    issueComments = rawData.comments;
+  } else if (Array.isArray(rawData)) {
+    issueComments = rawData;
+  } else {
+    const keys = Object.keys(rawData).filter(k => /^comment\s*\d+/i.test(k)).sort();
+    if (keys.length > 0) {
+      issueComments = keys.map((k, idx) => ({
+        id: `comment-${idx + 1}`,
+        authorName: i.assignee_name || 'User',
+        authorInitials: i.assignee_initials || 'U',
+        content: typeof rawData[k] === 'string' ? rawData[k] : (rawData[k]?.content || JSON.stringify(rawData[k])),
+        createdAt: i.updated_at || i.created_at
+      }));
+    }
+  }
+
+  let assigneesList = [];
+  if (Array.isArray(rawData.assignees) && rawData.assignees.length > 0) {
+    assigneesList = rawData.assignees.map(a => ({
+      id: String(a.id || a.user_id || ''),
+      name: a.name || a.full_name || a.email || 'User',
+      email: a.email || '',
+      initials: a.initials || (a.name || a.full_name ? (a.name || a.full_name).split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U')
+    }));
+  } else if (assigneeObj) {
+    assigneesList = [assigneeObj];
+  }
+
+  return {
+    id: i.id,
+    numericId: i.numeric_id,
+    key: i.key,
+    projectKey: i.project_key,
+    projectName: i.project_name,
+    type: i.type,
+    summary: i.summary,
+    description: i.description,
+    descriptionAuthor: rawData.descriptionAuthor || (i.reporter_user_name ? {
+      id: String(i.reporter_user_id || i.reporter_id || ''),
+      name: i.reporter_user_name,
+      email: i.reporter_user_email,
+      role: 'Author',
+      initials: i.reporter_user_name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AU'
+    } : undefined),
+    descriptionCreatedAt: rawData.descriptionCreatedAt || i.updated_at || i.created_at,
+    descriptionSaved: rawData.descriptionSaved !== undefined ? rawData.descriptionSaved : !!(i.description && i.description.trim()),
+    comments: issueComments,
+    raw_data: rawData,
+    status: i.status,
+    priority: i.priority,
+    storyPoints: i.story_points,
+    epicId: i.epic_id,
+    epicKey: i.epic_key,
+    epicName: i.epic_name,
+    epicColor: i.epic_color,
+    storyId: i.story_id,
+    storyKey: i.story_key,
+    storySummary: i.story_summary,
+    linkedTaskId: i.linked_task_id,
+    linkedTaskKey: i.linked_task_key,
+    linkedTaskSummary: i.linked_task_summary,
+    sprintId: i.sprint_id,
+    assigneeId: i.assignee_id || i.user_id,
+    assignee: assigneesList[0] || assigneeObj || null,
+    assignees: assigneesList,
+    reporterId: i.reporter_id,
+    reporter: i.reporter_user_name ? {
+      id: String(i.reporter_user_id || i.reporter_id || ''),
+      name: i.reporter_user_name,
+      email: i.reporter_user_email
+    } : undefined,
+    startDate: i.start_date ? new Date(i.start_date).toISOString().split('T')[0] : undefined,
+    endDate: i.end_date ? new Date(i.end_date).toISOString().split('T')[0] : undefined,
+    labels: typeof i.labels === 'string' ? JSON.parse(i.labels) : (i.labels || []),
+    createdAt: i.created_at,
+    updatedAt: i.updated_at
+  };
+}
+
 export class FjtService {
   static async getBoardData(schema) {
     const [projects, epics, issues] = await Promise.all([
@@ -428,111 +538,7 @@ export class FjtService {
     ]);
 
     // Format issues to match frontend expected structure matched with erp.users
-    const formattedIssues = issues.map(i => {
-      const empName = i.user_full_name || i.assignee_name || (i.user_email ? i.user_email.split('@')[0] : null);
-      const empInitials = i.assignee_initials || (empName ? empName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U');
-
-      const assigneeObj = (i.user_id || empName) ? {
-        id: String(i.user_id || i.assignee_id || ''),
-        name: empName || 'Unassigned',
-        email: i.user_email || undefined,
-        initials: empInitials
-      } : undefined;
-
-      // Safely parse raw_data
-      let rawData = i.raw_data;
-      if (typeof rawData === 'string') {
-        try {
-          rawData = JSON.parse(rawData);
-        } catch {
-          rawData = {};
-        }
-      }
-      if (!rawData || typeof rawData !== 'object') {
-        rawData = {};
-      }
-
-      // Parse comments from raw_data
-      let issueComments = [];
-      if (Array.isArray(rawData.comments)) {
-        issueComments = rawData.comments;
-      } else if (Array.isArray(rawData)) {
-        issueComments = rawData;
-      } else {
-        const keys = Object.keys(rawData).filter(k => /^comment\s*\d+/i.test(k)).sort();
-        if (keys.length > 0) {
-          issueComments = keys.map((k, idx) => ({
-            id: `comment-${idx + 1}`,
-            authorName: i.assignee_name || 'User',
-            authorInitials: i.assignee_initials || 'U',
-            content: typeof rawData[k] === 'string' ? rawData[k] : (rawData[k]?.content || JSON.stringify(rawData[k])),
-            createdAt: i.updated_at || i.created_at
-          }));
-        }
-      }
-
-      let assigneesList = [];
-      if (Array.isArray(rawData.assignees) && rawData.assignees.length > 0) {
-        assigneesList = rawData.assignees.map(a => ({
-          id: String(a.id || a.user_id || ''),
-          name: a.name || a.full_name || a.email || 'User',
-          email: a.email || '',
-          initials: a.initials || (a.name || a.full_name ? (a.name || a.full_name).split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U')
-        }));
-      } else if (assigneeObj) {
-        assigneesList = [assigneeObj];
-      }
-
-      return {
-        id: i.id,
-        numericId: i.numeric_id,
-        key: i.key,
-        projectKey: i.project_key,
-        projectName: i.project_name,
-        type: i.type,
-        summary: i.summary,
-        description: i.description,
-        descriptionAuthor: rawData.descriptionAuthor || (i.reporter_user_name ? {
-          id: String(i.reporter_user_id || i.reporter_id || ''),
-          name: i.reporter_user_name,
-          email: i.reporter_user_email,
-          role: 'Author',
-          initials: i.reporter_user_name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AU'
-        } : undefined),
-        descriptionCreatedAt: rawData.descriptionCreatedAt || i.updated_at || i.created_at,
-        descriptionSaved: rawData.descriptionSaved !== undefined ? rawData.descriptionSaved : !!(i.description && i.description.trim()),
-        comments: issueComments,
-        raw_data: rawData,
-        status: i.status,
-        priority: i.priority,
-        storyPoints: i.story_points,
-        epicId: i.epic_id,
-        epicKey: i.epic_key,
-        epicName: i.epic_name,
-        epicColor: i.epic_color,
-        storyId: i.story_id,
-        storyKey: i.story_key,
-        storySummary: i.story_summary,
-        linkedTaskId: i.linked_task_id,
-        linkedTaskKey: i.linked_task_key,
-        linkedTaskSummary: i.linked_task_summary,
-        sprintId: i.sprint_id,
-        assigneeId: i.assignee_id || i.user_id,
-        assignee: assigneesList[0] || assigneeObj || null,
-        assignees: assigneesList,
-        reporterId: i.reporter_id,
-        reporter: i.reporter_user_name ? {
-          id: String(i.reporter_user_id || i.reporter_id || ''),
-          name: i.reporter_user_name,
-          email: i.reporter_user_email
-        } : undefined,
-        startDate: i.start_date ? new Date(i.start_date).toISOString().split('T')[0] : undefined,
-        endDate: i.end_date ? new Date(i.end_date).toISOString().split('T')[0] : undefined,
-        labels: typeof i.labels === 'string' ? JSON.parse(i.labels) : (i.labels || []),
-        createdAt: i.created_at,
-        updatedAt: i.updated_at
-      };
-    });
+    const formattedIssues = issues.map(formatIssue);
 
     const formattedEpics = epics.map(e => ({
       id: e.id,
@@ -895,6 +901,57 @@ export class FjtService {
     });
 
     return row;
+  }
+
+  /** Issues assigned to `email`; `statuses` (array) limits by status. */
+  static async getIssuesByAssignee(schema, email, statuses = null) {
+    const rows = await FjtRepository.getIssuesByAssignee(schema, email, statuses);
+    return rows.map(formatIssue);
+  }
+
+  static async getIssue(schema, id) {
+    if (!isValidUuid(id)) return null;
+    const row = await FjtRepository.getIssueRow(schema, id);
+    return row ? formatIssue(row) : null;
+  }
+
+  /**
+   * Appends one comment without rewriting the others (see
+   * FjtRepository.appendComment), keeping the "comment N" keys formatRawData
+   * maintains, and sends the same @mention notifications a comment added
+   * through PUT /issues/:id would.
+   */
+  static async addComment(schema, id, { content, authorName, authorInitials, assignedBy }) {
+    if (!isValidUuid(id)) return null;
+    const comment = {
+      id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      authorName: authorName || 'User',
+      authorInitials: authorInitials
+        || String(authorName || 'U').split(' ').filter(Boolean).map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+        || 'U',
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    const out = await FjtRepository.appendComment(schema, id, (existing, previous) =>
+      formatRawData([...previous, comment], existing));
+    if (!out) return null;
+
+    const issue = await FjtService.getIssue(schema, id);
+    const newMentionNames = getNewMentionsFromComments(out.previousComments, out.rawData.comments);
+    if (newMentionNames.length) {
+      await sendMentionNotifications({
+        schema,
+        description: undefined,
+        comments: out.rawData.comments,
+        mentionNames: newMentionNames,
+        taskId: id,
+        taskTitle: issue?.summary,
+        taskKey: issue?.key,
+        assignedBy: assignedBy || authorName || 'Pulse',
+        dueDate: issue?.endDate || null,
+      });
+    }
+    return { comment, issue };
   }
 
   static async deleteIssue(schema, id) {
