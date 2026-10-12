@@ -72,15 +72,49 @@ export const ReportsView: React.FC = () => {
 
     const issues = boardData.issues.filter((i) => i.type === 'story' || i.type === 'task' || i.type === 'bug');
 
-    // Build analysis for each known member
+    // Build analysis for each known member - partition strictly based on user id
     const memberStats = availableMembers.map((member) => {
+      const memberId = String(member.id || '').trim();
+      const memberEmail = member.email ? String(member.email).trim().toLowerCase() : '';
+
       const assigned = issues.filter((i) => {
+        // 1. Direct match on issue-level assigneeId
+        const issueAssigneeId = String(i.assigneeId || (i as any).assignee_id || (i as any).user_id || '').trim();
+        if (memberId && issueAssigneeId && issueAssigneeId === memberId) {
+          return true;
+        }
+
+        // 2. Multi-assignee list check
         if (i.assignees && i.assignees.length > 0) {
-          return i.assignees.some((a) => a.id === member.id || a.name?.toLowerCase() === member.name.toLowerCase() || a.email === member.email);
+          return i.assignees.some((a: any) => {
+            const aId = String(a?.id || a?.user_id || a?.userId || '').trim();
+            // Primary check: user ID match
+            if (aId && memberId) {
+              return aId === memberId;
+            }
+            // Secondary fallback: unique email match only if no ID on assignee
+            const aEmail = a?.email ? String(a.email).trim().toLowerCase() : '';
+            if (!aId && aEmail && memberEmail) {
+              return aEmail === memberEmail;
+            }
+            return false;
+          });
         }
+
+        // 3. Single assignee object check
         if (i.assignee) {
-          return i.assignee.id === member.id || i.assignee.name?.toLowerCase() === member.name.toLowerCase() || i.assignee.email === member.email;
+          const aId = String(i.assignee.id || (i.assignee as any).user_id || (i.assignee as any).userId || '').trim();
+          // Primary check: user ID match
+          if (aId && memberId) {
+            return aId === memberId;
+          }
+          // Secondary fallback: unique email match only if no ID on assignee
+          const aEmail = i.assignee.email ? String(i.assignee.email).trim().toLowerCase() : '';
+          if (!aId && aEmail && memberEmail) {
+            return aEmail === memberEmail;
+          }
         }
+
         return false;
       });
 
@@ -153,7 +187,9 @@ export const ReportsView: React.FC = () => {
     });
 
     // Also track unassigned issues
-    const unassignedIssues = issues.filter((i) => (!i.assignees || i.assignees.length === 0) && !i.assignee);
+    const unassignedIssues = issues.filter(
+      (i) => (!i.assignees || i.assignees.length === 0) && !i.assignee && !i.assigneeId
+    );
     if (unassignedIssues.length > 0) {
       const todoList = unassignedIssues.filter((i) => i.status === 'to_do');
       const inProgressList = unassignedIssues.filter((i) => i.status === 'in_progress');
