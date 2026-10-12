@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { fjtBoardApi } from '@/sdk/features/fjt-board';
 import { Loader2 } from 'lucide-react';
+import { MediaImage, MediaLink } from './SignedMedia';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -473,7 +474,7 @@ export const JiraDescriptionEditor: React.FC<JiraDescriptionEditorProps> = ({
         const resolvedSrc = resolveLocalAsset(imgMatch[2]);
         elements.push(
           <div key={idx} className="my-2 p-1 border rounded-lg bg-gray-50 max-w-lg inline-block shadow-xs">
-            <img
+            <MediaImage
               src={resolvedSrc}
               alt={alt}
               className="max-h-72 rounded object-contain"
@@ -492,7 +493,7 @@ export const JiraDescriptionEditor: React.FC<JiraDescriptionEditorProps> = ({
         const alt = altMatch ? altMatch[1] : '';
         elements.push(
           <div key={idx} className="my-2 p-1 border rounded-lg bg-gray-50 max-w-lg inline-block shadow-xs">
-            <img
+            <MediaImage
               src={resolvedSrc}
               alt={alt}
               className="max-h-72 rounded object-contain"
@@ -510,7 +511,7 @@ export const JiraDescriptionEditor: React.FC<JiraDescriptionEditorProps> = ({
         elements.push(
           <div key={idx} className="my-1.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-100 border text-xs text-blue-600 font-medium">
             <Paperclip className="h-3.5 w-3.5 text-gray-500" />
-            <a href={resolvedHref} download={fileMatch[1]} className="hover:underline">{fileMatch[1]}</a>
+            <MediaLink href={resolvedHref} download={fileMatch[1]} className="hover:underline">{fileMatch[1]}</MediaLink>
           </div>
         );
         return;

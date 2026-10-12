@@ -2,6 +2,7 @@ import { FjtService } from '../services/fjtService.js';
 import { logger } from '../../../shared/logger.js';
 import pool from '../../../shared/database/connection.js';
 import { uploadFileToGCS, getFileFromGCS } from '../../../SDK/storage.js';
+import { taskBoardObjectName, signMediaName } from '../services/mediaAccess.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -43,12 +44,25 @@ export class FjtController {
     }
   }
 
+  /**
+   * POST /media/sign { names: ['task-board/<file>', ...] } → { data: { [name]: { exp, sig } } }
+   * Short-lived links for <img>/<a> on the board; names outside task-board/ are left out.
+   */
+  static signMedia(req, res) {
+    const names = Array.isArray(req.body?.names) ? req.body.names.slice(0, 200) : [];
+    const data = {};
+    for (const raw of names) {
+      const name = taskBoardObjectName(raw);
+      if (name) data[name] = signMediaName(name);
+    }
+    res.json({ success: true, data });
+  }
+
   static async getMedia(req, res) {
     try {
-      // Extract target file path from wildcard or params
-      const filePath = req.params[0] || (req.params.folder && req.params.filename ? `${req.params.folder}/${req.params.filename}` : '');
+      const filePath = taskBoardObjectName(req.params[0]);
       if (!filePath) {
-        return res.status(400).send('File path required');
+        return res.status(404).send('Media not found');
       }
 
       const file = getFileFromGCS(filePath);
@@ -76,7 +90,10 @@ export class FjtController {
         }
       }
 
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache 24h
+      // Private: attachments include customer screenshots, so only the viewer's
+      // own browser may keep a copy (objects never change, hence the 24h).
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
 
       const stream = file.createReadStream();
       stream.on('error', (err) => {
