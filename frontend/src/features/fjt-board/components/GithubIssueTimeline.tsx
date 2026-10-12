@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { MediaImage, MediaLink } from './SignedMedia';
 import { FjtComment, FjtMember, fjtBoardApi } from '@/sdk/features/fjt-board';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useUsers } from '@/hooks/useUsers';
@@ -172,11 +173,11 @@ export function renderMarkdown(content: string, onToggleTask?: (lineIndex: numbe
 
         parts.push(
           <div key={`img-${keyCounter++}`} className="my-2 inline-block max-w-full">
-            <img
+            <MediaImage
               src={src}
               alt={alt}
               className="max-h-72 max-w-full rounded-md border border-gray-200 shadow-xs object-contain cursor-zoom-in hover:brightness-95 transition-all bg-white"
-              onClick={() => window.open(src, '_blank')}
+              onClick={(e) => e.currentTarget.src && window.open(e.currentTarget.src, '_blank', 'noopener,noreferrer')}
             />
             {alt && <span className="block text-[11px] text-gray-400 mt-0.5">{alt}</span>}
           </div>
@@ -194,7 +195,7 @@ export function renderMarkdown(content: string, onToggleTask?: (lineIndex: numbe
         const safeUrl = normalizeMarkdownLink(href);
 
         parts.push(
-          <a
+          <MediaLink
             key={`lnk-${keyCounter++}`}
             href={safeUrl}
             target="_blank"
@@ -202,12 +203,12 @@ export function renderMarkdown(content: string, onToggleTask?: (lineIndex: numbe
             className="text-blue-600 hover:text-blue-800 underline font-medium inline-flex items-center gap-0.5 break-all cursor-pointer transition-colors"
             onClick={(e) => {
               e.stopPropagation();
-              window.open(safeUrl, '_blank', 'noopener,noreferrer');
+              window.open(e.currentTarget.href, '_blank', 'noopener,noreferrer');
             }}
           >
             <span>{label}</span>
             <ExternalLink className="h-2.5 w-2.5 opacity-70 ml-0.5" />
-          </a>
+          </MediaLink>
         );
         remaining = remaining.substring(linkMatch[0].length);
         continue;

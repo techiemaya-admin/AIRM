@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { FjtController } from '../controllers/fjtController.js';
 import { authenticate, authenticateUserOrService, requireAdmin } from '../../../middleware/auth.js';
+import { taskBoardObjectName, verifyMediaSignature } from '../services/mediaAccess.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -15,8 +16,16 @@ const router = express.Router();
 // GCP Storage attachment upload (Images / Documents)
 router.post('/upload', authenticate, upload.single('file'), FjtController.uploadAttachment);
 
-// GCP Storage media stream proxy (secure direct viewing for images)
-router.get('/media/*', FjtController.getMedia);
+// Task-board attachments from the private bucket. Plain <img>/<a> can't send the
+// bearer token, so a signed-in user gets short-lived signed links from
+// /media/sign; /media/* opens with such a signature or the bearer token itself.
+const mediaAccess = (req, res, next) =>
+  (verifyMediaSignature(taskBoardObjectName(req.params[0]), req.query.exp, req.query.sig)
+    ? next()
+    : authenticateUserOrService(req, res, next));
+
+router.post('/media/sign', authenticateUserOrService, FjtController.signMedia);
+router.get('/media/*', mediaAccess, FjtController.getMedia);
 
 router.get('/board', authenticateUserOrService, FjtController.getBoard);
 router.get('/issues', authenticateUserOrService, FjtController.listIssues);
