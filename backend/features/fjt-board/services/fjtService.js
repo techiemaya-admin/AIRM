@@ -307,6 +307,17 @@ async function getUsersByMentionNames(schema, mentions) {
   }
 }
 
+function getTaskBoardIssueUrl(issueIdentifier) {
+  const defaultFrontendUrl = 'https://airm-frontend-160078175457.us-central1.run.app';
+  let frontendBaseUrl = (process.env.FRONTEND_URL || defaultFrontendUrl).replace(/\/+$/, '');
+  if (frontendBaseUrl.includes('kunfx3bnvq')) {
+    frontendBaseUrl = defaultFrontendUrl;
+  }
+  return issueIdentifier
+    ? `${frontendBaseUrl}/task-board/board/${encodeURIComponent(issueIdentifier)}`
+    : `${frontendBaseUrl}/task-board/board`;
+}
+
 async function sendAssignmentNotifications({
   assignees = [],
   taskId,
@@ -332,11 +343,7 @@ async function sendAssignmentNotifications({
 
     notifiedEmails.add(normalizedEmail);
 
-    const frontendBaseUrl = (process.env.FRONTEND_URL || 'https://airm-frontend-160078175457.us-central1.run.app').replace(/\/+$/, '');
-    const issueIdentifier = taskKey || taskId;
-    const taskUrl = issueIdentifier
-      ? `${frontendBaseUrl}/task-board/board/${encodeURIComponent(issueIdentifier)}`
-      : `${frontendBaseUrl}/task-board/board`;
+    const taskUrl = getTaskBoardIssueUrl(taskKey || taskId);
 
     try {
       await sendTeamsNotification({
@@ -400,11 +407,7 @@ async function sendMentionNotifications({
       user.email
     );
 
-    const frontendBaseUrl = (process.env.FRONTEND_URL || 'https://airm-frontend-160078175457.us-central1.run.app').replace(/\/+$/, '');
-    const issueIdentifier = taskKey || taskId;
-    const taskUrl = issueIdentifier
-      ? `${frontendBaseUrl}/task-board/board/${encodeURIComponent(issueIdentifier)}`
-      : `${frontendBaseUrl}/task-board/board`;
+    const taskUrl = getTaskBoardIssueUrl(taskKey || taskId);
 
     try {
       const result =
