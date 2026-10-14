@@ -39,6 +39,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useActiveTimesheet, useAllActiveTimesheets, useTimesheetEntries } from '@/hooks/useTimesheets';
 import { toast } from '@/hooks/use-toast';
 import { TaskBoardSkeleton } from '@/components/PageSkeletons';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export const ActiveBoardView: React.FC = () => {
   const { data: boardData, isLoading } = useFjtBoardData();
@@ -66,6 +67,53 @@ export const ActiveBoardView: React.FC = () => {
   const [timeTrackingIssue, setTimeTrackingIssue] = useState<FjtIssue | null>(null);
   const [draggedIssueId, setDraggedIssueId] = useState<string | null>(null);
   const [mobileStatusTab, setMobileStatusTab] = useState<FjtStatus>('to_do');
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Sync issue modal with URL route /task-board/board/:issueKey
+  useEffect(() => {
+    const cleanPath = location.pathname.replace(/\/+$/, '');
+    const match = cleanPath.match(/^\/task-board\/board\/([^/]+)/);
+    const keyFromUrl = match ? decodeURIComponent(match[1]) : null;
+
+    if (keyFromUrl) {
+      if (!isLoading && boardData?.issues) {
+        const found = boardData.issues.find(
+          (i) =>
+            i.key?.toLowerCase() === keyFromUrl.toLowerCase() ||
+            i.id === keyFromUrl
+        );
+        if (found) {
+          setDetailIssue((prev) => (prev?.id === found.id ? prev : found));
+        } else {
+          navigate('/task-board/board', { replace: true });
+          toast({
+            title: 'Issue not found',
+            description: `Could not find issue with key: ${keyFromUrl}`,
+            variant: 'destructive',
+          });
+        }
+      }
+    } else {
+      setDetailIssue((prev) => (prev ? null : prev));
+    }
+  }, [location.pathname, boardData?.issues, isLoading, navigate]);
+
+  const handleOpenIssueDetail = (issue: FjtIssue) => {
+    setDetailIssue(issue);
+    const issueKey = issue.key || issue.id;
+    if (issueKey) {
+      navigate(`/task-board/board/${encodeURIComponent(issueKey)}`);
+    }
+  };
+
+  const handleCloseIssueDetail = () => {
+    setDetailIssue(null);
+    if (location.pathname.startsWith('/task-board/board/')) {
+      navigate('/task-board/board');
+    }
+  };
 
   const combinedActiveEntries = useMemo(() => {
     const list = Array.isArray(allActiveTimesheets) ? [...allActiveTimesheets] : [];
@@ -808,7 +856,7 @@ export const ActiveBoardView: React.FC = () => {
                           issue={issue}
                           onStatusChange={handleStatusChange}
                           onDelete={(id) => deleteMutation.mutate(id)}
-                          onClick={(item) => setDetailIssue(item)}
+                          onClick={(item) => handleOpenIssueDetail(item)}
                           timeSpent={issueTimeSpentMap[issue.id] || '0h 00m'}
                           onOpenTimeTracking={(item) => setTimeTrackingIssue(item)}
                         />
@@ -859,7 +907,7 @@ export const ActiveBoardView: React.FC = () => {
                           issue={issue}
                           onStatusChange={handleStatusChange}
                           onDelete={(id) => deleteMutation.mutate(id)}
-                          onClick={(item) => setDetailIssue(item)}
+                          onClick={(item) => handleOpenIssueDetail(item)}
                           timeSpent={issueTimeSpentMap[issue.id] || '0h 00m'}
                           onOpenTimeTracking={(item) => setTimeTrackingIssue(item)}
                         />
@@ -900,7 +948,11 @@ export const ActiveBoardView: React.FC = () => {
       <IssueDetailDialog
         issue={detailIssue}
         open={!!detailIssue}
-        onOpenChange={(open) => !open && setDetailIssue(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseIssueDetail();
+          }
+        }}
       />
 
       {/* Time Tracking Analysis Modal */}

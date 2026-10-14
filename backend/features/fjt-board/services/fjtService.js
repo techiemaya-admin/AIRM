@@ -332,15 +332,22 @@ async function sendAssignmentNotifications({
 
     notifiedEmails.add(normalizedEmail);
 
+    const frontendBaseUrl = (process.env.FRONTEND_URL || 'https://airm-frontend-160078175457.us-central1.run.app').replace(/\/+$/, '');
+    const issueIdentifier = taskKey || taskId;
+    const taskUrl = issueIdentifier
+      ? `${frontendBaseUrl}/task-board/board/${encodeURIComponent(issueIdentifier)}`
+      : `${frontendBaseUrl}/task-board/board`;
+
     try {
       await sendTeamsNotification({
         userEmail: email,
         taskId,
         taskTitle,
         taskKey,
+        taskUrl,
         assignedBy,
         dueDate,
-        message: `You have been assigned a new task: [${taskTitle} [${taskKey}]](https://airm-frontend-160078175457.us-central1.run.app/task-board)`,
+        message: `You have been assigned a new task: [${taskTitle} [${taskKey}]](${taskUrl})`,
       });
 
       console.log(
@@ -393,6 +400,12 @@ async function sendMentionNotifications({
       user.email
     );
 
+    const frontendBaseUrl = (process.env.FRONTEND_URL || 'https://airm-frontend-160078175457.us-central1.run.app').replace(/\/+$/, '');
+    const issueIdentifier = taskKey || taskId;
+    const taskUrl = issueIdentifier
+      ? `${frontendBaseUrl}/task-board/board/${encodeURIComponent(issueIdentifier)}`
+      : `${frontendBaseUrl}/task-board/board`;
+
     try {
       const result =
         await sendTeamsNotification({
@@ -400,9 +413,10 @@ async function sendMentionNotifications({
           taskId,
           taskTitle,
           taskKey,
+          taskUrl,
           assignedBy,
           dueDate,
-          message: `You were mentioned in task: [${taskTitle} [${taskKey}]](https://airm-frontend-160078175457.us-central1.run.app/task-board)`,
+          message: `You were mentioned in task: [${taskTitle} [${taskKey}]](${taskUrl})`,
         });
 
       console.log(

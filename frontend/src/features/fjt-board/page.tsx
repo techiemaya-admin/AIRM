@@ -26,10 +26,15 @@ export default function FjtBoardPage() {
     setActiveTab(getActiveTabFromUrl());
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (location.pathname === '/task-board' || location.pathname === '/task-board/') {
+      navigate('/task-board/board', { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const handleTabChange = (tab: FjtTab) => {
     setActiveTab(tab);
-    if (tab === 'board') navigate('/task-board');
-    else navigate(`/task-board/${tab}`);
+    navigate(`/task-board/${tab}`);
   };
 
   return (
