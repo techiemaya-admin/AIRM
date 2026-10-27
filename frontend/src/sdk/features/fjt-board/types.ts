@@ -5,7 +5,7 @@
 
 export type FjtIssueType = 'epic' | 'story' | 'task' | 'bug';
 
-export type FjtStatus = 'to_do' | 'in_progress' | 'done';
+export type FjtStatus = 'to_do' | 'in_progress' | 'ready_to_test' | 'done';
 
 export type FjtPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
 

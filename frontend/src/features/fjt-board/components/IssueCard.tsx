@@ -241,6 +241,11 @@ export const IssueCard: React.FC<IssueCardProps> = ({
                 Move to In Progress
               </DropdownMenuItem>
             )}
+            {issue.status !== 'ready_to_test' && (
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onStatusChange?.(issue.id, 'ready_to_test'); }}>
+                Move to Ready to Test
+              </DropdownMenuItem>
+            )}
             {issue.status !== 'done' && (
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onStatusChange?.(issue.id, 'done'); }}>
                 Move to Done

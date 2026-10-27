@@ -353,6 +353,11 @@ export const ActiveBoardView: React.FC = () => {
         issues: sortNewestFirst(filteredIssues.filter((i) => i.status === 'in_progress')),
       },
       {
+        id: 'ready_to_test',
+        title: 'READY TO TEST',
+        issues: sortNewestFirst(filteredIssues.filter((i) => i.status === 'ready_to_test')),
+      },
+      {
         id: 'done',
         title: 'DONE',
         issues: sortNewestFirst(filteredIssues.filter((i) => i.status === 'done')),
@@ -874,9 +879,9 @@ export const ActiveBoardView: React.FC = () => {
             })()}
           </div>
 
-          {/* Desktop 3-Column Kanban Board */}
+          {/* Desktop 4-Column Kanban Board */}
           <div className="hidden md:block flex-1 p-6 overflow-x-auto min-h-0">
-            <div className="grid grid-cols-3 gap-6 h-full min-w-[768px]">
+            <div className="grid grid-cols-4 gap-6 h-full min-w-[900px]">
               {columns.map((col) => (
                 <div
                   key={col.id}

@@ -554,6 +554,7 @@ export const CreateIssueDialog: React.FC<CreateIssueDialogProps> = ({
               <SelectContent className="bg-white">
                 <SelectItem value="to_do">To Do</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="ready_to_test">Ready to Test</SelectItem>
                 <SelectItem value="done">Done</SelectItem>
               </SelectContent>
             </Select>

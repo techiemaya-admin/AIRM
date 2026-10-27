@@ -560,6 +560,7 @@ export const IssueDetailDialog: React.FC<IssueDetailDialogProps> = ({
                 <SelectContent className="bg-white">
                   <SelectItem value="to_do">TO DO</SelectItem>
                   <SelectItem value="in_progress">IN PROGRESS</SelectItem>
+                  <SelectItem value="ready_to_test">READY TO TEST</SelectItem>
                   <SelectItem value="done">DONE</SelectItem>
                 </SelectContent>
               </Select>
