@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ActiveBoardView } from './components/ActiveBoardView';
 import { BacklogView } from './components/BacklogView';
 import { TimelineView } from './components/TimelineView';
@@ -7,6 +7,50 @@ import { ReportsView } from './components/ReportsView';
 import { LayoutDashboard, ListOrdered, Calendar, BarChart3 } from 'lucide-react';
 
 export type FjtTab = 'board' | 'backlog' | 'timeline' | 'reports';
+
+class FjtErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Task Board Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 m-6 bg-white border border-red-200 rounded-lg shadow-sm text-center">
+          <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4 text-xl font-bold">
+            !
+          </div>
+          <h2 className="text-base font-bold text-gray-900 mb-2">Error Loading Task Board</h2>
+          <p className="text-xs text-red-600 mb-4 max-w-md font-mono bg-red-50 p-3 rounded border border-red-100">
+            {this.state.error?.message || 'An unexpected rendering error occurred.'}
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-[#0B1957] text-white text-xs font-semibold rounded-md hover:bg-[#071038] transition-colors"
+          >
+            Reload Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function FjtBoardPage() {
   const location = useLocation();
@@ -92,10 +136,12 @@ export default function FjtBoardPage() {
 
       {/* Main Tab Content */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {activeTab === 'board' && <ActiveBoardView />}
-        {activeTab === 'backlog' && <BacklogView />}
-        {activeTab === 'timeline' && <TimelineView />}
-        {activeTab === 'reports' && <ReportsView />}
+        <FjtErrorBoundary>
+          {activeTab === 'board' && <ActiveBoardView />}
+          {activeTab === 'backlog' && <BacklogView />}
+          {activeTab === 'timeline' && <TimelineView />}
+          {activeTab === 'reports' && <ReportsView />}
+        </FjtErrorBoundary>
       </div>
     </div>
   );

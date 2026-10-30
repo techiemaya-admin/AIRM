@@ -4,6 +4,8 @@ import {
   useCreateFjtIssue,
   useUpdateFjtEpic,
   FjtEpic,
+  buildIssuesMap,
+  isIssueLinkedToEpic,
 } from '@/sdk/features/fjt-board';
 import {
   Dialog,
@@ -62,6 +64,7 @@ export const EpicsManagementDialog: React.FC<EpicsManagementDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const epics = useMemo(() => boardData?.epics || [], [boardData]);
+  const issuesMap = useMemo(() => buildIssuesMap(boardData?.issues), [boardData?.issues]);
   const activeProject = useMemo(() => {
     if (boardData?.projects && boardData.projects.length > 0) {
       if (boardData.currentProjectId) {
@@ -311,9 +314,8 @@ export const EpicsManagementDialog: React.FC<EpicsManagementDialogProps> = ({
                     (i) => i.epicId === epic.id && i.type === 'story'
                   ) || [];
                   const epicTasks = boardData?.issues.filter((i) => {
-                    if (i.epicId === epic.id && (i.type === 'task' || i.type === 'bug')) return true;
-                    const parentStory = boardData.issues.find((s) => s.id === i.storyId);
-                    return parentStory?.epicId === epic.id;
+                    if (i.type !== 'task' && i.type !== 'bug') return false;
+                    return isIssueLinkedToEpic(i, epic.id, issuesMap, epics);
                   }) || [];
 
                   const displayName = epic.epicName || (epic as any).name || epic.summary;

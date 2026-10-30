@@ -8,5 +8,4 @@ export * from './hooks';
 export * from './media';
 export * from './mentionUtils';
 export * from './timeTrackingUtils';
-
-
+export * from './hierarchyUtils';

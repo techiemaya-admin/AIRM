@@ -6,6 +6,9 @@ import {
   FjtIssueType,
   doesIssueMentionUser,
   hasAnyMentions,
+  buildIssuesMap,
+  isIssueLinkedToEpic,
+  isIssueWithoutEpic,
 } from '@/sdk/features/fjt-board';
 import { IssueTypeIcon, PriorityIcon, getDueWarning } from './IssueCard';
 import { CreateIssueDialog } from './CreateIssueDialog';
@@ -145,9 +148,13 @@ export const BacklogView: React.FC = () => {
     return boardData.issues.filter((issue) => doesIssueMentionUser(issue, resolvedCurrentUserObj)).length;
   }, [boardData?.issues, resolvedCurrentUserObj]);
 
-  const unassignedStoriesCount = useMemo(() => {
-    return boardData?.issues?.filter((i) => i.type === 'story' && !i.epicId).length || 0;
+  const issuesMap = useMemo(() => {
+    return buildIssuesMap(boardData?.issues);
   }, [boardData?.issues]);
+
+  const unassignedStoriesCount = useMemo(() => {
+    return boardData?.issues?.filter((i) => i.type === 'story' && isIssueWithoutEpic(i, issuesMap)).length || 0;
+  }, [boardData?.issues, issuesMap]);
 
   const isIssueMatchingMentions = (issue: FjtIssue): boolean => {
     if (!onlyMentionedMe && (!selectedMentionFilter || selectedMentionFilter === 'all')) {
@@ -172,14 +179,17 @@ export const BacklogView: React.FC = () => {
         if (!isIssueMatchingMentions(issue)) {
           return;
         }
-        const key = issue.storyId || 'standalone';
+        const parentStory =
+          (issue.storyId && issuesMap.get(issue.storyId)) ||
+          (issue.storyKey && issuesMap.get(issue.storyKey));
+        const key = parentStory?.id || issue.storyId || 'standalone';
         if (!map[key]) map[key] = [];
         map[key].push(issue);
       }
     });
 
     return map;
-  }, [boardData?.issues, onlyMentionedMe, selectedMentionFilter, selectedMentionMember, resolvedCurrentUserObj]);
+  }, [boardData?.issues, issuesMap, onlyMentionedMe, selectedMentionFilter, selectedMentionMember, resolvedCurrentUserObj]);
 
   // Stories
   const stories = useMemo(() => {
@@ -187,8 +197,8 @@ export const BacklogView: React.FC = () => {
     return boardData.issues.filter((i) => {
       if (i.type !== 'story') return false;
       if (selectedEpicFilter === 'none') {
-        if (i.epicId) return false;
-      } else if (selectedEpicFilter && i.epicId !== selectedEpicFilter) {
+        if (!isIssueWithoutEpic(i, issuesMap)) return false;
+      } else if (selectedEpicFilter && !isIssueLinkedToEpic(i, selectedEpicFilter, issuesMap, epics)) {
         return false;
       }
       if (searchQuery.trim()) {
@@ -212,11 +222,26 @@ export const BacklogView: React.FC = () => {
 
       return true;
     });
-  }, [boardData?.issues, selectedEpicFilter, searchQuery, onlyMentionedMe, selectedMentionFilter, tasksAndBugsByStory]);
+  }, [boardData?.issues, selectedEpicFilter, searchQuery, onlyMentionedMe, selectedMentionFilter, tasksAndBugsByStory, issuesMap, epics]);
 
   const standaloneTasksAndBugs = useMemo(() => {
-    return tasksAndBugsByStory['standalone'] || [];
-  }, [tasksAndBugsByStory]);
+    const list = tasksAndBugsByStory['standalone'] || [];
+    return list.filter((item) => {
+      if (selectedEpicFilter === 'none') {
+        if (!isIssueWithoutEpic(item, issuesMap)) return false;
+      } else if (selectedEpicFilter && !isIssueLinkedToEpic(item, selectedEpicFilter, issuesMap, epics)) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesKey = Boolean(item.key?.toLowerCase().includes(q));
+        const matchesSummary = Boolean(item.summary?.toLowerCase().includes(q));
+        const matchesLabels = Boolean(item.labels?.some((l) => l?.toLowerCase().includes(q)));
+        if (!matchesKey && !matchesSummary && !matchesLabels) return false;
+      }
+      return true;
+    });
+  }, [tasksAndBugsByStory, selectedEpicFilter, issuesMap, epics, searchQuery]);
 
 
   const handleOpenCreateForStory = (story: FjtIssue, type: FjtIssueType = 'task') => {
@@ -276,7 +301,7 @@ export const BacklogView: React.FC = () => {
             No Epic ({unassignedStoriesCount})
           </button>
           {epics.map((epic) => {
-            const count = boardData?.issues.filter((i) => i.epicId === epic.id).length || 0;
+            const count = boardData?.issues.filter((i) => isIssueLinkedToEpic(i, epic.id, issuesMap, epics)).length || 0;
             const isSelected = selectedEpicFilter === epic.id;
             return (
               <button
@@ -363,7 +388,7 @@ export const BacklogView: React.FC = () => {
             </button>
 
             {epics.map((epic) => {
-              const count = boardData?.issues.filter((i) => i.epicId === epic.id).length || 0;
+              const count = boardData?.issues.filter((i) => isIssueLinkedToEpic(i, epic.id, issuesMap, epics)).length || 0;
               const isSelected = selectedEpicFilter === epic.id;
               return (
                 <div

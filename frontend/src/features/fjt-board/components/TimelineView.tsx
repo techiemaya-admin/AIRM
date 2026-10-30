@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useFjtBoardData, FjtIssue } from '@/sdk/features/fjt-board';
+import { useFjtBoardData, FjtIssue, buildIssuesMap, isIssueLinkedToEpic } from '@/sdk/features/fjt-board';
 import { IssueTypeIcon } from './IssueCard';
 import { ChevronRight, ChevronDown, Plus, Layers, CornerDownRight, Bookmark, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ export const TimelineView: React.FC = () => {
   const [collapsedStories, setCollapsedStories] = useState<Record<string, boolean>>({});
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailIssue, setDetailIssue] = useState<FjtIssue | null>(null);
+  const issuesMap = useMemo(() => buildIssuesMap(boardData?.issues), [boardData?.issues]);
 
   const toggleEpic = (epicId: string) => {
     setCollapsedEpics((prev) => ({ ...prev, [epicId]: !prev[epicId] }));
@@ -240,9 +241,7 @@ export const TimelineView: React.FC = () => {
               // All tasks & bugs linked to this epic (directly or through a story)
               const allChildTasksAndBugs = boardData.issues.filter((i) => {
                 if (i.type !== 'task' && i.type !== 'bug') return false;
-                if (i.epicId === epic.id) return true;
-                const parentStory = boardData.issues.find((s) => s.id === i.storyId);
-                return parentStory?.epicId === epic.id;
+                return isIssueLinkedToEpic(i, epic.id, issuesMap, boardData.epics);
               });
 
               const isEpicExpanded = !collapsedEpics[epic.id];

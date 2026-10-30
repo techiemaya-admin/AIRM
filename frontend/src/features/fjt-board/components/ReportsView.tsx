@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useFjtBoardData, FjtIssue, FjtMember } from '@/sdk/features/fjt-board';
+import { useFjtBoardData, FjtIssue, FjtMember, buildIssuesMap, isIssueLinkedToEpic } from '@/sdk/features/fjt-board';
 import { useUsers } from '@/hooks/useUsers';
 import {
   Users,
@@ -21,6 +21,7 @@ import { TaskBoardSkeleton } from '@/components/PageSkeletons';
 export const ReportsView: React.FC = () => {
   const { data: boardData, isLoading } = useFjtBoardData();
   const { data: dbUsers } = useUsers({ includeExEmployees: true });
+  const issuesMap = useMemo(() => buildIssuesMap(boardData?.issues), [boardData?.issues]);
 
   const [searchMember, setSearchMember] = useState('');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
@@ -559,9 +560,7 @@ export const ReportsView: React.FC = () => {
                 boardData.epics.map((epic) => {
                   const childTasksAndBugs = boardData.issues.filter((i) => {
                     if (i.type !== 'task' && i.type !== 'bug') return false;
-                    if (i.epicId === epic.id) return true;
-                    const parentStory = boardData.issues.find((s) => s.id === i.storyId);
-                    return parentStory?.epicId === epic.id;
+                    return isIssueLinkedToEpic(i, epic.id, issuesMap, boardData.epics);
                   });
                   const childCount = childTasksAndBugs.length;
                   const doneCount = childTasksAndBugs.filter((i) => i.status === 'done').length;

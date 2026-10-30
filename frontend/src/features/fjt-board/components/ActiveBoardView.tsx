@@ -8,6 +8,9 @@ import {
   doesIssueMentionUser,
   hasAnyMentions,
   getIssueTimeTrackingData,
+  buildIssuesMap,
+  isIssueLinkedToEpic,
+  isIssueLinkedToStory,
 } from '@/sdk/features/fjt-board';
 
 import { IssueCard, IssueTypeIcon } from './IssueCard';
@@ -238,6 +241,10 @@ export const ActiveBoardView: React.FC = () => {
     return boardData?.issues.filter((i) => i.type === 'story') || [];
   }, [boardData?.issues]);
 
+  const issuesMap = useMemo(() => {
+    return buildIssuesMap(boardData?.issues);
+  }, [boardData?.issues]);
+
   const filteredIssues = useMemo(() => {
     if (!boardData) return [];
 
@@ -249,11 +256,18 @@ export const ActiveBoardView: React.FC = () => {
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchesKey = issue.key.toLowerCase().includes(q);
-        const matchesSummary = issue.summary.toLowerCase().includes(q);
-        const matchesEpic = issue.epicName?.toLowerCase().includes(q);
-        const matchesStory = issue.storyKey?.toLowerCase().includes(q) || issue.storySummary?.toLowerCase().includes(q);
-        const matchesLabels = issue.labels?.some((l) => l.toLowerCase().includes(q));
+        const parentStory = (issue.storyId && issuesMap.get(String(issue.storyId))) ||
+                            (issue.storyKey && issuesMap.get(String(issue.storyKey)));
+        const matchesKey = Boolean(issue.key?.toLowerCase().includes(q));
+        const matchesSummary = Boolean(issue.summary?.toLowerCase().includes(q));
+        const effectiveEpicName = issue.epicName || parentStory?.epicName;
+        const matchesEpic = Boolean(effectiveEpicName?.toLowerCase().includes(q));
+        const matchesStory = Boolean(
+          issue.storyKey?.toLowerCase().includes(q) ||
+          issue.storySummary?.toLowerCase().includes(q) ||
+          parentStory?.summary?.toLowerCase().includes(q)
+        );
+        const matchesLabels = Boolean(issue.labels?.some((l) => l?.toLowerCase().includes(q)));
         if (!matchesKey && !matchesSummary && !matchesEpic && !matchesStory && !matchesLabels) return false;
       }
 
@@ -289,11 +303,11 @@ export const ActiveBoardView: React.FC = () => {
         }
       }
 
-      if (selectedEpicId && issue.epicId !== selectedEpicId) {
+      if (selectedEpicId && !isIssueLinkedToEpic(issue, selectedEpicId, issuesMap, epics)) {
         return false;
       }
 
-      if (selectedStoryId && issue.id !== selectedStoryId && issue.storyId !== selectedStoryId) {
+      if (selectedStoryId && !isIssueLinkedToStory(issue, selectedStoryId, issuesMap)) {
         return false;
       }
 
@@ -310,6 +324,8 @@ export const ActiveBoardView: React.FC = () => {
     });
   }, [
     boardData,
+    issuesMap,
+    epics,
     searchQuery,
     selectedAssignee,
     onlyMyIssues,
