@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { FjtController } from '../controllers/fjtController.js';
-import { authenticate, authenticateUserOrService, requireAdmin } from '../../../middleware/auth.js';
+import { authenticate, authenticateUserOrService, requireAdmin, requireService, requirePerson } from '../../../middleware/auth.js';
 import { taskBoardObjectName, verifyMediaSignature } from '../services/mediaAccess.js';
 
 const upload = multer({
@@ -14,7 +14,7 @@ const upload = multer({
 const router = express.Router();
 
 // GCP Storage attachment upload (Images / Documents)
-router.post('/upload', authenticate, upload.single('file'), FjtController.uploadAttachment);
+router.post('/upload', authenticateUserOrService, upload.single('file'), FjtController.uploadAttachment);
 
 // Task-board attachments from the private bucket. Plain <img>/<a> can't send the
 // bearer token, so a signed-in user gets short-lived signed links from
@@ -31,9 +31,14 @@ router.get('/board', authenticateUserOrService, FjtController.getBoard);
 router.get('/issues', authenticateUserOrService, FjtController.listIssues);
 router.get('/issues/:id', authenticateUserOrService, FjtController.getIssue);
 router.post('/issues/:id/comments', authenticateUserOrService, FjtController.addComment);
-router.post('/issues', authenticate, FjtController.createIssue);
+// A service may create (Mr LAD's Client Rooms agent); acting for a user, the
+// user becomes the reporter.
+router.post('/issues', authenticateUserOrService, FjtController.createIssue);
 router.put('/issues/:id', authenticateUserOrService, FjtController.updateIssue);
-router.delete('/issues/:id', authenticate, FjtController.deleteIssue);
+router.delete('/issues/:id', requirePerson, FjtController.deleteIssue);
+
+// Mr LAD maps its signed-in person to a Pulse user before acting for them.
+router.get('/users/lookup', requireService, FjtController.lookupUser);
 
 router.post('/epics', authenticate, FjtController.createEpic);
 router.put('/epics/:id', authenticate, FjtController.updateEpic);
