@@ -942,11 +942,27 @@ export class FjtService {
    * maintains, and sends the same @mention notifications a comment added
    * through PUT /issues/:id would.
    */
-  static async addComment(schema, id, { content, authorName, authorInitials, assignedBy }) {
+  /**
+   * The Pulse user with this email, or null. Same table and match as the
+   * acting-user check in middleware/auth.js, so a lookup that succeeds is an
+   * identity that check will accept. Two users on one email resolve to null.
+   */
+  static async findUserByEmail(email) {
+    const result = await pool.query(
+      'SELECT id, email, full_name FROM users WHERE LOWER(email) = $1 LIMIT 2',
+      [String(email || '').trim().toLowerCase()]
+    );
+    if (result.rows.length !== 1) return null;
+    const u = result.rows[0];
+    return { id: u.id, email: u.email, fullName: u.full_name };
+  }
+
+  static async addComment(schema, id, { content, authorName, authorInitials, authorEmail, assignedBy }) {
     if (!isValidUuid(id)) return null;
     const comment = {
       id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       authorName: authorName || 'User',
+      ...(authorEmail ? { authorEmail } : {}),
       authorInitials: authorInitials
         || String(authorName || 'U').split(' ').filter(Boolean).map((n) => n[0]).join('').toUpperCase().slice(0, 2)
         || 'U',

@@ -166,6 +166,22 @@ export class FjtController {
   }
 
   /** GET /issues/:id */
+  /** GET /users/lookup?email=  (service only) → { id, email, fullName } */
+  static async lookupUser(req, res) {
+    try {
+      const email = String(req.query.email || '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
+        return res.status(400).json({ success: false, message: 'email is required' });
+      }
+      const user = await FjtService.findUserByEmail(email);
+      if (!user) return res.status(404).json({ success: false, message: 'No Pulse user with that email' });
+      res.json({ success: true, data: user });
+    } catch (error) {
+      logger.error('Error in lookupUser:', error);
+      res.status(500).json({ success: false, message: 'Failed to look up user' });
+    }
+  }
+
   static async getIssue(req, res) {
     try {
       const issue = await FjtService.getIssue(FjtController.getSchema(req), req.params.id);
@@ -195,6 +211,7 @@ export class FjtController {
         content,
         authorName,
         authorInitials: isService ? String(req.body?.authorInitials || '').trim().slice(0, 3) || undefined : undefined,
+        authorEmail: isService ? undefined : req.user?.email,
         assignedBy: authorName,
       });
       if (!out) return res.status(404).json({ success: false, message: 'Issue not found' });
@@ -208,7 +225,10 @@ export class FjtController {
   static async createIssue(req, res) {
     try {
       const schema = FjtController.getSchema(req);
-      const issue = await FjtService.createIssue(schema, req.body);
+      // The person creating it reports it, unless the caller named someone.
+      const body = { ...req.body };
+      if (!body.reporterId && req.user?.id) body.reporterId = req.user.id;
+      const issue = await FjtService.createIssue(schema, body);
       res.status(201).json({ success: true, data: issue });
     } catch (error) {
       logger.error('Error in createIssue:', error);

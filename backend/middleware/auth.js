@@ -143,6 +143,14 @@ export const optionalAuth = async (req, res, next) => {
  * bearer token (Mr LAD Debug Assist reads the board and writes task progress
  * this way — a user JWT would expire under it). The service token is compared
  * in constant time and only accepted when AIRM_SERVICE_TOKEN is set.
+ *
+ * ACTING USER. Mr LAD shows this board to its own signed-in people. With the
+ * service token it may name the person it acts for in X-Acting-User-Email;
+ * the request then runs AS that Pulse user (req.user is their row, no
+ * `service` flag), so comments, reporters and notifications name them rather
+ * than "Service". An email that matches no Pulse user, or several, is refused
+ * (403): a write must never be attributed to a guess. Only the service token
+ * can assert an identity this way; a user JWT ignores the header.
  */
 export const authenticateUserOrService = async (req, res, next) => {
   const serviceToken = process.env.AIRM_SERVICE_TOKEN;
@@ -151,6 +159,23 @@ export const authenticateUserOrService = async (req, res, next) => {
     const given = Buffer.from(authHeader.substring(7));
     const expected = Buffer.from(serviceToken);
     if (given.length === expected.length && crypto.timingSafeEqual(given, expected)) {
+      const acting = String(req.headers['x-acting-user-email'] || '').trim().toLowerCase();
+      if (acting) {
+        try {
+          const result = await pool.query(
+            'SELECT id, email, full_name FROM users WHERE LOWER(email) = $1 LIMIT 2',
+            [acting]
+          );
+          if (result.rows.length !== 1) {
+            return res.status(403).json({ success: false, message: 'No Pulse user for the acting email' });
+          }
+          req.user = { ...result.rows[0], viaService: true };
+          req.userId = result.rows[0].id;
+          return next();
+        } catch (error) {
+          return res.status(503).json({ success: false, message: 'Could not resolve the acting user' });
+        }
+      }
       req.user = { id: null, email: 'service@airm', full_name: 'Service', service: true };
       req.userId = null;
       return next();
@@ -158,3 +183,15 @@ export const authenticateUserOrService = async (req, res, next) => {
   }
   return authenticate(req, res, next);
 };
+
+/** The service token itself, with no acting user: for service-only lookups. */
+export const requireService = (req, res, next) => authenticateUserOrService(req, res, () => {
+  if (req.user?.service) return next();
+  return res.status(403).json({ success: false, message: 'Service token required' });
+});
+
+/** A real person: a signed-in user, or the service acting for one. */
+export const requirePerson = (req, res, next) => authenticateUserOrService(req, res, () => {
+  if (req.user?.id) return next();
+  return res.status(403).json({ success: false, message: 'Act as a Pulse user (X-Acting-User-Email) for this action' });
+});
