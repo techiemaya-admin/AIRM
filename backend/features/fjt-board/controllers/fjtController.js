@@ -117,7 +117,9 @@ export class FjtController {
   static async getBoard(req, res) {
     try {
       const schema = FjtController.getSchema(req);
-      const data = await FjtService.getBoardData(schema);
+      // ?view=cards: what a board needs, a fraction of the bytes; open an
+      // issue with GET /issues/:id for its description and comments.
+      const data = await FjtService.getBoardData(schema, { cards: req.query.view === 'cards' });
       res.json({ success: true, data });
     } catch (error) {
       logger.error('Error in getBoard:', error);

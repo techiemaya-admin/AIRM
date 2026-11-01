@@ -34,7 +34,11 @@ const { Pool } = pg;
 const createPool = () => {
   const config = {
     max: 5, // Keep low to prevent hitting database role connection limits
-    idleTimeoutMillis: 5000, // Close idle clients after 5 seconds
+    // The database is outside Google Cloud, so a new connection (TCP + TLS +
+    // auth + search_path) costs ~2.5s from Cloud Run. Closing idle clients
+    // after 5s meant nearly every request paid it; keep them for 10 minutes.
+    idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS) || 10 * 60 * 1000,
+    keepAlive: true,
     connectionTimeoutMillis: 10000, // Reduced from 30s to 10s for faster failures
     statement_timeout: 30000, // Statement timeout of 30s
     allowExitOnIdle: true, // Allow exiting idle
