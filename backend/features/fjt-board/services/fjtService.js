@@ -516,8 +516,10 @@ function formatIssue(i) {
       initials: i.reporter_user_name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AU'
     } : undefined),
     descriptionCreatedAt: rawData.descriptionCreatedAt || i.updated_at || i.created_at,
-    descriptionSaved: rawData.descriptionSaved !== undefined ? rawData.descriptionSaved : !!(i.description && i.description.trim()),
+    descriptionSaved: rawData.descriptionSaved !== undefined ? rawData.descriptionSaved : !!(i.has_description || (i.description && i.description.trim())),
     comments: issueComments,
+    // Present only on the cards view, which leaves out the description and comments.
+    ...(i.comment_count !== undefined ? { hasDescription: !!i.has_description, commentCount: Number(i.comment_count) || 0 } : {}),
     raw_data: rawData,
     status: i.status,
     priority: i.priority,
@@ -551,11 +553,12 @@ function formatIssue(i) {
 }
 
 export class FjtService {
-  static async getBoardData(schema) {
+  /** `cards`: issues without description, comments or raw_data (see FjtRepository.issueSelect). */
+  static async getBoardData(schema, { cards = false } = {}) {
     const [projects, epics, issues] = await Promise.all([
       FjtRepository.getProjects(schema),
       FjtRepository.getEpics(schema),
-      FjtRepository.getIssues(schema)
+      FjtRepository.getIssues(schema, { cards })
     ]);
 
     // Format issues to match frontend expected structure matched with erp.users

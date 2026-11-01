@@ -127,11 +127,33 @@ export class FjtRepository {
   // --- ISSUES (Matched with erp.users, epics, stories, tasks) ---
   // One SELECT for every issue read, so the board, the filtered list and the
   // single-issue read return identical rows (and identical formatting).
-  static issueSelect(s, where = 'i.is_deleted = false') {
+  //
+  // `cards` is the same row without the heavy columns a board card never shows:
+  // no description text and, of raw_data, only `assignees`. It adds
+  // has_description and comment_count instead, so a card can still say so.
+  // raw_data holds every comment and edit, and is most of the board's bytes.
+  static issueSelect(s, where = 'i.is_deleted = false', { cards = false } = {}) {
+    const description = cards
+      ? `NULL::text as description,
+        (i.description IS NOT NULL AND btrim(i.description) <> '') as has_description`
+      : 'i.description';
+    const rawData = cards
+      ? `CASE WHEN jsonb_typeof(i.raw_data) = 'object' AND i.raw_data ? 'assignees'
+          THEN jsonb_build_object('assignees', i.raw_data->'assignees')
+          ELSE '{}'::jsonb END as raw_data,
+        CASE jsonb_typeof(i.raw_data)
+          WHEN 'array' THEN jsonb_array_length(i.raw_data)
+          WHEN 'object' THEN CASE
+            WHEN jsonb_typeof(i.raw_data->'comments') = 'array' THEN jsonb_array_length(i.raw_data->'comments')
+            ELSE (SELECT count(*)::int FROM jsonb_object_keys(i.raw_data) k WHERE k ~* '^comment\\s*\\d+')
+          END
+          ELSE 0
+        END as comment_count`
+      : 'i.raw_data';
     return `
-      SELECT 
+      SELECT
         i.id, i.numeric_id, i.key, i.project_key, i.project_name, i.type,
-        i.summary, i.description, i.status, i.priority, i.story_points,
+        i.summary, ${description}, i.status, i.priority, i.story_points,
         i.epic_id,
         COALESCE(e.key, i.epic_key) as epic_key,
         COALESCE(e.epic_name, e.summary, i.epic_name) as epic_name,
@@ -144,7 +166,7 @@ export class FjtRepository {
         COALESCE(lt.summary, (i.raw_data->>'linked_task_summary')) as linked_task_summary,
         i.assignee_id, i.assignee_name, i.assignee_initials,
         i.reporter_id,
-        i.start_date, i.end_date, i.labels, i.metadata, i.raw_data, i.is_deleted, i.created_at, i.updated_at,
+        i.start_date, i.end_date, i.labels, i.metadata, ${rawData}, i.is_deleted, i.created_at, i.updated_at,
         u.id as user_id, u.full_name as user_full_name, u.email as user_email,
         r.id as reporter_user_id, r.full_name as reporter_user_name, r.email as reporter_user_email
       FROM ${s}.fjt_issues i
@@ -157,9 +179,9 @@ export class FjtRepository {
       ORDER BY i.created_at ASC`;
   }
 
-  static async getIssues(schema) {
+  static async getIssues(schema, { cards = false } = {}) {
     const s = this.resolveSchema(schema);
-    const res = await pool.query(this.issueSelect(s));
+    const res = await pool.query(this.issueSelect(s, undefined, { cards }));
     return res.rows;
   }
 
